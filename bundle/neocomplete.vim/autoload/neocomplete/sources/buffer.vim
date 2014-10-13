@@ -68,6 +68,7 @@ function! s:source.hooks.on_init(context) "{{{
   let s:async_dictionary_list = {}
   "}}}
 
+  call s:make_cache_buffer(bufnr('%'))
   call s:check_source()
 endfunction
 "}}}
@@ -159,7 +160,6 @@ function! s:initialize_source(srcname) "{{{
         \ 'name' : filename, 'filetype' : ft,
         \ 'keyword_pattern' : keyword_pattern,
         \ 'cached_time' : 0,
-        \ 'changedtick' : getbufvar(a:srcname, 'changedtick'),
         \ 'path' : path,
         \ 'cache_name' : neocomplete#cache#encode_name('buffer_cache', path),
         \}
@@ -184,7 +184,6 @@ function! s:make_cache_file(srcname) "{{{
         \ neocomplete#cache#async_load_from_file(
         \     'buffer_cache', source.path,
         \     source.keyword_pattern, 'B')
-  let source.changedtick = getbufvar(a:srcname, 'changedtick')
   let source.cached_time = localtime()
   let source.filetype = getbufvar(a:srcname, '&filetype')
   let s:async_dictionary_list[source.path] = [{
@@ -205,7 +204,7 @@ function! s:make_cache_buffer(srcname) "{{{
 
     if a:srcname ==# bufnr('%')
       " Force sync cache
-      call s:make_cache_current_buffer(1, line('$'))
+      call s:make_cache_current_buffer(1, 1000)
       return
     endif
   endif
@@ -221,7 +220,6 @@ function! s:make_cache_buffer(srcname) "{{{
         \ neocomplete#cache#async_load_from_file(
         \     'buffer_cache', temp,
         \     source.keyword_pattern, 'B')
-  let source.changedtick = getbufvar(a:srcname, 'changedtick')
   let source.cached_time = localtime()
   let source.filetype = getbufvar(a:srcname, '&filetype')
   if source.filetype == ''
@@ -247,7 +245,6 @@ function! s:check_changed_buffer(bufnr) "{{{
   endif
 
   return source.name != filename || source.filetype != ft
-        \ || source.changedtick != getbufvar(a:bufnr, 'changedtick')
 endfunction"}}}
 
 function! s:check_source() "{{{
@@ -302,30 +299,28 @@ do
   local b = vim.buffer()
   local min_length = vim.eval('g:neocomplete#min_keyword_length')
   for linenr = vim.eval('a:start'), vim.eval('a:end') do
-    local match = (string.find(b[linenr], '[^%s]'))
-    while match ~= nil and match >= 0 do
-      match = vim.eval('match(getline(' .. linenr ..
-        '), keyword_pattern, ' .. match-1 .. ')')
-      if match >= 0 then
-        local match_end = vim.eval('matchend(getline('..linenr..
-          '), keyword_pattern, '..match..')')
-        local match_str = string.sub(b[linenr], match+1, match_end)
-        if dup[match_str] == nil
-              and string.len(match_str) >= min_length then
-          dup[match_str] = 1
-          words:add(match_str)
-        end
-
-        -- Next match.
-        match = match_end + 1
+    local match = 0
+    while 1 do
+      local match_str = vim.eval('matchstr(getline('..linenr..
+      '), keyword_pattern, ' .. match .. ')')
+      if match_str == '' then
+        break
       end
+      if dup[match_str] == nil
+        and string.len(match_str) >= min_length then
+        dup[match_str] = 1
+        words:add(match_str)
+      end
+
+      -- Next match.
+      match = vim.eval('matchend(getline(' .. linenr ..
+        '), keyword_pattern, ' .. match .. ')')
     end
   end
 end
 EOF
 
   let source.words = neocomplete#util#uniq(source.words + words)
-  let source.changedtick = b:changedtick
 endfunction"}}}
 
 function! s:check_async_cache() "{{{
