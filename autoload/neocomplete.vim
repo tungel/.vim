@@ -80,6 +80,8 @@ let g:neocomplete#skip_auto_completion_time =
       \ get(g:, 'neocomplete#skip_auto_completion_time', '0.3')
 let g:neocomplete#enable_auto_close_preview =
       \ get(g:, 'neocomplete#enable_auto_close_preview', 1)
+let g:neocomplete#fallback_mappings =
+      \ get(g:, 'neocomplete#fallback_mappings', [])
 let g:neocomplete#sources =
       \ get(g:, 'neocomplete#sources', {})
 let g:neocomplete#keyword_patterns =
@@ -187,10 +189,13 @@ function! neocomplete#is_enabled() "{{{
   return neocomplete#init#is_enabled()
 endfunction"}}}
 function! neocomplete#is_locked(...) "{{{
+  return neocomplete#is_cache_disabled() || &paste
+        \ || g:neocomplete#disable_auto_complete
+endfunction"}}}
+function! neocomplete#is_cache_disabled() "{{{
   let ignore_filetypes = ['fuf', 'ku']
   let bufnr = a:0 > 0 ? a:1 : bufnr('%')
-  return !neocomplete#is_enabled() || &paste
-        \ || g:neocomplete#disable_auto_complete
+  return !neocomplete#is_enabled()
         \ || index(ignore_filetypes, &filetype) >= 0
         \ || neocomplete#get_current_neocomplete().lock
         \ || (g:neocomplete#lock_buffer_name_pattern != '' &&
@@ -227,7 +232,8 @@ function! neocomplete#is_windows() "{{{
 endfunction"}}}
 function! neocomplete#is_prefetch() "{{{
   return !neocomplete#is_locked() && !g:neocomplete#enable_cursor_hold_i &&
-        \ (g:neocomplete#enable_prefetch || &l:formatoptions =~# 'a')
+        \ (g:neocomplete#enable_prefetch || &l:formatoptions =~# 'a'
+        \  || !empty(g:neocomplete#fallback_mappings))
 endfunction"}}}
 function! neocomplete#exists_echodoc() "{{{
   return exists('g:loaded_echodoc') && g:loaded_echodoc

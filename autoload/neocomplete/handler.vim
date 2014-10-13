@@ -97,18 +97,21 @@ function! neocomplete#handler#_on_complete_done() "{{{
       let neocomplete.completed_item = v:completed_item
     endif
   else
-    let complete_str =
-          \ neocomplete#helper#match_word(
-          \   matchstr(getline('.'), '^.*\%'.col('.').'c'))[1]
+    let cur_text = matchstr(getline('.'), '^.*\%'.col('.').'c')
+    let complete_str = neocomplete#helper#match_word(cur_text)[1]
     if complete_str == ''
-      return
+      " Use default keyword pattern.
+      let complete_str = matchstr(cur_text, '\h\w*\(()\?\)\?$')
+      if complete_str == ''
+        return
+      endif
     endif
 
     let candidates = filter(copy(neocomplete.candidates),
           \   "v:val.word ==# complete_str &&
-          \    (get(v:val, 'abbr', '') != '' &&
+          \    ((get(v:val, 'abbr', '') != '' &&
           \     v:val.word !=# v:val.abbr && v:val.abbr[-1] != '~') ||
-          \     get(v:val, 'info', '') != ''")
+          \     get(v:val, 'info', '') != '')")
     if !empty(candidates)
       let neocomplete.completed_item = candidates[0]
     endif
@@ -156,7 +159,7 @@ function! neocomplete#handler#_restore_update_time() "{{{
   endif
 endfunction"}}}
 function! neocomplete#handler#_on_insert_char_pre() "{{{
-  if neocomplete#is_locked()
+  if neocomplete#is_cache_disabled()
     return
   endif
 
@@ -166,6 +169,15 @@ function! neocomplete#handler#_on_insert_char_pre() "{{{
   endif
 
   let neocomplete.old_char = v:char
+endfunction"}}}
+function! neocomplete#handler#_on_text_changed() "{{{
+  if neocomplete#is_cache_disabled()
+    return
+  endif
+
+  if getline('.') == ''
+    call s:make_cache_current_line()
+  endif
 endfunction"}}}
 
 function! neocomplete#handler#_do_auto_complete(event) "{{{
@@ -190,7 +202,7 @@ function! neocomplete#handler#_do_auto_complete(event) "{{{
 
     if neocomplete#helper#is_omni(cur_text)
           \ && neocomplete.old_cur_text !=# cur_text
-      call feedkeys("\<Plug>(neocomplete_start_omni_complete)")
+      call s:complete_key("\<Plug>(neocomplete_start_omni_complete)")
       return
     endif
 
@@ -232,58 +244,29 @@ function! neocomplete#handler#_do_auto_complete(event) "{{{
           \ neocomplete#complete#_get_results(cur_text)
 
     if empty(neocomplete.complete_sources)
-      call neocomplete#print_debug('Skipped.')
+      if !empty(g:neocomplete#fallback_mappings)
+            \ && len(matchstr(cur_text, '\h\w*$'))
+            \   > g:neocomplete#auto_completion_start_length
+        let key = ''
+        for i in range(0, len(g:neocomplete#fallback_mappings)-1)
+          let key .= '<C-r>=neocomplete#mappings#fallback(' . i . ')<CR>'
+        endfor
+        execute 'inoremap <silent> <Plug>(neocomplete_fallback)' key
+
+        " Fallback to omnifunc
+        call s:complete_key("\<Plug>(neocomplete_fallback)")
+      else
+        call neocomplete#print_debug('Skipped.')
+        return
+      endif
       return
     endif
   endif
 
-  call s:save_foldinfo()
-
-  set completeopt-=menu
-  set completeopt-=longest
-  set completeopt+=menuone
-
-  " Set options.
-  let neocomplete.completeopt = &completeopt
-
-  if neocomplete#util#is_complete_select()
-    if g:neocomplete#enable_auto_select
-      set completeopt-=noselect
-      set completeopt+=noinsert
-    else
-      set completeopt+=noinsert,noselect
-    endif
-  endif
-
-  " Do not display completion messages
-  " Patch: https://groups.google.com/forum/#!topic/vim_dev/WeBBjkXE8H8
-  if has('patch-7.4.314')
-    set shortmess+=c
-  endif
-
   " Start auto complete.
-  call feedkeys("\<Plug>(neocomplete_start_auto_complete)")
+  call s:complete_key("\<Plug>(neocomplete_start_auto_complete)")
 endfunction"}}}
 
-function! s:save_foldinfo() "{{{
-  " Save foldinfo.
-  let winnrs = filter(range(1, winnr('$')),
-        \ "winbufnr(v:val) == bufnr('%')")
-
-  " Note: for foldmethod=expr or syntax.
-  call filter(winnrs, "
-        \  (getwinvar(v:val, '&foldmethod') ==# 'expr' ||
-        \   getwinvar(v:val, '&foldmethod') ==# 'syntax') &&
-        \  getwinvar(v:val, '&modifiable')")
-  for winnr in winnrs
-    call setwinvar(winnr, 'neocomplete_foldinfo', {
-          \ 'foldmethod' : getwinvar(winnr, '&foldmethod'),
-          \ 'foldexpr'   : getwinvar(winnr, '&foldexpr')
-          \ })
-    call setwinvar(winnr, '&foldmethod', 'manual')
-    call setwinvar(winnr, '&foldexpr', 0)
-  endfor
-endfunction"}}}
 function! s:check_in_do_auto_complete() "{{{
   if neocomplete#is_locked()
     return 1
@@ -380,6 +363,11 @@ function! s:make_cache_current_line() "{{{
     " Caching current cache line.
     call neocomplete#sources#member#make_cache_current_line()
   endif
+endfunction"}}}
+
+function! s:complete_key(key) "{{{
+  call neocomplete#helper#complete_configure()
+  call feedkeys(a:key)
 endfunction"}}}
 
 let &cpo = s:save_cpo

@@ -157,10 +157,22 @@ function! neocomplete#mappings#complete_common_string() "{{{
         \ . repeat("\<BS>", len(complete_str)) . common_str
 endfunction"}}}
 
+function! neocomplete#mappings#fallback(i) "{{{
+  let mapping = g:neocomplete#fallback_mappings[a:i]
+  return  pumvisible()
+        \ || (mapping ==? "\<C-x>\<C-o>" && &l:omnifunc == '') ? "" :
+        \   mapping . (g:neocomplete#enable_auto_select ?
+        \            "\<C-p>\<Down>" : "\<C-p>")
+endfunction"}}}
+
 " Manual complete wrapper.
 function! neocomplete#mappings#start_manual_complete(...) "{{{
   if !neocomplete#is_enabled()
     return ''
+  endif
+
+  if neocomplete#helper#is_omni(neocomplete#get_cur_text(1))
+    return "\<C-x>\<C-o>\<C-p>"
   endif
 
   " Set context filetype.
@@ -174,11 +186,16 @@ function! neocomplete#mappings#start_manual_complete(...) "{{{
         \ neocomplete#util#convert2list(sources))
   let neocomplete.sources_filetype = ''
 
+  " Don't support menu configuration
+  set completeopt+=menuone
+  set completeopt-=menu
+
   " Set function.
   let &l:completefunc = 'neocomplete#complete#sources_manual_complete'
 
   " Start complete.
-  return "\<C-x>\<C-u>\<C-r>=neocomplete#mappings#popup_post()\<CR>"
+  return neocomplete#util#is_complete_select() ?
+        \ "\<C-x>\<C-u>" : "\<C-x>\<C-u>\<C-p>"
 endfunction"}}}
 
 let &cpo = s:save_cpo
