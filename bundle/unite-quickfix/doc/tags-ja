@@ -1,0 +1,15 @@
+!_TAG_FILE_ENCODING	utf-8	//
+g:unite#filters#converter_quickfix_highlight#enable_bold_for_message	unite_quickfix.jax	/*g:unite#filters#converter_quickfix_highlight#enable_bold_for_message*
+g:unite_quickfix_filename_is_pathshorten	unite_quickfix.jax	/*g:unite_quickfix_filename_is_pathshorten*
+g:unite_quickfix_is_multiline	unite_quickfix.jax	/*g:unite_quickfix_is_multiline*
+unite-quickfix-example	unite_quickfix.jax	/*unite-quickfix-example*
+unite-quickfix-example-highlight	unite_quickfix.jax	/*unite-quickfix-example-highlight*
+unite-quickfix-highlight	unite_quickfix.jax	/*unite-quickfix-highlight*
+unite-quickfix-highlight-UniteQuickFixError	unite_quickfix.jax	/*unite-quickfix-highlight-UniteQuickFixError*
+unite-quickfix-highlight-UniteQuickFixWarning	unite_quickfix.jax	/*unite-quickfix-highlight-UniteQuickFixWarning*
+unite-quickfix-setting	unite_quickfix.jax	/*unite-quickfix-setting*
+unite-quickfix-usage	unite_quickfix.jax	/*unite-quickfix-usage*
+unite-quickfix-variables	unite_quickfix.jax	/*unite-quickfix-variables*
+unite-quickfix.txt	unite_quickfix.jax	/*unite-quickfix.txt*
+unite_quickfix-contents	unite_quickfix.jax	/*unite_quickfix-contents*
+unite_quickfix-introduction	unite_quickfix.jax	/*unite_quickfix-introduction*
