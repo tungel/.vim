@@ -1,7 +1,0 @@
-(ns timl.core-test)
-(use 'timl.test)
-
-(let [sentinel (dict)]
-  (assert (identical? sentinel ((constantly sentinel)))))
-
-(assert (= "42\n" (with-out-str (println 42))))

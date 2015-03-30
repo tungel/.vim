@@ -1,2 +1,0 @@
-(ns indent.timl)
-(execute "runtime! indent/clojure.vim")

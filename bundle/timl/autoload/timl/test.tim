@@ -1,8 +1,0 @@
-(ns timl.test)
-
-(defmacro assert [form]
-  `(try
-     (if ~form
-       true
-       (echo "Failed: " (pr-str '~form)))
-     (catch "" e# (echo "Error on " (pr-str '~form) ": " v:exception))))
