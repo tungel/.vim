@@ -57,10 +57,6 @@ function! s:source.get_complete_position(context) "{{{
     return -1
   endif
 
-  if neocomplete#is_sources_complete() && complete_pos < 0
-    let complete_pos = len(a:context.input)
-  endif
-
   if complete_str =~ '/'
     let complete_pos += strridx(complete_str, '/') + 1
   endif
@@ -76,7 +72,15 @@ function! s:source.gather_candidates(context) "{{{
     return []
   endif
 
-  let files = s:get_glob_files(complete_str, '')
+  let cwd = getcwd()
+  try
+    " cd to buffer directory.
+    execute 'lcd' fnameescape(fnamemodify(bufname('%'), ':h'))
+
+    let files = s:get_glob_files(complete_str, '')
+  finally
+    execute 'lcd' fnameescape(cwd)
+  endtry
 
   return files
 endfunction"}}}
