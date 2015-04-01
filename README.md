@@ -60,7 +60,7 @@ Which package depends on your graphical environment (except vim-nox which is for
 #### Fedora 
 
 The latest version of vim includes lua.
-As of 2014-04-16 you need to (download the rpm)[http://koji.fedoraproject.org/koji/packageinfo?packageID=216].
+As of 2014-04-16 you need to [download the rpm](http://koji.fedoraproject.org/koji/packageinfo?packageID=216).
 
 #### Misc
 
@@ -80,7 +80,7 @@ When everything is prepared, execute these commands.
     cd /usr/src
     tar jxf vim-7.4.tar.bz2
     tar xvfz lua-5.1.5.tar.gz
-    cd /vim74/
+    cd vim74/
     ./configure --enable-luainterp --enable-gui=no \
     --without-x --enable-multibyte --prefix=/usr
     make && make install

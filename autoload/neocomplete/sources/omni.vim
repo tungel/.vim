@@ -104,8 +104,7 @@ function! s:source.hooks.on_init(context) "{{{
           "\'g:neocomplete#sources#omni#input_patterns', 'ruby',
           "\'[^. *\t]\.\h\w*\|\h\w*::\w*')
   endif
-  if has('python/dyn') || has('python3/dyn')
-        \ || has('python') || has('python3')
+  if has('python') || has('python3')
     call neocomplete#util#set_default_dictionary(
           \'g:neocomplete#sources#omni#input_patterns',
           \'python', '[^. \t]\.\w*')
@@ -194,7 +193,7 @@ function! s:set_complete_results_pos(funcs, cur_text) "{{{
       let complete_pos = call(omnifunc, [1, ''])
     catch
       call neocomplete#print_error(
-            \ 'Error occured calling omnifunction: ' . omnifunc)
+            \ 'Error occurred calling omnifunction: ' . omnifunc)
       call neocomplete#print_error(v:throwpoint)
       call neocomplete#print_error(v:exception)
       let complete_pos = -1
@@ -236,7 +235,7 @@ function! s:set_complete_results_words(complete_results) "{{{
       let list = type(ret) == type([]) ? ret : ret.words
     catch
       call neocomplete#print_error(
-            \ 'Error occured calling omnifunction: ' . omnifunc)
+            \ 'Error occurred calling omnifunction: ' . omnifunc)
       call neocomplete#print_error(v:throwpoint)
       call neocomplete#print_error(v:exception)
       let list = []
