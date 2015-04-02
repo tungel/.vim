@@ -827,6 +827,16 @@ function! s:StageUndo() abort
   if empty(filename)
     return ''
   endif
+
+  " added by Tung 2015-04-02
+  " To ask user to confirm if they really want to restore the file
+  let choice = input('Are you sure? (Yes/No/Cancel): ')
+  let temp = (choice ==? 'y')
+  if (!temp)
+      return ''
+  endif
+
+
   let repo = s:repo()
   let hash = repo.git_chomp('hash-object', '-w', filename)
   if !empty(hash)
