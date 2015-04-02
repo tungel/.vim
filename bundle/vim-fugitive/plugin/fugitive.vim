@@ -830,9 +830,11 @@ function! s:StageUndo() abort
 
   " added by Tung 2015-04-02
   " To ask user to confirm if they really want to restore the file
-  " anything differ from 'n' will be a 'Yes'
-  let choice = input('Are you sure to discard the changes to selected file? (y/n): ')
-  if (choice ==? 'n')
+  echo 'Are you sure to discard the changes to selected file? (y/n): '
+  let c = getchar()
+
+  " anything differs from 'y' and <enter> means a "no"
+  if !(nr2char(c) ==? 'y' || c == 13)
       return ''
   endif
 
