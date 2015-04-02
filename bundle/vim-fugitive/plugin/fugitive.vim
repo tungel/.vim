@@ -832,7 +832,6 @@ function! s:StageUndo() abort
   " To ask user to confirm if they really want to restore the file
   echo 'Are you sure to discard the changes to selected file? (y/n): '
   let c = getchar()
-
   " anything differs from 'y' and <enter> means a "no"
   if !(nr2char(c) ==? 'y' || c == 13)
       return ''
