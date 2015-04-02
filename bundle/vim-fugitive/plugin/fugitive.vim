@@ -830,9 +830,9 @@ function! s:StageUndo() abort
 
   " added by Tung 2015-04-02
   " To ask user to confirm if they really want to restore the file
-  let choice = input('Are you sure? (Yes/No/Cancel): ')
-  let temp = (choice ==? 'y')
-  if (!temp)
+  " anything differ from 'n' will be a 'Yes'
+  let choice = input('Are you sure to discard the changes to selected file? (y/n): ')
+  if (choice ==? 'n')
       return ''
   endif
 
