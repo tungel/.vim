@@ -386,7 +386,7 @@ function! unite#action#do(action_name, ...) "{{{
       call unite#print_error(v:throwpoint)
       call unite#print_error(v:exception)
       call unite#print_error(
-            \ 'Error occured while executing "table.action.name" action!')
+            \ 'Error occurred while executing "'.table.action.name.'" action!')
     endtry
 
     " Executes command.
@@ -427,6 +427,10 @@ function! unite#action#do(action_name, ...) "{{{
   if !is_quit && is_redraw
     call s:clear_marks(candidates)
     call unite#force_redraw()
+  endif
+
+  if unite.context.unite__is_manual
+    call unite#sources#history_unite#add(unite)
   endif
 
   return _

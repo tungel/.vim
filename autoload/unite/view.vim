@@ -36,35 +36,18 @@ function! unite#view#_redraw_prompt() "{{{
   try
     setlocal modifiable
     call setline(unite.prompt_linenr,
-          \ unite.prompt . unite.context.input)
+          \ unite.context.prompt . unite.context.input)
 
     silent! syntax clear uniteInputLine
+    silent! syntax clear uniteInputPrompt
     execute 'syntax match uniteInputLine'
           \ '/\%'.unite.prompt_linenr.'l.*/'
-          \ 'contains=uniteInputPrompt,uniteInputPromptError,'.
-          \ 'uniteInputCommand'
+          \ 'contains=uniteInputCommand,uniteInputPrompt'
+    execute 'syntax match uniteInputPrompt'
+          \ '/\%'.unite.prompt_linenr.'l.*\%'.len(unite.context.prompt).'c/'
   finally
     let &l:modifiable = modifiable_save
   endtry
-endfunction"}}}
-function! unite#view#_remove_prompt() "{{{
-  let unite = unite#get_current_unite()
-  if unite.prompt_linenr == 0
-    return
-  endif
-
-  let modifiable_save = &l:modifiable
-  try
-    setlocal modifiable
-
-    silent! execute (unite.prompt_linenr).'delete _'
-    silent! syntax clear uniteInputLine
-  finally
-    let &l:modifiable = modifiable_save
-  endtry
-
-  call cursor(unite.init_prompt_linenr, 0)
-  let unite.prompt_linenr = 0
 endfunction"}}}
 function! unite#view#_redraw_candidates(...) "{{{
   let is_gather_all = get(a:000, 0, 0)
@@ -142,12 +125,21 @@ function! unite#view#_redraw_line(...) "{{{
 
   let &l:modifiable = modifiable_save
 endfunction"}}}
-function! unite#view#_quick_match_redraw(quick_match_table) "{{{
-  call unite#view#_set_candidates_lines(
-        \ unite#view#_convert_lines(
-        \   unite#get_current_unite().current_candidates,
-        \   a:quick_match_table))
-  redraw
+function! unite#view#_quick_match_redraw(quick_match_table, is_define) "{{{
+  for [key, number] in items(a:quick_match_table)
+    if a:is_define
+      execute printf(
+            \ 'silent! sign define unite_quick_match_%d text=%s texthl=uniteQuickMatchText',
+            \ number, key)
+      execute printf(
+            \ 'silent! sign place %d name=unite_quick_match_%d line=%d buffer=%d',
+            \ 2000 + number, number, number, bufnr('%'))
+    else
+      execute printf(
+            \ 'silent! sign unplace %d buffer=%d',
+            \ 2000 + number, bufnr('%'))
+    endif
+  endfor
 endfunction"}}}
 function! unite#view#_set_candidates_lines(lines) "{{{
   let unite = unite#get_current_unite()
@@ -230,6 +222,7 @@ function! unite#view#_redraw(is_force, winnr, is_gather_all) "{{{
 
     " Redraw.
     call unite#view#_redraw_candidates(is_gather_all)
+    call unite#view#_change_highlight()
     let unite.context.is_redraw = 0
   finally
     if empty(unite.args) && getpos('.') !=# pos
@@ -259,37 +252,34 @@ endfunction"}}}
 function! unite#view#_set_syntax() "{{{
   syntax clear
 
-  syntax match uniteQuickMatchMarker /^.|/ contained
   syntax match uniteInputCommand /\\\@<! :\S\+/ contained
 
   let unite = unite#get_current_unite()
-
-  " Set highlight.
-  let match_prompt = escape(unite.prompt, '\/*~.^$[]')
-  execute 'syntax match uniteInputPrompt'
-        \ '/^'.match_prompt.'/ contained'
+  let context = unite.context
 
   let candidate_icon = unite#util#escape_pattern(
-        \ unite.context.candidate_icon)
+        \ context.candidate_icon)
   execute 'syntax region uniteNonMarkedLine start=/^'.
-        \ candidate_icon.' / end=''$'' keepend'.
-        \ ' contains=uniteCandidateMarker,'.
+        \ candidate_icon.'/ end=''$'' keepend'.
+        \ ' contains=uniteCandidateIcon,'.
         \ 'uniteCandidateSourceName'
-  execute 'syntax match uniteCandidateMarker /^'.
-        \ candidate_icon.' / contained'
+  execute 'syntax match uniteCandidateIcon /^'.
+        \ candidate_icon.'/ contained '
+        \ . (context.hide_icon ? 'conceal' : '')
 
   let marked_icon = unite#util#escape_pattern(
-        \ unite.context.marked_icon)
+        \ context.marked_icon)
   execute 'syntax region uniteMarkedLine start=/^'.
         \ marked_icon.'/ end=''$'' keepend'
+        \ ' contains=uniteMarkedIcon'
+  execute 'syntax match uniteMarkedIcon /^'.
+        \ marked_icon.'/ contained '
+        \ . (context.hide_icon ? 'conceal' : '')
 
   silent! syntax clear uniteCandidateSourceName
   if unite.max_source_name > 0
-    syntax match uniteCandidateSourceName
-          \ /\%3c[[:alnum:]_\/-]\+/ contained
-  else
-    execute 'syntax match uniteCandidateSourceName /^'.
-          \ candidate_icon.' / contained'
+    execute 'syntax match uniteCandidateSourceName
+          \ /\%'.(2+strwidth(unite.context.prompt)).'c[[:alnum:]_\/-]\+/ contained'
   endif
 
   " Set syntax.
@@ -307,10 +297,10 @@ function! unite#view#_set_syntax() "{{{
     execute 'highlight default link'
           \ source.syntax unite.context.abbr_highlight
 
-    execute printf('syntax match %s "^\%(['.
-          \ unite.context.candidate_icon.' ] \|.|\)%s" '.
+    execute printf('syntax match %s "^['.
+          \ unite.context.candidate_icon.' ]\+%s" '.
           \ 'nextgroup='.source.syntax. ' keepend
-          \ contains=uniteCandidateMarker,uniteQuickMatchMarker,%s',
+          \ contains=uniteCandidateIcon,%s',
           \ 'uniteSourceLine__'.source.syntax,
           \ (name == '' ? '' : name . '\>'),
           \ (name == '' ? '' : 'uniteCandidateSourceName')
@@ -432,36 +422,6 @@ function! unite#view#_resize_window() "{{{
   let context.unite__old_winwidth = winwidth(winnr())
 endfunction"}}}
 
-" @vimlint(EVL102, 1, l:max_source_name)
-" @vimlint(EVL102, 1, l:context)
-function! unite#view#_convert_lines(candidates, ...) "{{{
-  let quick_match_table = get(a:000, 0, {})
-
-  let unite = unite#get_current_unite()
-  let context = unite#get_context()
-  let [max_width, max_source_name] = unite#helper#adjustments(
-        \ winwidth(0), unite.max_source_name, 2)
-
-  " Create key table.
-  let keys = {}
-  for [key, number] in items(quick_match_table)
-    let keys[number] = key . '|'
-  endfor
-
-  return map(copy(a:candidates),
-        \ "(v:val.is_dummy ? '  ' :
-        \   v:val.unite__is_marked ? context.marked_icon . ' ' :
-        \   empty(quick_match_table) ? context.candidate_icon . ' ' :
-        \   get(keys, v:key, '  '))
-        \ . (unite.max_source_name == 0 ? ''
-        \   : unite#util#truncate(unite#helper#convert_source_name(
-        \     (v:val.is_dummy ? '' : v:val.source)), max_source_name))
-        \ . unite#util#truncate_wrap(v:val.unite__abbr, " . max_width
-        \    .  ", (context.truncate ? 0 : max_width/2), '..')")
-endfunction"}}}
-" @vimlint(EVL102, 0, l:max_source_name)
-" @vimlint(EVL102, 0, l:context)
-
 function! unite#view#_do_auto_preview() "{{{
   let unite = unite#get_current_unite()
 
@@ -566,22 +526,14 @@ function! unite#view#_init_cursor() "{{{
   let key = unite#loaded_source_names_string()
   let is_restore = context.restore
         \ && has_key(positions, key) && context.select <= 0
-        \ && positions[key].candidate ==#
-        \     unite#helper#get_current_candidate(positions[key].pos[1])
+        \ && (context.resume || positions[key].candidate ==#
+        \       unite#helper#get_current_candidate(positions[key].pos[1]))
 
   if context.start_insert && !context.auto_quit
     let unite.is_insert = 1
 
-    if is_restore && context.resume
-          \ && positions[key].pos[1] != unite.prompt_linenr
-      " Restore position.
-      call setpos('.', positions[key].pos)
-      call cursor(0, 1)
-      startinsert
-    else
-      call unite#helper#cursor_prompt()
-      startinsert!
-    endif
+    call unite#helper#cursor_prompt()
+    startinsert!
   else
     let unite.is_insert = 0
 
@@ -649,6 +601,10 @@ function! unite#view#_quit(is_force, ...)  "{{{
     endfor
   endfor
 
+  if unite.context.unite__is_manual
+    call unite#sources#history_unite#add(unite)
+  endif
+
   call unite#view#_save_position()
 
   if a:is_force || context.quit
@@ -666,17 +622,7 @@ function! unite#view#_quit(is_force, ...)  "{{{
 
     call unite#handlers#_on_buf_unload(bufname)
 
-    if !unite.has_preview_window
-      let preview_windows = filter(range(1, winnr('$')),
-            \ 'getwinvar(v:val, "&previewwindow") != 0')
-      if !empty(preview_windows)
-        " Close preview window.
-        noautocmd pclose!
-
-      endif
-    endif
-
-    call s:clear_previewed_buffer_list()
+    call s:close_preview_window()
 
     if winnr('$') != 1 && !unite.context.temporary
           \ && winnr('$') == unite.winmax
@@ -684,17 +630,27 @@ function! unite#view#_quit(is_force, ...)  "{{{
       execute unite.prev_winnr 'wincmd w'
     endif
   else
-    " Note: Except preview window.
+    call s:close_preview_window()
+
     let winnr = get(filter(range(1, winnr('$')),
-          \ "winbufnr(v:val) == unite.prev_bufnr &&
-          \  !getwinvar(v:val, '&previewwindow')"), 0, unite.prev_winnr)
+          \ "winbufnr(v:val) == unite.prev_bufnr"), 0, unite.prev_winnr)
 
     if winnr == winnr()
       new
     else
       execute winnr 'wincmd w'
     endif
+
     let unite.prev_winnr = winnr()
+
+    " Resize window.
+    try
+      execute bufwinnr(unite.bufnr) 'wincmd w'
+
+      call unite#view#_resize_window()
+    finally
+      execute unite.prev_winnr 'wincmd w'
+    endtry
   endif
 
   if context.complete
@@ -867,19 +823,78 @@ function! unite#view#_match_line(highlight, line, id) "{{{
         \ matchadd(a:highlight, '^\%'.a:line.'l.*', 10, a:id)
 endfunction"}}}
 
-function! unite#view#_get_status_string() "{{{
+function! unite#view#_get_status_plane_string() "{{{
+  return (b:unite.is_async ? '[async] ' : '') .
+        \ join(map(copy(unite#loaded_sources_list()), "
+        \ (v:val.unite__len_candidates == 0) ? '_' :
+        \ join(insert(filter(copy(v:val.args),
+        \  'type(v:val) <= 1'),
+        \   unite#helper#convert_source_name(v:val.name)), ':')
+        \ . (v:val.unite__len_candidates == 0 ? '' :
+        \      v:val.unite__orig_len_candidates ==
+        \            v:val.unite__len_candidates ?
+        \            '(' .  v:val.unite__len_candidates . ')' :
+        \      printf('(%s/%s)', v:val.unite__len_candidates,
+        \      v:val.unite__orig_len_candidates))
+        \ "))
+endfunction"}}}
+
+function! unite#view#_get_status_head_string() "{{{
   if !exists('b:unite')
     return ''
   endif
 
-  let head = (b:unite.is_async ? '[async] ' : '') .
-        \ join(unite#helper#loaded_source_names_with_args(), ', ')
-  let tail = b:unite.context.path != '' ? ' ['. b:unite.context.path.']' :
+  return b:unite.is_async ? '[async] ' : ''
+endfunction"}}}
+function! unite#view#_get_status_tail_string() "{{{
+  if !exists('b:unite')
+    return ''
+  endif
+
+  return b:unite.context.path != '' ? '['. b:unite.context.path.']' :
         \    (b:unite.is_async || get(b:unite.msgs, 0, '') == '') ? '' :
-        \    ' |' . substitute(get(b:unite.msgs, 0, ''), '^\[.\{-}\]', '', '')
-  let tail = unite#util#strwidthpart(tail,
-        \ winwidth(0) - (unite#util#wcswidth('*unite* : ' . head) + 10))
-  return head . tail
+        \    substitute(get(b:unite.msgs, 0, ''), '^\[.\{-}\]\s*', '', '')
+endfunction"}}}
+
+function! unite#view#_get_source_name_string(source) "{{{
+  return (a:source.unite__len_candidates == 0) ? '_' :
+        \ join(insert(filter(copy(a:source.args),
+        \  'type(v:val) <= 1'),
+        \   unite#helper#convert_source_name(a:source.name)), ':')
+endfunction"}}}
+function! unite#view#_get_source_candidates_string(source) "{{{
+  return a:source.unite__len_candidates == 0 ? '' :
+        \      a:source.unite__orig_len_candidates ==
+        \            a:source.unite__len_candidates ?
+        \            '(' . a:source.unite__len_candidates . ')' :
+        \      printf('(%s/%s)', a:source.unite__len_candidates,
+        \      a:source.unite__orig_len_candidates)
+endfunction"}}}
+
+function! unite#view#_get_status_string(unite) "{{{
+  let statusline = "%#uniteStatusHead# %{unite#view#_get_status_head_string()}%*"
+  let cnt = 0
+  if empty(a:unite.sources)
+    let statusline .= "%#uniteStatusSourceNames#interactive%*"
+    let statusline .= "%#uniteStatusSourceCandidates#%{"
+    let statusline .= "unite#view#_get_source_candidates_string("
+    let statusline .= "unite#loaded_sources_list()[0])} %*"
+  else
+    for cnt in range(0, len(a:unite.sources)-1)
+      let statusline .= "%#uniteStatusSourceNames#%{"
+      let statusline .= "unite#view#_get_source_name_string("
+      let statusline .= "b:unite.sources[".cnt."])}"
+      let statusline .= "%#uniteStatusSourceCandidates#%{"
+      let statusline .= "unite#view#_get_source_candidates_string("
+      let statusline .= "b:unite.sources[".cnt."])} %*"
+    endfor
+  endif
+
+  let statusline .= "%=%#uniteStatusMessage# %{unite#view#_get_status_tail_string()} %*"
+  let statusline .= "%#uniteStatusLineNR#%{printf('%'.len(b:unite.candidates_len"
+  let statusline .= "+b:unite.prompt_linenr).'d/%d',line('.'),"
+  let statusline .= "b:unite.candidates_len+b:unite.prompt_linenr)}%*"
+  return statusline
 endfunction"}}}
 
 function! unite#view#_add_previewed_buffer_list(bufnr) "{{{
@@ -906,8 +921,20 @@ function! unite#view#_preview_file(filename) "{{{
   endif
 endfunction"}}}
 
-function! s:clear_previewed_buffer_list() "{{{
+function! s:close_preview_window() "{{{
   let unite = unite#get_current_unite()
+
+  if !unite.has_preview_window
+    let preview_windows = filter(range(1, winnr('$')),
+          \ 'getwinvar(v:val, "&previewwindow") != 0')
+    if !empty(preview_windows)
+      " Close preview window.
+      noautocmd pclose!
+
+    endif
+  endif
+
+  " Clear previewed buffer list
   for bufnr in unite.previewed_buffer_list
     if buflisted(bufnr)
       if bufnr == bufnr('%')
@@ -919,6 +946,35 @@ function! s:clear_previewed_buffer_list() "{{{
 
   let unite.previewed_buffer_list = []
 endfunction"}}}
+
+" @vimlint(EVL102, 1, l:max_source_name)
+" @vimlint(EVL102, 1, l:context)
+" @vimlint(EVL102, 1, l:padding)
+function! unite#view#_convert_lines(candidates) "{{{
+  let unite = unite#get_current_unite()
+  let context = unite#get_context()
+  let [max_width, max_source_name] = unite#helper#adjustments(
+        \ winwidth(0), unite.max_source_name, 4)
+
+  let padding_width = strwidth(context.prompt)
+  if !unite.context.hide_icon
+    let padding_width -= strwidth(context.candidate_icon)
+  endif
+  let padding = repeat(' ', padding_width)
+
+  return map(copy(a:candidates),
+        \ "(v:val.is_dummy ? ' ' :
+        \   v:val.unite__is_marked ? context.marked_icon :
+        \   context.candidate_icon) . padding
+        \ . (unite.max_source_name == 0 ? ''
+        \   : unite#util#truncate(unite#helper#convert_source_name(
+        \     (v:val.is_dummy ? '' : v:val.source)), max_source_name))
+        \ . unite#util#truncate_wrap(v:val.unite__abbr, " . max_width
+        \    .  ", (context.truncate ? 0 : max_width/2), '..')")
+endfunction"}}}
+" @vimlint(EVL102, 0, l:max_source_name)
+" @vimlint(EVL102, 0, l:context)
+" @vimlint(EVL102, 0, l:padding)
 
 function! s:set_syntax() "{{{
   let unite = unite#get_current_unite()

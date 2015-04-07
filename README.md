@@ -73,9 +73,6 @@ handy in case you select files with unite.
 
 See also `unite_default_key_mappings` for other actions.
 
-There is also a screencast available which shows unite in action. Thanks to
-ujihisa! http://www.ustream.tv/recorded/11240673
-
 ## Install
 
 Install the distributed files into your Vim script directory which is usually
@@ -102,10 +99,6 @@ https://github.com/Shougo/neomru.vim
 
 
 ## Screen shots
-
-unite file source
------------------
-![Unite file source.](http://gyazo.com/7379f1041084632c66faef9caf3e1f09.png)
 
 unite action source
 -------------------
@@ -165,7 +158,7 @@ unite menu source with customization
 
 ## Video
 
-https://www.youtube.com/v/Ey6Gs_QApzk&hd=1
+https://www.youtube.com/watch?v=fwqhBSxhGU0&hd=1
 
 It is a good introduction about the possibilities of Unite by ReneFroger.
 

@@ -1,5 +1,5 @@
 "=============================================================================
-" FILE: matcher_hide_hidden_files.vim
+" FILE: matcher_hide_current_file.vim
 " AUTHOR:  Shougo Matsushita <Shougo.Matsu@gmail.com>
 " License: MIT license  {{{
 "     Permission is hereby granted, free of charge, to any person obtaining
@@ -26,26 +26,24 @@
 let s:save_cpo = &cpo
 set cpo&vim
 
-function! unite#filters#matcher_hide_hidden_files#define() "{{{
+function! unite#filters#matcher_hide_current_file#define() "{{{
   return s:matcher
 endfunction"}}}
 
 let s:matcher = {
-      \ 'name' : 'matcher_hide_hidden_files',
-      \ 'description' : 'hide hidden files matcher',
+      \ 'name' : 'matcher_hide_current_file',
+      \ 'description' : 'hide current file matcher',
       \}
 
 function! s:matcher.filter(candidates, context) "{{{
-  if stridx(a:context.input, '.') >= 0
+  if bufname(unite#get_current_unite().prev_bufnr) == ''
     return a:candidates
   endif
 
-  return unite#util#has_lua() ?
-        \ unite#filters#lua_filter_patterns(a:candidates,
-        \   ['^%.[^/]*/?$', '/%.[^/]*/?$'], []) :
-        \ filter(a:candidates, "
-        \   has_key(v:val, 'action__path')
-        \    && v:val.action__path !~ '\\%(^\\|/\\)\\.[^/]*/\\?$'")
+  let file = unite#util#substitute_path_separator(
+        \ fnamemodify(bufname(unite#get_current_unite().prev_bufnr), ':p'))
+  return filter(a:candidates, "
+        \ get(v:val, 'action__path', v:val.word) !=# file")
 endfunction"}}}
 
 let &cpo = s:save_cpo

@@ -54,6 +54,12 @@ function! s:kind.action_table.open.func(candidates) "{{{
       execute 'buffer' bufnr(candidate.action__path)
     else
       call s:execute_command('edit', candidate)
+
+      if isdirectory(candidate.action__path)
+            \ && exists('g:loaded_vimfiler')
+            \ && get(g:, 'vimfiler_as_default_explorer', 0)
+        call vimfiler#handler#_event_handler('BufReadCmd')
+      endif
     endif
 
     call unite#remove_previewed_buffer_list(bufnr(candidate.action__path))
@@ -268,8 +274,7 @@ let s:kind.action_table.grep = {
       \ }
 function! s:kind.action_table.grep.func(candidates) "{{{
   call unite#start_script([
-        \ ['grep', map(copy(a:candidates),
-        \ 'string(substitute(v:val.action__path, "/$", "", "g"))'),
+        \ ['grep', map(copy(a:candidates), 'v:val.action__path'),
         \ ]], { 'no_quit' : 1, 'no_empty' : 1 })
 endfunction "}}}
 
@@ -282,8 +287,7 @@ let s:kind.action_table.grep_directory = {
       \ }
 function! s:kind.action_table.grep_directory.func(candidates) "{{{
   call unite#start_script([
-        \ ['grep', map(copy(a:candidates),
-        \  'string(unite#helper#get_candidate_directory(v:val))'),
+        \ ['grep', map(copy(a:candidates), 'v:val.action__path'),
         \ ]], { 'no_quit' : 1, 'no_empty' : 1 })
 endfunction "}}}
 "}}}
@@ -301,6 +305,24 @@ function! s:execute_command(command, candidate) "{{{
         \ a:command, unite#util#substitute_path_separator(
         \   fnamemodify(a:candidate.action__path, ':~:.')))
 endfunction"}}}
+
+" For exrename
+let s:kind.action_table.exrename = {
+      \   'description': 'bulk rename files',
+      \   'is_quit': 1,
+      \   'is_invalidate_cache': 1,
+      \   'is_selectable': 1,
+      \ }
+function! s:kind.action_table.exrename.func(candidates)
+  let context = unite#get_context()
+  let buffer_name = context.buffer_name
+  if buffer_name ==# 'default'
+    let buffer_name = 'unite'
+  endif
+  call unite#exrename#create_buffer(a:candidates, {
+        \ 'buffer_name': buffer_name,
+        \})
+endfunction
 
 let &cpo = s:save_cpo
 unlet s:save_cpo
