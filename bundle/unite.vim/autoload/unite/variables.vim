@@ -174,6 +174,7 @@ function! s:initialize_default() "{{{
   let s:default_context = {
         \ 'input' : '',
         \ 'path' : '',
+        \ 'prompt' : '',
         \ 'start_insert' : 0,
         \ 'complete' : 0,
         \ 'script' : 0,
@@ -181,7 +182,6 @@ function! s:initialize_default() "{{{
         \ 'quit' : 1,
         \ 'buffer_name' : 'default',
         \ 'profile_name' : '',
-        \ 'prompt' : '> ',
         \ 'default_action' : 'default',
         \ 'winwidth' : 90,
         \ 'winheight' : 20,
@@ -201,7 +201,7 @@ function! s:initialize_default() "{{{
         \ 'toggle' : 0,
         \ 'quick_match' : 0,
         \ 'create' : 0,
-        \ 'cursor_line_highlight' : 'PmenuSel',
+        \ 'cursor_line_highlight' : 'CursorLine',
         \ 'abbr_highlight' : 'Normal',
         \ 'cursor_line' : 1,
         \ 'update_time' : 200,
@@ -227,6 +227,7 @@ function! s:initialize_default() "{{{
         \ 'short_source_names' : 0,
         \ 'candidate_icon' : ' ',
         \ 'marked_icon' : '*',
+        \ 'hide_icon' : 1,
         \ 'cursor_line_time' : '0.10',
         \ 'is_redraw' : 0,
         \ 'wipe' : 0,
@@ -234,6 +235,7 @@ function! s:initialize_default() "{{{
         \ 'smartcase' : &smartcase,
         \ 'restore' : 1,
         \ 'vertical_preview' : 0,
+        \ 'force_redraw' : 0,
         \ 'unite__old_buffer_info' : [],
         \ 'unite__direct_switch' : 0,
         \ 'unite__is_interactive' : 1,
@@ -246,6 +248,7 @@ function! s:initialize_default() "{{{
         \ 'unite__not_buffer' : 0,
         \ 'unite__is_resize' : 0,
         \ 'unite__is_restart' : 0,
+        \ 'unite__is_manual' : 0,
         \ }
 
   " For compatibility(deprecated variables)

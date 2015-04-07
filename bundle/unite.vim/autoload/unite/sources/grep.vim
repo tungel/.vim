@@ -47,10 +47,12 @@ let s:source = {
       \ 'hooks' : {},
       \ 'syntax' : 'uniteSource__Grep',
       \ 'matchers' : 'matcher_regexp',
+      \ 'sorters' : 'sorter_nothing',
       \ 'ignore_globs' : [
       \         '*~', '*.o', '*.exe', '*.bak',
       \         'DS_Store', '*.pyc', '*.sw[po]', '*.class',
       \         '.hg/**', '.git/**', '.bzr/**', '.svn/**',
+      \         'tags', 'tags-*'
       \ ],
       \ }
 
@@ -61,12 +63,10 @@ function! s:source.hooks.on_init(args, context) "{{{
     return
   endif
 
-  let target = ''
   if type(get(a:args, 0, '')) == type([])
     let args = a:args
 
     let a:context.source__target = args[0]
-    let targets = a:context.source__target
   else
     let args = unite#helper#parse_project_bang(a:args)
 
@@ -90,65 +90,42 @@ function! s:source.hooks.on_init(args, context) "{{{
       let target = default
     endif
 
+    let targets = [target]
     if target == '%' || target == '#'
-      let target = bufname(target)
+      let targets = [bufname(target)]
     elseif target ==# '$buffers'
-      let target = join(map(filter(range(1, bufnr('$')),
+      let targets = map(filter(range(1, bufnr('$')),
             \ 'buflisted(v:val) && filereadable(bufname(v:val))'),
-            \ 'bufname(v:val)'))
+            \ 'bufname(v:val)')
     elseif target == '**'
       " Optimized.
-      let target = '.'
-    else
-      " Escape filename.
-      let target = escape(target, ' ')
+      let targets = ['.']
     endif
 
-    let a:context.source__target = [target]
+    if target != '' && target != '.'
+      call unite#print_source_message('Target: ' . target, s:source.name)
+    endif
 
-    let targets = map(filter(split(target), 'v:val !~ "^-"'),
-          \ 'substitute(v:val, "\\*\\+$", "", "")')
+    let a:context.source__target =
+          \ map(filter(targets, 'v:val !~ "^-"'),
+          \   'substitute(v:val, "\\*\\+$", "", "")')
   endif
 
   let a:context.source__extra_opts = get(args, 1, '')
 
   let a:context.source__input = get(args, 2, a:context.input)
-  if a:context.source__input == ''
-    let a:context.source__input = unite#util#input('Pattern: ')
+  if a:context.source__input == '' || a:context.unite__is_restart
+    let a:context.source__input = unite#util#input('Pattern: ',
+          \ a:context.source__input)
   endif
 
   call unite#print_source_message('Pattern: '
         \ . a:context.source__input, s:source.name)
 
-  if target != ''
-    call unite#print_source_message('Target: ' . target, s:source.name)
-  endif
-
   let a:context.source__directory =
-        \ (len(targets) == 1) ?
+        \ (len(a:context.source__target) == 1) ?
         \ unite#util#substitute_path_separator(
-        \  unite#util#expand(targets[0])) : ''
-
-  let a:context.source__ssh_path = ''
-  if exists('b:vimfiler') &&
-        \ exists('*vimfiler#get_current_vimfiler')
-    if !empty(b:vimfiler)
-      let vimfiler = b:vimfiler
-    else
-      let vimfiler = vimfiler#get_current_vimfiler()
-    endif
-
-    if get(vimfiler, 'source', '') ==# 'ssh'
-      let [hostname, port] =
-            \ unite#sources#ssh#parse_path(
-            \  vimfiler.source.':'.vimfiler.current_dir)[:1]
-      let a:context.source__ssh_path =
-            \ printf('%s://%s:%s/', vimfiler.source, hostname, port)
-
-      call map(a:context.source__target,
-            \ "substitute(v:val, 'ssh://', '', '')")
-    endif
-  endif
+        \  unite#util#expand(a:context.source__target[0])) : ''
 endfunction"}}}
 function! s:source.hooks.on_syntax(args, context) "{{{
   if !unite#util#has_vimproc()
@@ -156,22 +133,18 @@ function! s:source.hooks.on_syntax(args, context) "{{{
   endif
 
   syntax case ignore
-  syntax region uniteSource__GrepLine
-        \ start=' ' end='$'
+  syntax match uniteSource__GrepFile /[^:]*: / contained
         \ containedin=uniteSource__Grep
-  syntax match uniteSource__GrepFile /^[^:]*/ contained
-        \ containedin=uniteSource__GrepLine
-        \ nextgroup=uniteSource__GrepSeparator
-  syntax match uniteSource__GrepSeparator /:/ contained
-        \ containedin=uniteSource__GrepLine
-        \ nextgroup=uniteSource__GrepLineNr
-  syntax match uniteSource__GrepLineNr /\d\+\ze:/ contained
-        \ containedin=uniteSource__GrepLine
+        \ nextgroup=uniteSource__GrepLineNR
+  syntax match uniteSource__GrepLineNR /\d\+:/ contained
+        \ containedin=uniteSource__Grep
         \ nextgroup=uniteSource__GrepPattern
   execute 'syntax match uniteSource__GrepPattern /'
         \ . substitute(a:context.source__input, '\([/\\]\)', '\\\1', 'g')
-        \ . '/ contained containedin=uniteSource__GrepLine'
-  highlight default link uniteSource__GrepFile Directory
+        \ . '/ contained containedin=uniteSource__Grep'
+  syntax match uniteSource__GrepSeparator /:/ contained conceal
+        \ containedin=uniteSource__GrepFile,uniteSource__GrepLineNR
+  highlight default link uniteSource__GrepFile Comment
   highlight default link uniteSource__GrepLineNr LineNR
   execute 'highlight default link uniteSource__GrepPattern'
         \ get(a:context, 'custom_grep_search_word_highlight',
@@ -184,10 +157,11 @@ function! s:source.hooks.on_close(args, context) "{{{
 endfunction "}}}
 function! s:source.hooks.on_post_filter(args, context) "{{{
   for candidate in a:context.candidates
-    let candidate.kind = [((a:context.source__ssh_path != '') ?
-          \ 'file/ssh' : 'file'), 'jump_list']
+    let candidate.kind = ['file', 'jump_list']
     let candidate.action__col_pattern = a:context.source__input
     let candidate.is_multiline = 1
+    let candidate.action__line = candidate.source__info[1]
+    let candidate.action__text = candidate.source__info[2]
   endfor
 endfunction"}}}
 
@@ -224,23 +198,15 @@ function! s:source.gather_candidates(args, context) "{{{
     let a:context.is_async = 1
   endif
 
-  let cmdline = printf('%s %s %s %s %s %s',
+  let cmdline = printf('"%s" %s %s %s %s %s',
     \   unite#util#substitute_path_separator(command),
     \   default_opts,
     \   recursive_opt,
     \   a:context.source__extra_opts,
     \   string(a:context.source__input),
-    \   join(map(a:context.source__target,
-    \           "substitute(v:val, '/$', '', '')")),
+    \   join(map(copy(a:context.source__target),
+    \           "unite#util#escape_shell(substitute(v:val, '/$', '', ''))"))
     \)
-  if a:context.source__ssh_path != ''
-    " Use ssh command.
-    let [hostname, port] =
-          \ unite#sources#ssh#parse_path(a:context.source__ssh_path)[:1]
-    let cmdline = substitute(substitute(
-          \ g:unite_kind_file_ssh_command . ' ' . cmdline,
-          \   '\<HOSTNAME\>', hostname, 'g'), '\<PORT\>', port, 'g')
-  endif
 
   call unite#print_source_message('Command-line: ' . cmdline, s:source.name)
 
@@ -270,7 +236,7 @@ function! s:source.async_gather_candidates(args, context) "{{{
   let stderr = a:context.source__proc.stderr
   if !stderr.eof
     " Print error.
-    let errors = filter(unite#util#read_lines(stderr, 100),
+    let errors = filter(unite#util#read_lines(stderr, 200),
           \ "v:val !~ '^\\s*$'")
     if !empty(errors)
       call unite#print_source_error(errors, s:source.name)
@@ -300,39 +266,27 @@ function! s:source.async_gather_candidates(args, context) "{{{
   let _ = []
   for candidate in candidates
     if len(candidate[1]) <= 1 || candidate[1][1] !~ '^\d\+$'
-      let dict = {
-            \   'action__path' : a:context.source__target[0],
-            \ }
+      let path = a:context.source__target[0]
       if len(candidate[1]) <= 1
-        let dict.action__line = candidate[0][:1][0]
-        let dict.action__text = candidate[1][0]
+        let line = candidate[0][:1][0]
+        let text = candidate[1][0]
       else
-        let dict.action__line = candidate[0][:1].candidate[1][0]
-        let dict.action__text = join(candidate[1][1:], ':')
+        let line = candidate[0][:1].candidate[1][0]
+        let text = join(candidate[1][1:], ':')
       endif
     else
-      let dict = {
-            \   'action__path' : candidate[0][:1].candidate[1][0],
-            \   'action__line' : candidate[1][1],
-            \   'action__text' : join(candidate[1][2:], ':'),
-            \ }
+      let path = candidate[0][:1].candidate[1][0]
+      let line = candidate[1][1]
+      let text = join(candidate[1][2:], ':')
     endif
 
-    if a:context.source__ssh_path != ''
-      let dict.action__path =
-            \ a:context.source__ssh_path . dict.action__path
-    else
-      let dict.action__path =
-            \ unite#util#substitute_path_separator(
-            \   fnamemodify(dict.action__path, ':p'))
-    endif
-
-    let dict.word = printf('%s:%s:%s',
-          \  unite#util#substitute_path_separator(
-          \     fnamemodify(dict.action__path, ':.')),
-          \ dict.action__line, dict.action__text)
-
-    call add(_, dict)
+    call add(_, {
+          \ 'word' : printf('%s: %s: %s', path, line, text),
+          \ 'action__path' :
+          \ unite#util#substitute_path_separator(
+          \   fnamemodify(path, ':p')),
+          \ 'source__info' : [path, line, text]
+          \ })
   endfor
 
   return _
