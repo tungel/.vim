@@ -62,8 +62,12 @@ function! s:find_exuberant_ctags()
         \ 'ctags',
         \ 'tags',
         \ ]
-  if exists('g:unite_source_outline_ctags_program') && !empty(g:unite_source_outline_ctags_program)
-    let ctags_exe_names = [g:unite_source_outline_ctags_program] + ctags_exe_names
+  if exists('g:unite_source_outline_ctags_program')
+        \ && g:unite_source_outline_ctags_program != ''
+    let ctags_exe_names =
+          \ [unite#util#substitute_path_separator(
+          \   g:unite_source_outline_ctags_program)]
+          \ + ctags_exe_names
   endif
   for ctags in ctags_exe_names
     if executable(ctags)
@@ -125,7 +129,7 @@ function! s:execute_ctags(context)
   " Assemble the command-line.
   let lang_info = s:Ctags.lang_info[filetype]
   let opts  = ' -f - --excmd=number --fields=afiKmsSzt --sort=no --append=no'
-  let opts .= " --language-force='" . lang_info.name . "' "
+  let opts .= " --language-force=\"" . lang_info.name . "\" "
   let opts .= lang_info.ctags_options
 
   let path = s:Util.Path.normalize(temp_file)
@@ -447,6 +451,12 @@ let s:Ctags.lang_info.cs = {
       \ 'ctags_options': " '--C#-kinds=cdgnsmt' ",
       \ 'scope_kinds'  : ['namespace', 'class', 'enum'],
       \ 'scope_delim'  : '.',
+      \ }
+
+let s:Ctags.lang_info.typescript = {
+      \ 'name': 'typescript',
+      \ 'ctags_options': '',
+      \ 'scope_kinds'  : ['modules', 'classes', 'interfaces', 'enums', 'functions', 'varlambdas'],
       \ }
 
 "-----------------------------------------------------------------------------

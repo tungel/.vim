@@ -1154,31 +1154,54 @@ endfunction
 
 function! s:extract_folding_headings(context)
   let headings = []
-  let cur_level = 0
-  let lnum = 1 | let num_lines = line('$')
+  let foldinfo = []
+  let num_lines = line('$')
+
+  " save informaiton of folding.
+  let lnum = 1
   while lnum < num_lines
-    let foldlevel = foldlevel(lnum)
-    if foldlevel > cur_level
-      let heading_lnum = lnum
-      if &l:foldmethod ==# 'indent'
-        let heading_lnum -=1
-      endif
-      let heading = {
-            \ 'word' : getline(heading_lnum),
-            \ 'level': foldlevel,
-            \ 'type' : 'folding',
-            \ 'lnum' : heading_lnum,
-            \ }
-      call add(headings, s:normalize_heading(heading, a:context))
-      if len(headings) >= g:unite_source_outline_max_headings
-        call unite#print_message("[unite-outline] " .
-              \ "Too many headings, the extraction was interrupted.")
-        break
-      endif
-    endif
-    let cur_level = foldlevel
+    call add(foldinfo, foldclosed(lnum))
     let lnum += 1
   endwhile
+
+  normal zM
+
+  let lnum = 1
+  while lnum < num_lines
+    let heading_lnum = foldclosed(lnum)
+    if heading_lnum != -1
+        let foldlevel = foldlevel(lnum)
+        let heading = {
+        \ 'word' : getline(heading_lnum),
+        \ 'level': foldlevel,
+        \ 'type' : 'folding',
+        \ 'lnum' : heading_lnum,
+        \ }
+        call add(headings, s:normalize_heading(heading, a:context))
+        if len(headings) >= g:unite_source_outline_max_headings
+            call unite#print_message("[unite-outline] " .
+            \ "Too many headings, the extraction was interrupted.")
+            break
+        endif
+        " open folding to get information of deeper folding
+        call cursor(lnum, 0)
+        foldopen
+    endif
+    let lnum += 1
+  endwhile
+
+  " restore folding
+  let lnum = 1
+  while lnum < num_lines
+      if foldinfo[lnum - 1] != -1
+          call cursor(lnum, 0)
+          foldclose
+          let lnum = foldclosedend(lnum) + 1
+      else
+          let lnum += 1
+      endif
+  endwhile
+
   return headings
 endfunction
 
@@ -1506,7 +1529,7 @@ function! s:find_outline_buffers(src_bufnr)
   while bufnr <= bufnr('$')
     if bufwinnr(bufnr) > 0
       try
-        " NOTE: This code depands on the current implementation of unite.vim.
+        " NOTE: This code depends on the current implementation of unite.vim.
         if s:is_unite_buffer(bufnr)
           let unite = getbufvar(bufnr, 'unite')
           let outline_source = s:Unite_find_outline_source(unite)
@@ -1528,11 +1551,7 @@ function! s:find_outline_buffers(src_bufnr)
 endfunction
 
 function! s:is_unite_buffer(bufnr)
-  if unite#is_win()
-    return (bufname(a:bufnr) =~# '^\[unite\]')
-  else
-    return (bufname(a:bufnr) =~# '^\*unite\*')
-  endif
+  return (bufname(a:bufnr) =~# '^\[unite\]')
 endfunction
 
 function! s:Unite_find_outline_source(unite)
