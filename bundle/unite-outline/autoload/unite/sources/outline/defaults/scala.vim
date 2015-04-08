@@ -45,7 +45,7 @@ let s:outline_info = {
       \  },
       \
       \ 'not_match_patterns': [
-      \   s:pat_bol.s:pat_def_prefix.s:pat_def.'\s\+[^[:space:](\[:]\+\zs.\+',
+      \   s:pat_bol.s:pat_def_prefix.s:pat_def.'\s\+[^[:space:](\[:]\+\zs.\*',
       \   s:Util.shared_pattern('*', 'after_lparen'),
       \   s:Util.shared_pattern('*', 'after_colon'),
       \ ],

@@ -280,7 +280,7 @@ endfunction
 call s:String.function('nr2roman')
 
 function! s:String_shellescape(str)
-  if &shell =~? '^\%(cmd\%(\.exe\)\=\|command\.com\)\%(\s\|$\)'
+  if &shell =~? '^\%(cmd\%(\.exe\)\=\|command\.com\)\%(\s\|$\)' || unite#util#is_windows()
     return '"' . substitute(a:str, '"', '""', 'g') . '"'
   else
     return "'" . substitute(a:str, "'", "'\\\\''", 'g') . "'"
