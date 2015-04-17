@@ -21,7 +21,7 @@ if !exists('g:uritality_fix_cursor')
     let g:uritality_fix_cursor = 1
 endif
 if !exists('g:uritality_color_insert')
-    let g:uritality_color_insert = "red"
+    let g:uritality_color_insert = "gray"
 endif
 if !exists('g:uritality_color_normal')
     let g:uritality_color_normal = "green"
