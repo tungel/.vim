@@ -6,10 +6,14 @@
 " License:     MIT/X11
 " ============================================================================
 
+" Comment on 2015-04-17
+" this plugin interferes with the cursor changing color in zsh in Vi mode
+
 " Init {{{
 if has('gui_running')
     finish
 endif
+
 
 if !exists('g:uritality_debug') && (exists('loaded_uritality') || &cp)
     finish
