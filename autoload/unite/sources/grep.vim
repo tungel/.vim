@@ -63,53 +63,40 @@ function! s:source.hooks.on_init(args, context) "{{{
     return
   endif
 
-  if type(get(a:args, 0, '')) == type([])
-    let args = a:args
+  let args = unite#helper#parse_project_bang(a:args)
 
-    let a:context.source__target = args[0]
-  else
-    let args = unite#helper#parse_project_bang(a:args)
+  let default = get(args, 0, '')
 
-    let default = get(args, 0, '')
-
-    if default == ''
-      let default = '.'
-    endif
-
-    if type(get(args, 0, '')) == type('')
-          \ && get(args, 0, '') == ''
-          \ && a:context.input == ''
-      let target = unite#util#substitute_path_separator(
-            \ unite#util#input('Target: ', default, 'file'))
-      if target == ''
-        let a:context.source__target = []
-        let a:context.source__input = ''
-        return
-      endif
-    else
-      let target = default
-    endif
-
-    let targets = [target]
-    if target == '%' || target == '#'
-      let targets = [bufname(target)]
-    elseif target ==# '$buffers'
-      let targets = map(filter(range(1, bufnr('$')),
-            \ 'buflisted(v:val) && filereadable(bufname(v:val))'),
-            \ 'bufname(v:val)')
-    elseif target == '**'
-      " Optimized.
-      let targets = ['.']
-    endif
-
-    if target != '' && target != '.'
-      call unite#print_source_message('Target: ' . target, s:source.name)
-    endif
-
-    let a:context.source__target =
-          \ map(filter(targets, 'v:val !~ "^-"'),
-          \   'substitute(v:val, "\\*\\+$", "", "")')
+  if default == ''
+    let default = '.'
   endif
+
+  if get(args, 0, '') == '' && a:context.input == ''
+    let target = unite#util#substitute_path_separator(
+          \ unite#util#input('Target: ', default, 'file'))
+    if target == ''
+      let a:context.source__targets = []
+      let a:context.source__input = ''
+      return
+    endif
+  else
+    let target = default
+  endif
+
+  let targets = split(target, "\n")
+  if target == '%' || target == '#'
+    let targets = [bufname(target)]
+  elseif target ==# '$buffers'
+    let targets = map(filter(range(1, bufnr('$')),
+          \ 'buflisted(v:val) && filereadable(bufname(v:val))'),
+          \ 'bufname(v:val)')
+  elseif target == '**'
+    " Optimized.
+    let targets = ['.']
+  endif
+
+  let a:context.source__targets =
+        \ map(targets, 'substitute(v:val, "\\*\\+$", "", "")')
 
   let a:context.source__extra_opts = get(args, 1, '')
 
@@ -123,9 +110,9 @@ function! s:source.hooks.on_init(args, context) "{{{
         \ . a:context.source__input, s:source.name)
 
   let a:context.source__directory =
-        \ (len(a:context.source__target) == 1) ?
+        \ (len(a:context.source__targets) == 1) ?
         \ unite#util#substitute_path_separator(
-        \  unite#util#expand(a:context.source__target[0])) : ''
+        \  unite#util#expand(a:context.source__targets[0])) : ''
 endfunction"}}}
 function! s:source.hooks.on_syntax(args, context) "{{{
   if !unite#util#has_vimproc()
@@ -187,7 +174,7 @@ function! s:source.gather_candidates(args, context) "{{{
     return []
   endif
 
-  if empty(a:context.source__target)
+  if empty(a:context.source__targets)
         \ || a:context.source__input == ''
     call unite#print_source_message('Canceled.', s:source.name)
     let a:context.is_async = 0
@@ -204,11 +191,10 @@ function! s:source.gather_candidates(args, context) "{{{
     \   recursive_opt,
     \   a:context.source__extra_opts,
     \   string(a:context.source__input),
-    \   join(map(copy(a:context.source__target),
-    \           "unite#util#escape_shell(substitute(v:val, '/$', '', ''))"))
+    \   unite#helper#join_targets(a:context.source__targets)
     \)
 
-  call unite#print_source_message('Command-line: ' . cmdline, s:source.name)
+  call unite#add_source_message('Command-line: ' . cmdline, s:source.name)
 
   let save_term = $TERM
   try
@@ -266,7 +252,7 @@ function! s:source.async_gather_candidates(args, context) "{{{
   let _ = []
   for candidate in candidates
     if len(candidate[1]) <= 1 || candidate[1][1] !~ '^\d\+$'
-      let path = a:context.source__target[0]
+      let path = a:context.source__targets[0]
       if len(candidate[1]) <= 1
         let line = candidate[0][:1][0]
         let text = candidate[1][0]
