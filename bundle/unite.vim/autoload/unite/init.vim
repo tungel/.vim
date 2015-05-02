@@ -97,9 +97,6 @@ function! unite#init#_context(context, ...) "{{{
     " Split automatically.
     let context.split = 1
   endif
-  if context.auto_preview && !context.unite__is_restart
-    let context.winheight -= &previewheight
-  endif
   if context.prompt_direction == ''
     let context.prompt_direction =
           \ (context.direction =~# 'bel\|bot')
@@ -650,7 +647,6 @@ function! unite#init#_sources(...) "{{{
         \ 'is_listed' : 1,
         \ 'is_forced' : 0,
         \ 'is_grouped' : 0,
-        \ 'required_pattern_length' : 0,
         \ 'action_table' : {},
         \ 'default_action' : {},
         \ 'default_kind' : 'common',
@@ -763,6 +759,9 @@ function! unite#init#_sources(...) "{{{
             \    get(source, 'white_globs', [])))
       let source.syntax = get(custom_source, 'syntax',
             \    get(source, 'syntax', ''))
+      let source.required_pattern_length =
+            \ get(custom_source, 'required_pattern_length',
+            \    get(source, 'required_pattern_length', 0))
 
       let source.unite__len_candidates = 0
       let source.unite__orig_len_candidates = 0
