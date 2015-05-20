@@ -49,11 +49,14 @@ let s:source = {
 function! s:source.hooks.on_init(args, context) "{{{
   let target = get(a:args, 0, '')
   if target == ''
-    let target = unite#util#input('Target: ', '.', 'dir')
+    let target = isdirectory(a:context.path) ?
+      \ a:context.path :
+      \ unite#helper#parse_source_path(
+        \ unite#util#input('Target: ', '.', 'dir'))
   endif
 
   let a:context.source__targets = split(target, "\n")
-  let a:context.source__input = get(a:args, 1, '')
+  let a:context.source__input = get(a:args, 1, a:context.input)
   if a:context.source__input == ''
     redraw
     echo "Please input command-line(quote is needed) Ex: -name '*.vim'"

@@ -63,24 +63,21 @@ function! s:source.hooks.on_init(args, context) "{{{
     return
   endif
 
-  let args = unite#helper#parse_project_bang(a:args)
+  let args = unite#helper#parse_source_args(a:args)
 
-  let default = get(args, 0, '')
+  let target = get(args, 0, '')
 
-  if default == ''
-    let default = '.'
-  endif
+  if target == ''
+    let target = isdirectory(a:context.path) ?
+      \ a:context.path :
+      \ unite#helper#parse_source_path(
+        \ unite#util#input('Target: ', '.', 'file'))
+   endif
 
-  if get(args, 0, '') == '' && a:context.input == ''
-    let target = unite#util#substitute_path_separator(
-          \ unite#util#input('Target: ', default, 'file'))
-    if target == ''
-      let a:context.source__targets = []
-      let a:context.source__input = ''
-      return
-    endif
-  else
-    let target = default
+  if target == ''
+    let a:context.source__targets = []
+    let a:context.source__input = ''
+    return
   endif
 
   let targets = split(target, "\n")
@@ -202,7 +199,8 @@ function! s:source.gather_candidates(args, context) "{{{
     let $TERM = 'dumb'
 
     let a:context.source__proc = vimproc#plineopen3(
-          \ vimproc#util#iconv(cmdline, &encoding, 'char'), 1)
+          \ vimproc#util#iconv(cmdline, &encoding,
+          \ g:unite_source_grep_encoding), 1)
   finally
     let $TERM = save_term
   endtry

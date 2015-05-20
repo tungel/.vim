@@ -308,7 +308,8 @@ endfunction "}}}
 "}}}
 
 function! s:execute_command(command, candidate) "{{{
-  let dir = unite#util#path2directory(a:candidate.action__path)
+  let dir = unite#util#path2directory(
+        \ unite#util#expand(a:candidate.action__path))
   " Auto make directory.
   if dir !~ '^\a\+:' && !isdirectory(dir) && !unite#util#is_sudo()
         \ && unite#util#input_yesno(
@@ -317,7 +318,7 @@ function! s:execute_command(command, candidate) "{{{
   endif
 
   call unite#util#smart_execute_command(
-        \ a:command, unite#util#substitute_path_separator(
+        \ a:command, unite#util#expand(
         \   fnamemodify(a:candidate.action__path, ':~:.')))
 endfunction"}}}
 

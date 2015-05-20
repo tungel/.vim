@@ -464,6 +464,12 @@ g:unite_redraw_hold_candidates		*g:unite_redraw_hold_candidates*
 		If lua is enabled, the default value is 20000, otherwise
 		10000.
 
+g:unite_enable_auto_select		*g:unite_enable_auto_select*
+		If it is 1, unite skip first candidate when cursor is on the
+		prompt line.
+
+		The default value is 1.
+
 SOURCES VARIABLES 				*unite-sources-variables*
 
 					*g:unite_source_buffer_time_format*
@@ -524,10 +530,19 @@ g:unite_source_rec_async_command
 		let g:unite_source_rec_async_command =
                 \ 'ag --follow --nocolor --nogroup --hidden -g ""'
 <
-		The default value is "find" and the args.
+		The default value is "find -L" which follows symbolic links
+		to have the same behaviour as file_rec, and the
+		args(|g:unite_source_rec_find_args|).
 		Because, "find" command is fastest.
 		Note: In windows environment, you must install file list
 		command and specify the variable.
+
+					*g:unite_source_rec_find_args*
+g:unite_source_rec_find_args
+		Specify the find arguments in file_rec/async source.
+
+		The default value is ['-path', '*/.git/*', '-prune', '-o',
+		'-type', 'l', '-print'].
 
 					*g:unite_source_rec_git_command*
 g:unite_source_rec_git_command
@@ -838,12 +853,6 @@ g:unite_winwidth				*g:unite_winwidth*
 		when splitting horizontally.
 		Note: This variable is deprecated.  Please use
 		|unite#custom#profile()| and |unite-options-winwidth| instead.
-
-g:unite_cursor_line_highlight		*g:unite_cursor_line_highlight*
-		Specify the cursor line highlight group.
-		Note: This variable is deprecated.  Please use
-		|unite#custom#profile()| and
-		|unite-options-cursor-line-highlight| instead.
 
 				*g:unite_enable_short_source_names*
 g:unite_enable_short_source_names
@@ -1836,6 +1845,15 @@ the context dictionary.
 						*unite-options-direction*
 		-direction={direction}
 		Defines split position rule.
+
+		When it is "dynamictop", if each item's length is less than
+		the current window's width, the direction becomes "aboveleft",
+		otherwise - "topleft".
+		Similarly for "dynamicbottom", the direction becomes
+		"belowright" or "botright".
+		It is useful to always make best effort to show all items
+		without shortening.
+
 		Default: "topleft"
 
 						*unite-options-verbose*
@@ -1875,11 +1893,6 @@ the context dictionary.
 		animation source.
 		Note: Must be smaller than 'updatetime'.
 		Default: "200"
-
-					*unite-options-cursor-line-highlight*
-		-cursor-line-highlight={highlight-name}
-		Change cursor line highlight.
-		Default: "CursorLine"
 
 					*unite-options-abbr-highlight*
 		-abbr-highlight={highlight-name}
@@ -1958,7 +1971,12 @@ the context dictionary.
 						*unite-options-truncate*
 		-truncate
 		Truncate lines longer than the window's width.
-		Default: no-truncate
+		Default: truncate
+
+						*unite-options-truncate-width*
+		-truncate-width
+		Truncate percentage of lines.
+		Default: 50(%)
 
 						*unite-options-tab*
 		-tab
@@ -2415,6 +2433,17 @@ file_list	Nominates files in the filelist.
 		If argument 1 is "!", use the project directory instead of
 		the current directory.  The project directory has ".git",
 		".svn", ".hg".
+		Further directories can be specified, eg: !/foo/bar
+
+						*unite-source-arg-?*
+		If argument 1 is "?", use the buffer directory instead of
+		the current directory.
+		Further directories can be specified, eg: ?/foo/bar
+
+						*unite-source-arg-?!*
+		If argument 1 is "?!", use the project directory searching
+		from the buffer directory instead of the current directory.
+		Further directories can be specified, eg: ?!/foo/bar
 
 ==============================================================================
 KINDS						*unite-kinds*
