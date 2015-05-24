@@ -79,7 +79,7 @@ function! s:source.gather_candidates(args, context) "{{{
     let a:context.is_async = 1
   endif
 
-  let cmdline = printf('git grep -n --no-color %s %s -- %s',
+  let cmdline = printf('git grep -in --no-color %s %s -- %s',
     \   a:context.source__extra_opts,
     \   string(a:context.source__input),
     \   unite#helper#join_targets(a:context.source__targets),
@@ -90,7 +90,7 @@ function! s:source.gather_candidates(args, context) "{{{
   "   --no-color is specified thus $TERM='dumb' is not required (actually git
   "   will blame if the $TERM value is not properly configured thus it should
   "   not be 'dumb').
-  " 
+  "
   " Note:
   "   'git grep' does not work properly with PTY
   "
