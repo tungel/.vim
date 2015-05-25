@@ -213,11 +213,13 @@ function! neocomplete#handler#_do_auto_complete(event) "{{{
     return
   endif
 
+  let neocomplete.old_cur_text = cur_text
+
   let complete_pos =
         \ neocomplete#helper#get_force_omni_complete_pos(cur_text)
   if complete_pos >= 0
-    if !s:check_previous_position(cur_text, complete_pos)
-      call s:set_previous_position(cur_text, complete_pos)
+    if !neocomplete#complete#_check_previous_position(cur_text, complete_pos)
+      call neocomplete#complete#_set_previous_position(cur_text, complete_pos)
       call s:complete_key("\<Plug>(neocomplete_start_omni_complete)")
     endif
 
@@ -231,24 +233,6 @@ function! neocomplete#handler#_do_auto_complete(event) "{{{
     call neocomplete#print_debug('Skipped.')
     return
   endif
-
-  " Check complete position.
-  let complete_sources =
-        \ neocomplete#complete#_set_results_pos(cur_text)
-  if empty(complete_sources)
-    call neocomplete#print_debug('Skipped.')
-    return
-  endif
-
-  " Check previous position
-  let complete_pos =
-        \ neocomplete#complete#_get_complete_pos(complete_sources)
-  if s:check_previous_position(cur_text, complete_pos)
-    " Same position.
-    return
-  endif
-
-  call s:set_previous_position(cur_text, complete_pos)
 
   try
     let neocomplete.is_auto_complete = 1
@@ -264,18 +248,17 @@ function! neocomplete#handler#_do_auto_complete(event) "{{{
     if !empty(g:neocomplete#fallback_mappings)
           \ && len(matchstr(cur_text, '\h\w*$'))
           \   >= g:neocomplete#auto_completion_start_length
+          \ && !neocomplete.skip_next_complete
       let key = ''
       for i in range(0, len(g:neocomplete#fallback_mappings)-1)
         let key .= '<C-r>=neocomplete#mappings#fallback(' . i . ')<CR>'
       endfor
       execute 'inoremap <silent> <Plug>(neocomplete_fallback)' key
 
-      " Fallback to omnifunc
+      " Fallback
       call s:complete_key("\<Plug>(neocomplete_fallback)")
-    else
-      call neocomplete#print_debug('Skipped.')
-      return
     endif
+
     return
   endif
 
@@ -301,28 +284,20 @@ function! s:check_in_do_auto_complete() "{{{
   if &l:completefunc != '' && &l:buftype =~ 'nofile'
     return 1
   endif
-
-  " Detect AutoComplPop.
-  if exists('g:acp_enableAtStartup') && g:acp_enableAtStartup
-    call neocomplete#print_error(
-          \ 'Detected enabled AutoComplPop! Disabled neocomplete.')
-    NeoCompleteLock
-    return 1
-  endif
 endfunction"}}}
 function! s:is_skip_auto_complete(cur_text) "{{{
   let neocomplete = neocomplete#get_current_neocomplete()
 
-  if (a:cur_text == neocomplete.old_cur_text
-        \     && line('.') == neocomplete.old_linenr)
-        \ || (g:neocomplete#lock_iminsert && &l:iminsert)
+  if (g:neocomplete#lock_iminsert && &l:iminsert)
         \ || (&l:formatoptions =~# '[tca]' && &l:textwidth > 0
         \     && strwidth(a:cur_text) >= &l:textwidth)
     let neocomplete.skip_next_complete = 0
     return 1
   endif
 
-  if !neocomplete.skip_next_complete
+  let skip = neocomplete.skip_next_complete
+
+  if !skip
     return 0
   endif
 
@@ -339,17 +314,14 @@ function! s:is_skip_auto_complete(cur_text) "{{{
     endif
   endfor
 
-  if is_delimiter && neocomplete.skip_next_complete == 2
-    let neocomplete.skip_next_complete = 0
-  endif
-
-  return 0
+  let neocomplete.skip_next_complete = 0
+  return !(is_delimiter && skip == 2)
 endfunction"}}}
 function! s:close_preview_window() "{{{
   if g:neocomplete#enable_auto_close_preview
         \ && bufname('%') !=# '[Command Line]'
         \ && winnr('$') != 1 && !&l:previewwindow
-        \ && !s:check_in_do_auto_complete()
+        \ && !neocomplete#is_cache_disabled()
     " Close preview window.
     pclose!
   endif
@@ -366,20 +338,6 @@ function! s:make_cache_current_line() "{{{
     " Caching current cache line.
     call neocomplete#sources#member#make_cache_current_line()
   endif
-endfunction"}}}
-function! s:check_previous_position(cur_text, complete_pos) abort "{{{
-  let neocomplete = neocomplete#get_current_neocomplete()
-  return neocomplete.skip_next_complete
-          \ && a:complete_pos == neocomplete.old_complete_pos
-          \ && line('.') == neocomplete.old_linenr
-          \ && stridx(a:cur_text, neocomplete.old_cur_text) == 0
-endfunction"}}}
-function! s:set_previous_position(cur_text, complete_pos) abort "{{{
-  let neocomplete = neocomplete#get_current_neocomplete()
-  let neocomplete.skip_next_complete = 0
-  let neocomplete.old_complete_pos = a:complete_pos
-  let neocomplete.old_linenr = line('.')
-  let neocomplete.old_cur_text = a:cur_text
 endfunction"}}}
 
 function! s:complete_key(key) "{{{

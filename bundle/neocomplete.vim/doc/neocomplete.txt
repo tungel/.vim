@@ -1,6 +1,6 @@
 *neocomplete.txt*	Next generation of auto completion framework.
 
-Version: 2.0
+Version: 2.1
 Author: Shougo <Shougo.Matsu@gmail.com>
 License: MIT license  {{{
     Permission is hereby granted, free of charge, to any person obtaining
@@ -1049,7 +1049,7 @@ suffix of complete candidates in popup menu declaration.
     file/include      -> [FI] {filename}
     dictionary        -> [D] {words}
     member            -> [M] member
-    buffer            -> [B] {buffername}
+    buffer            -> [B] {buffer}
     syntax            -> [S] {syntax-keyword}
     include           -> [I]
     neosnippet        -> [neosnip]
