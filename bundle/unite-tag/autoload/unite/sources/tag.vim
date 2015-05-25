@@ -43,6 +43,9 @@ let g:unite_source_tag_show_location =
 let g:unite_source_tag_show_fname =
     \ get(g:, 'unite_source_tag_show_fname', 1)
 
+let g:unite_source_tag_relative_fname =
+    \ get(g:, 'unite_source_tag_relative_fname', 1)
+
 " cache
 let s:tagfile_cache = {}
 let s:input_cache = {}
@@ -54,8 +57,8 @@ if !isdirectory(s:cache_dir)
 endif
 
 " use vital
-let V = vital#of('unite')
-let s:C = V.import('System.Cache')
+let s:V = vital#of('unite')
+let s:C = s:V.import('System.Cache')
 
 " source
 let s:source = {
@@ -270,7 +273,7 @@ function! s:pre_filter(result, args)
             endif
         endif
     endif
-    return a:result
+    return unite#util#uniq_by(a:result, 'v:val.abbr')
 endfunction
 
 function! s:get_tagdata(tagfile)
@@ -327,6 +330,9 @@ function! s:taglist_filter(input)
     \   'action__tagname': v:val.name,
     \   'source__cmd': v:val.cmd,
     \}")
+
+    " Uniq
+    let taglist = s:pre_filter(taglist, {})
 
     " Set search pattern.
     for tag in taglist
@@ -405,10 +411,13 @@ function! s:next(tagdata, line, name)
 
     let abbr = s:truncate(name, g:unite_source_tag_max_name_length, 15, '..')
     if g:unite_source_tag_show_fname
-        let abbr .= '  '.
-                    \ s:truncate('@'.fnamemodify(path,
-                    \   (a:name ==# 'tag/include' ? ':t' : ':.')),
-                    \   g:unite_source_tag_max_fname_length, 10, '..')
+        let abbr .= '  '
+        let abbr .= s:truncate('@'.
+                    \  fnamemodify(path, (
+                    \   (a:name ==# 'tag/include'
+                    \    || !g:unite_source_tag_relative_fname) ?
+                    \    ':t' : ':~:.')),
+                    \  g:unite_source_tag_max_fname_length, 10, '..')
     endif
     if g:unite_source_tag_show_location
         if linenr
