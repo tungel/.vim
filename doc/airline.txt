@@ -70,6 +70,9 @@ values):
 * enable paste detection >
   let g:airline_detect_paste=1
 <
+* enable crypt detection >
+  let g:airline_detect_crypt=1
+<
 * enable iminsert detection >
   let g:airline_detect_iminsert=0
 <
@@ -176,6 +179,7 @@ its contents. >
   let g:airline_left_sep = '▶'
   let g:airline_right_sep = '«'
   let g:airline_right_sep = '◀'
+  let g:airline_symbols.crypt = '🔒'
   let g:airline_symbols.linenr = '␊'
   let g:airline_symbols.linenr = '␤'
   let g:airline_symbols.linenr = '¶'
@@ -214,7 +218,7 @@ section.
 >
   variable names                default contents
   ----------------------------------------------------------------------------
-  let g:airline_section_a       (mode, paste, iminsert)
+  let g:airline_section_a       (mode, crypt, paste, iminsert)
   let g:airline_section_b       (hunks, branch)
   let g:airline_section_c       (bufferline or filename)
   let g:airline_section_gutter  (readonly, csv)
@@ -358,6 +362,7 @@ csv.vim <https://github.com/chrisbra/csv.vim>
 vim-gitgutter <https://github.com/airblade/vim-gitgutter>
 vim-signify <https://github.com/mhinz/vim-signify>
 changesPlugin <https://github.com/chrisbra/changesPlugin>
+quickfixsigns <https://github.com/tomtom/quickfixsigns_vim>
 
 * enable/disable showing a summary of changed hunks under source control. >
   let g:airline#extensions#hunks#enabled = 1
@@ -407,6 +412,11 @@ eclim <https://eclim.org>
   " certain number of spaces are allowed after tabs, but not in between
   " this algorithm works well for /** */ style comments in a tab-indented file
   let g:airline#extensions#whitespace#mixed_indent_algo = 1
+
+  " spaces are allowed after tabs, but not in between
+  " this algorithm works well with programming styles that use tabs for
+  " indentation and spaces for alignment
+  let g:airline#extensions#whitespace#mixed_indent_algo = 2
 <
 * customize the whitespace symbol. >
   let g:airline#extensions#whitespace#symbol = '!'
@@ -633,6 +643,7 @@ Before is a list of parts that are predefined by vim-airline.
 * `mode`           displays the current mode
 * `iminsert`       displays the current insert method
 * `paste`          displays the paste indicator
+* crypt          displays the crypted indicator
 * `filetype`       displays the file type
 * `readonly`       displays the read only indicator
 * `file`           displays the filename and modified indicator
