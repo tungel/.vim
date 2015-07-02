@@ -43,3 +43,30 @@ git subtree pull --prefix bundle/vim-session https://github.com/xolox/vim-sessio
 git status
 git subtree pull --prefix bundle/nerdtree https://github.com/scrooloose/nerdtree.git master --squash
 
+git status
+git subtree pull --prefix bundle/delimitMate https://github.com/Raimondi/delimitMate.git master --squash
+
+git status
+git subtree pull --prefix bundle/vim-easymotion https://github.com/Lokaltog/vim-easymotion.git master --squash
+
+git status
+git subtree pull --prefix bundle/neomru.vim https://github.com/Shougo/neomru.vim.git master --squash
+
+git status
+git subtree pull --prefix bundle/crunch.vim https://github.com/arecarn/crunch.vim.git master --squash
+
+git status
+git subtree pull --prefix bundle/rainbow https://github.com/luochen1990/rainbow.git master --squash
+
+git status
+git subtree pull --prefix bundle/selection.vim https://github.com/arecarn/selection.vim.git master --squash
+
+git status
+git subtree pull --prefix bundle/syntastic https://github.com/scrooloose/syntastic.git master --squash
+
+git status
+git subtree pull --prefix bundle/tabular https://github.com/godlygeek/tabular.git master --squash
+
+git status
+git subtree pull --prefix bundle/tagbar https://github.com/majutsushi/tagbar.git master --squash
+
