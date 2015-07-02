@@ -45,14 +45,14 @@ let s:VERSION = '0.3.0'
 
 let s:is_windows = has('win16') || has('win32') || has('win64') || has('win95')
 
-let s:base = expand($XDG_CACHE_DIR != '' ?
-        \   $XDG_CACHE_DIR . '/neomru' : '~/.cache/neomru')
+let s:base = expand($XDG_CACHE_HOME != '' ?
+        \   $XDG_CACHE_HOME . '/neomru' : '~/.cache/neomru')
 
 call neomru#set_default(
       \ 'g:neomru#do_validate', 1,
       \ 'g:unite_source_mru_do_validate')
 call neomru#set_default(
-      \ 'g:neomru#update_interval', 600,
+      \ 'g:neomru#update_interval', 0,
       \ 'g:unite_source_mru_update_interval')
 call neomru#set_default(
       \ 'g:neomru#time_format', '',
@@ -209,6 +209,9 @@ function! s:mru.load(...)  "{{{
     return
   endif
 
+  if self.type ==# 'file'
+  endif
+
   " Assume properly saved and sorted. unique sort is not necessary here
   call extend(self.candidates, items)
 
@@ -240,6 +243,10 @@ function! s:mru.append(path)  "{{{
 
   if len(self.candidates) > self.limit
     let self.candidates = self.candidates[: self.limit - 1]
+  endif
+
+  if localtime() > getftime(self.mru_file) + self.update_interval
+    call self.save()
   endif
 endfunction"}}}
 function! s:mru.version_check(ver)  "{{{
@@ -295,8 +302,13 @@ function! neomru#_import_file(path) "{{{
       \  expand('~/.unite/file_mru'))
   endif
 
-  let s:file_mru.candidates = s:uniq(
-        \ s:file_mru.candidates + s:import(path))
+  let candidates = s:file_mru.candidates
+  let candidates += s:import(path)
+
+  " Load from v:oldfiles
+  let candidates += map(v:oldfiles, "s:substitute_path_separator(v:val)")
+
+  let s:file_mru.candidates = s:uniq(candidates)
   call s:file_mru.save()
 endfunction"}}}
 function! neomru#_import_directory(path) "{{{
@@ -314,7 +326,7 @@ function! neomru#_get_mrus()  "{{{
   return s:MRUs
 endfunction"}}}
 function! neomru#_append() "{{{
-  if &l:buftype =~ 'help\|nofile'
+  if &l:buftype =~ 'help\|nofile' || &l:previewwindow
     return
   endif
 
@@ -392,14 +404,14 @@ function! s:uniq_by(list, f) "{{{
   return map(list, 'v:val[0]')
 endfunction"}}}
 function! s:is_file_exist(path)  "{{{
-  return (g:neomru#file_mru_ignore_pattern == '' ||
-        \ a:path !~ '^\a\w\+:\|\%(' . g:neomru#file_mru_ignore_pattern . '\)')
-        \ && getftype(a:path) ==# 'file'
+  let ignore = !empty(g:neomru#file_mru_ignore_pattern)
+        \ && a:path =~ g:neomru#file_mru_ignore_pattern
+  return !ignore && (getftype(a:path) ==# 'file' || a:path =~ '^\h\w\+:')
 endfunction"}}}
 function! s:is_directory_exist(path)  "{{{
-  return isdirectory(a:path) &&
-        \ (g:neomru#directory_mru_ignore_pattern == '' ||
-        \  a:path !~ g:neomru#directory_mru_ignore_pattern)
+  let ignore = !empty(g:neomru#directory_mru_ignore_pattern)
+        \ && a:path =~ g:neomru#directory_mru_ignore_pattern
+  return !ignore && (isdirectory(a:path) || a:path =~ '^\h\w\+:')
 endfunction"}}}
 function! s:import(path)  "{{{
   if !filereadable(a:path)
