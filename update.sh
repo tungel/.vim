@@ -25,3 +25,21 @@ git subtree pull --prefix bundle/vim-snippets https://github.com/honza/vim-snipp
 git status
 git subtree pull --prefix bundle/unite-tag https://github.com/tsukkee/unite-tag.git master --squash
 
+git status
+git subtree pull --prefix bundle/vim-markdown https://github.com/plasticboy/vim-markdown.git master --squash
+
+git status
+git subtree pull --prefix bundle/vim-rails https://github.com/tpope/vim-rails.git master --squash
+
+git status
+git subtree pull --prefix bundle/vim-surround https://github.com/tpope/vim-surround.git master --squash
+
+git status
+git subtree pull --prefix bundle/unite-grep-vcs https://github.com/lambdalisue/unite-grep-vcs.git master --squash
+
+git status
+git subtree pull --prefix bundle/vim-session https://github.com/xolox/vim-session.git master --squash
+
+git status
+git subtree pull --prefix bundle/nerdtree https://github.com/scrooloose/nerdtree.git master --squash
+
