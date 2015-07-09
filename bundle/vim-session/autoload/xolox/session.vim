@@ -1,10 +1,10 @@
 " Public API for the vim-session plug-in.
 "
 " Author: Peter Odding
-" Last Change: March 15, 2015
+" Last Change: July 8, 2015
 " URL: http://peterodding.com/code/vim/session/
 
-let g:xolox#session#version = '2.10.1'
+let g:xolox#session#version = '2.12'
 
 " Public API for session persistence. {{{1
 
@@ -451,12 +451,16 @@ function! xolox#session#auto_save() " {{{2
     " We won't save the session if auto-save is explicitly disabled.
     return
   endif
-  " Get the name of the active session (if any).
-  let name = xolox#session#find_current_session()
-  " If no session is active and the user doesn't have any sessions yet, help
-  " them get started by suggesting to create the default session.
-  if empty(name) && (empty(xolox#session#get_names(0)) || g:session_default_overwrite)
-    let name = g:session_default_name
+  " Get the name of the session for automatic saving.
+  let name = xolox#misc#option#get('session_autosave_to')
+  if empty(name)
+    " Get the name of the active session (if any).
+    let name = xolox#session#find_current_session()
+    " If no session is active and the user doesn't have any sessions yet,
+    " help them get started by suggesting to create the default session.
+    if empty(name) && (empty(xolox#session#get_names(0)) || g:session_default_overwrite)
+      let name = g:session_default_name
+    endif
   endif
   " Prompt the user to save the active/first/default session?
   if !empty(name)
@@ -491,9 +495,18 @@ function! xolox#session#auto_save_periodic() " {{{2
       let name = xolox#session#find_current_session()
       if !empty(name)
         if xolox#session#is_tab_scoped()
-          call xolox#session#save_tab_cmd(name, '', 'SaveTabSession')
+          let function = 'xolox#session#save_tab_cmd'
+          let arguments = [name, '', 'SaveTabSession']
         else
-          call xolox#session#save_cmd(name, '', 'SaveSession')
+          let function = 'xolox#session#save_cmd'
+          let arguments = [name, '', 'SaveSession']
+        endif
+        if xolox#misc#option#get('session_autosave_silent', 0)
+          " Silence informational messages perceived as noisy.
+          " https://github.com/xolox/vim-session/issues/120
+          silent call call(function, arguments)
+        else
+          call call(function, arguments)
         endif
       endif
     endif
