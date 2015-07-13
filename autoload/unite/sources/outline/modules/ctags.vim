@@ -71,9 +71,9 @@ function! s:find_exuberant_ctags()
   endif
   for ctags in ctags_exe_names
     if executable(ctags)
-      " Make sure it is Exuberant.
+      " Make sure it is Exuberant or Universal ctags.
       let ctags_out = unite#util#system(ctags . ' --version')
-      if ctags_out =~? '\<Exuberant Ctags\>'
+      if ctags_out =~? '\<\%(Exuberant\|Universal\) Ctags\>'
         return ctags
       endif
     endif
