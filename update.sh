@@ -70,3 +70,21 @@ git subtree pull --prefix bundle/tabular https://github.com/godlygeek/tabular.gi
 git status
 git subtree pull --prefix bundle/tagbar https://github.com/majutsushi/tagbar.git master --squash
 
+git status
+git subtree pull --prefix bundle/vim-fireplace https://github.com/tpope/vim-fireplace.git master --squash
+
+git status
+git subtree pull --prefix bundle/vimux git@github.com:benmills/vimux.git master --squash
+
+git status
+git subtree pull --prefix bundle/uritality https://github.com/dmedvinsky/uritality.vim.git master --squash
+
+git status
+git subtree pull --prefix bundle/vim-table-mode https://github.com/dhruvasagar/vim-table-mode master --squash
+
+git status
+git subtree pull --prefix bundle/vim-commentary https://github.com/tpope/vim-commentary.git master --squash
+
+git status
+git subtree pull --prefix bundle/indentLine https://github.com/Yggdroot/indentLine.git master --squash
+
