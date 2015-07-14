@@ -1,7 +1,7 @@
 *table-mode.txt*			Table Mode for easy table formatting
 ===============================================================================
 	Table Mode, THE AWESOME AUTOMATIC TABLE CREATOR & FORMATTER
-				 VERSION 4.6.2
+				 VERSION 4.6.4
 
 		Author: Dhruva Sagar <http://dhruvasagar.com/>
 		License: MIT <http://opensource.org/licenses/MIT/>
@@ -86,7 +86,7 @@ Table Formulas:
 		input formula will be appended to the formula line if one
 		exists or a new one will be created with the input formula
 		taking the current cell as the target cell. The formula line
-		is evaluated immidiately to reflect the results.
+		is evaluated immediately to reflect the results.
 
 		You can directly also add / manipulate formula expressions in
 		the formula line. The formula line is a commented line right
