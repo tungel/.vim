@@ -91,3 +91,6 @@ git subtree pull --prefix bundle/indentLine https://github.com/Yggdroot/indentLi
 git status
 git subtree pull --prefix bundle/deoplete.nvim https://github.com/Shougo/deoplete.nvim.git master --squash
 
+git status
+git subtree pull --prefix bundle/vim-test https://github.com/janko-m/vim-test.git master --squash
+
