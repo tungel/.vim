@@ -94,3 +94,6 @@ git subtree pull --prefix bundle/deoplete.nvim https://github.com/Shougo/deoplet
 git status
 git subtree pull --prefix bundle/vim-test https://github.com/janko-m/vim-test.git master --squash
 
+git status
+git subtree pull --prefix bundle/neoterm https://github.com/kassio/neoterm.git master --squash
+
