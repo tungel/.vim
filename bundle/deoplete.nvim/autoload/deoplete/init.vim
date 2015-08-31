@@ -75,6 +75,8 @@ function! deoplete#init#enable() abort "{{{
 endfunction"}}}
 
 function! deoplete#init#_variables() abort "{{{
+  let g:deoplete#_context = {}
+
   " User vairables
   call deoplete#util#set_default(
         \ 'g:deoplete#enable_ignore_case', &ignorecase)
@@ -123,7 +125,7 @@ function! deoplete#init#_variables() abort "{{{
         \ '[^. \t]\.([a-zA-Z_]\w*)?')
   call deoplete#util#set_pattern(
         \ g:deoplete#_omni_patterns,
-        \ 'python', '[^. \t]\.\w*')
+        \ 'go,python', '[^. \t]\.\w*')
   call deoplete#util#set_pattern(
         \ g:deoplete#_omni_patterns,
         \ 'ruby', ['[^. \t]\.\w*', '[a-zA-Z_]\w*::\w*'])
