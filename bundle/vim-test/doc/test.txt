@@ -86,6 +86,9 @@ In all commands [args] are forwarded to the underlying test runner.
                                                 *test-:PyTest*
 :PyTest [args]               Uses the `py.test` command.
 
+                                                *test-:DjangoTest*
+:DjangoTest [args]           Uses the `django` `test` command.
+
                                                 *test-:ExUnit*
 :ExUnit [args]               Uses the `mix` `test` command.
 
@@ -177,6 +180,14 @@ isn't that nice).
   let test#strategy = 'terminal'
   " or
   let test#strategy = 'iterm'
+<
+
+Vagrant ~
+
+Runs test commands with `vagrant` `ssh`. It finds the project root by extracting
+the "config.vm.synced_folder" configuration from Vagrantfile.
+>
+  let test#strategy = 'vagrant'
 <
 CUSTOM STRATEGIES                               *test-custom-strategies*
 
