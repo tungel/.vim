@@ -100,3 +100,14 @@ git subtree pull --prefix bundle/neoterm https://github.com/kassio/neoterm.git m
 git status
 git subtree pull --prefix bundle/vim-follow-my-lead https://github.com/ktonga/vim-follow-my-lead.git master --squash
 
+# {{{ color scheme
+git status
+git subtree pull --prefix bundle/gruvbox https://github.com/morhetz/gruvbox.git master --squash
+
+git status
+git subtree pull --prefix bundle/jellybeans.vim https://github.com/nanotech/jellybeans.vim.git master --squash
+
+git status
+git subtree pull --prefix bundle/Apprentice https://github.com/romainl/Apprentice.git master --squash
+# end color scheme }}}
+
