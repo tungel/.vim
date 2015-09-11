@@ -20,6 +20,12 @@ if version > 580
 endif
 let g:colors_name="molokai"
 
+" added by Tung - to use a dark gray background instead of black background
+let g:molokai_original = 1
+
+" added by Tung - fine tuning the 256 color to be close with GUI version
+let g:rehash256 = 1
+
 if exists("g:molokai_original")
     let s:molokai_original = g:molokai_original
 else
@@ -33,7 +39,7 @@ hi Number          guifg=#AE81FF
 hi String          guifg=#E6DB74
 hi Conditional     guifg=#F92672               gui=bold
 hi Constant        guifg=#AE81FF               gui=bold
-hi Cursor          guifg=#000000 guibg=#F8F8F0
+hi Cursor          guifg=#000000 guibg=green
 hi iCursor         guifg=#000000 guibg=#F8F8F0
 hi Debug           guifg=#BCA3A3               gui=bold
 hi Define          guifg=#66D9EF
@@ -60,7 +66,7 @@ hi Label           guifg=#E6DB74               gui=none
 hi Macro           guifg=#C4BE89               gui=italic
 hi SpecialKey      guifg=#66D9EF               gui=italic
 
-hi MatchParen      guifg=#000000 guibg=#FD971F gui=bold
+hi MatchParen      guifg=#000000 guibg=#635F5A gui=bold
 hi ModeMsg         guifg=#E6DB74
 hi MoreMsg         guifg=#E6DB74
 hi Operator        guifg=#F92672
@@ -110,15 +116,15 @@ hi TabLineFill     guifg=#1B1D1E guibg=#1B1D1E
 hi TabLine         guibg=#1B1D1E guifg=#808080 gui=none
 
 if s:molokai_original == 1
-   hi Normal          guifg=#F8F8F2 guibg=#272822
+   hi Normal          guifg=#F8F8F2 guibg=#22221F
    hi Comment         guifg=#75715E
    hi CursorLine                    guibg=#3E3D32
    hi CursorLineNr    guifg=#FD971F               gui=none
    hi CursorColumn                  guibg=#3E3D32
    hi ColorColumn                   guibg=#3B3A32
    hi LineNr          guifg=#BCBCBC guibg=#3B3A32
-   hi NonText         guifg=#75715E
-   hi SpecialKey      guifg=#75715E
+   hi NonText         guifg=#303030
+   hi SpecialKey      guifg=#303030 "similar to ctermfg=236
 else
    hi Normal          guifg=#F8F8F2 guibg=#1B1D1E
    hi Comment         guifg=#7E8E91
@@ -127,8 +133,8 @@ else
    hi CursorColumn                  guibg=#293739
    hi ColorColumn                   guibg=#232526
    hi LineNr          guifg=#465457 guibg=#232526
-   hi NonText         guifg=#465457
-   hi SpecialKey      guifg=#465457
+   hi NonText         guifg=#303030
+   hi SpecialKey      guifg=#303030 "similar to ctermfg=236
 end
 
 "
@@ -192,7 +198,7 @@ if &t_Co > 255
    hi PreProc         ctermfg=118
    hi Question        ctermfg=81
    hi Repeat          ctermfg=161               cterm=bold
-   hi Search          ctermfg=0   ctermbg=222   cterm=NONE
+   hi Search          ctermfg=0   ctermbg=223   cterm=bold
 
    " marks column
    hi SignColumn      ctermfg=118 ctermbg=235
@@ -228,13 +234,15 @@ if &t_Co > 255
    hi CursorColumn                ctermbg=236
    hi ColorColumn                 ctermbg=236
    hi LineNr          ctermfg=250 ctermbg=236
-   hi NonText         ctermfg=59
+   hi NonText         ctermfg=235
 
-   hi SpecialKey      ctermfg=59
+   hi SpecialKey      ctermfg=235
 
    if exists("g:rehash256") && g:rehash256 == 1
        hi Normal       ctermfg=252 ctermbg=234
        hi CursorLine               ctermbg=236   cterm=none
+
+       " the line number color on the left edge
        hi CursorLineNr ctermfg=208               cterm=none
 
        hi Boolean         ctermfg=141
@@ -266,8 +274,10 @@ if &t_Co > 255
 
        hi Comment         ctermfg=244
        hi LineNr          ctermfg=239 ctermbg=235
-       hi NonText         ctermfg=239
-       hi SpecialKey      ctermfg=239
+
+       " modidifed by Tung, to define the color of white character
+        hi NonText         ctermfg=235
+        hi SpecialKey      ctermfg=235
    endif
 end
 
