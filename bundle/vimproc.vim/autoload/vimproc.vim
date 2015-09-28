@@ -60,6 +60,10 @@ elseif glob('/lib*/ld-linux*64.so.2',1) != ''
   let s:vimproc_dll_basename = 'vimproc_linux64.so'
 elseif glob('/lib*/ld-linux*.so.2',1) != ''
   let s:vimproc_dll_basename = 'vimproc_linux32.so'
+elseif system('uname -s') =~? '^.\+BSD\n$'
+  let s:vimproc_dll_basename = system(
+        \ 'uname -sm | tr "[:upper:]" "[:lower:]"'
+        \ .' | sed -e "s/ /_/" | xargs -I "{}" echo vimproc_{}.so')[0 : -2]
 else
   let s:vimproc_dll_basename = 'vimproc_unix.so'
 endif
@@ -73,7 +77,7 @@ unlet s:vimproc_dll_basename
 
 call vimproc#util#set_default(
       \ 'g:vimproc#password_pattern',
-      \ '\%(Enter \|[Oo]ld \|[Nn]ew \|login '  .
+      \ '\%(Enter \|Repeat \|[Oo]ld \|[Nn]ew \|login ' .
       \'\|Kerberos \|EncFS \|CVS \|UNIX \| SMB \|LDAP \|\[sudo] ' .
       \'\|^\|\n\|''s \)\%([Pp]assword\|[Pp]assphrase\)\>',
       \ 'g:vimproc_password_pattern')
@@ -137,7 +141,7 @@ if !filereadable(g:vimproc#dll_path) || !has('libcall') "{{{
 endif"}}}
 
 function! vimproc#version() "{{{
-  return str2nr(printf('%2d%02d', 9, 0))
+  return str2nr(printf('%2d%02d', 9, 1))
 endfunction"}}}
 function! vimproc#dll_version() "{{{
   let [dll_version] = s:libcall('vp_dlversion', [])
@@ -299,7 +303,8 @@ function! s:system(cmdline, is_passwd, input, timeout, is_pty) "{{{
     call subproc.kill(g:vimproc#SIGTERM)
 
     if v:exception !~ '^Vim:Interrupt'
-      throw v:exception
+      call s:print_error(v:throwpoint)
+      call s:print_error(v:exception)
     endif
   finally
     let output = join(outbuf, '')
@@ -1239,7 +1244,7 @@ endfunction
 function! s:libcall(func, args) "{{{
   let stack_buf = libcall(g:vimproc#dll_path, a:func, s:encode_list(a:args))
   if empty(stack_buf)
-    return
+    return []
   endif
   let [result, err] = s:decode_list(stack_buf)
   if err
@@ -1254,7 +1259,8 @@ endfunction"}}}
 
 " args[0]: fd, args[1]: count, args[2]: timeout
 function! s:libcall_raw_read(func, args) "{{{
-  return s:libcall(a:func, a:args)
+  let [err, hd] = s:libcall(a:func, a:args)
+  return [hd, err]
 endfunction "}}}
 
 " args[0]: fd, args[1]: data, args[2]: timeout
