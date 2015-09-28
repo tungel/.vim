@@ -30,6 +30,8 @@ endfunction
 
 let g:unite_source_tag_max_name_length =
     \ get(g:, 'unite_source_tag_max_name_length', 25)
+let g:unite_source_tag_max_kind_length =
+    \ get(g:, 'unite_source_tag_max_kind_length', 8)
 let g:unite_source_tag_max_fname_length =
     \ get(g:, 'unite_source_tag_max_fname_length', 20)
 
@@ -229,6 +231,9 @@ let s:source_include.max_candidates = 0
 
 function! s:source_include.hooks.on_init(args, context)
     if get(g:, 'loaded_neoinclude', 0)
+        if empty(neoinclude#include#get_tag_files())
+            NeoIncludeMakeCache
+        endif
         let a:context.source__tagfiles = neoinclude#include#get_tag_files()
     else
         let a:context.source__tagfiles = []
@@ -328,7 +333,8 @@ function! s:taglist_filter(input, name)
     \                     ':t' : ':~:.')),
     \                     g:unite_source_tag_max_fname_length, 10, '..')),
     \                  (!g:unite_source_tag_show_kind ? '' :
-    \                    '  k:' . s:truncate(v:val.kind, 10, 2, '..')),
+    \                    '  k:' . s:truncate(v:val.kind,
+    \                     g:unite_source_tag_max_kind_length, 2, '..')),
     \                  (!g:unite_source_tag_show_location ? '' :
     \                    '  pat:' .  matchstr(v:val.cmd,
     \                         '^[?/]\\^\\?\\zs.\\{-1,}\\ze\\$\\?[?/]$'))
@@ -431,7 +437,8 @@ function! s:next(tagdata, line, name)
                     \  g:unite_source_tag_max_fname_length, 10, '..')
     endif
     if g:unite_source_tag_show_kind && option.kind != ''
-        let abbr .= '  k:' . s:truncate(option.kind, 8, 2, '..')
+        let abbr .= '  k:' . s:truncate(option.kind,
+                    \  g:unite_source_tag_max_kind_length, 2, '..')
     endif
     if g:unite_source_tag_show_location
         let abbr .= linenr ? '  line:' . linenr
