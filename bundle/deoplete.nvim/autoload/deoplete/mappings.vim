@@ -29,7 +29,12 @@ function! deoplete#mappings#_init() abort "{{{
 endfunction"}}}
 
 function! deoplete#mappings#_do_complete(context) abort "{{{
+  " Deoplete does not work if completeopt contains longest and menu options
+  set completeopt-=longest
   set completeopt+=menuone
+  if &completeopt !~# 'noinsert\|noselect'
+    set completeopt+=noselect
+  endif
 
   if b:changedtick == get(a:context, 'changedtick', -1)
     call complete(a:context.complete_position + 1, a:context.candidates)
@@ -45,15 +50,17 @@ function! deoplete#mappings#manual_complete(...) abort "{{{
 endfunction"}}}
 
 function! deoplete#mappings#close_popup() "{{{
+  let g:deoplete#_context.position = getpos('.')
   return pumvisible() ? "\<C-y>" : ''
 endfunction
 "}}}
 function! deoplete#mappings#smart_close_popup() "{{{
+  let g:deoplete#_context.position = getpos('.')
   return pumvisible() ? "\<C-e>" : ''
 endfunction
 "}}}
 function! deoplete#mappings#cancel_popup() "{{{
-  let g:deoplete#_skip_next_complete = 1
+  let g:deoplete#_context.position = getpos('.')
   return pumvisible() ? "\<C-e>" : ''
 endfunction
 "}}}
