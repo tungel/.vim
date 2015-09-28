@@ -62,14 +62,6 @@ function! unite#view#_redraw_candidates(...) "{{{
     let unite.init_prompt_linenr = len(candidates) + 1
   endif
 
-  if context.immediately && len(candidates) == 1
-    " Immediately action.
-    call unite#action#do(
-          \ context.default_action, [candidates[0]])
-    call unite#variables#disable_current_unite()
-    return
-  endif
-
   let pos = getpos('.')
   let modifiable_save = &l:modifiable
   try
@@ -253,6 +245,16 @@ function! unite#view#_redraw(is_force, winnr, is_gather_all) "{{{
     endif
   endtry
 
+  if context.immediately && len(unite.current_candidates) == 1
+    " Immediately action.
+    call unite#action#do(
+          \ context.default_action, [unite.current_candidates[0]])
+
+    " Note: It is workaround
+    " Change updatetime to leave insertmode
+    set updatetime=10
+    stopinsert
+  endif
   if context.auto_preview
     call unite#view#_do_auto_preview()
   endif
