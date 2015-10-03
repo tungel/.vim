@@ -137,7 +137,7 @@ function! neosnippet#commands#_clear_markers() "{{{
   let expand_stack = neosnippet#variables#expand_stack()
 
   " Get patterns and count.
-  if !&l:modifiable
+  if !&l:modifiable || !&l:modified
         \ || empty(expand_stack)
         \ || neosnippet#variables#current_neosnippet().trigger
     return
@@ -152,6 +152,7 @@ function! neosnippet#commands#_clear_markers() "{{{
         \ expand_info.end_line,
         \ expand_info.end_patterns)
 
+  let mode = mode()
   let pos = getpos('.')
 
   " Found snippet.
@@ -170,11 +171,13 @@ function! neosnippet#commands#_clear_markers() "{{{
       let found = 1
     endif
   finally
-    if found
+    if found && mode !=# 'i'
       stopinsert
     endif
 
     call setpos('.', pos)
+
+    call neosnippet#variables#clear_expand_stack()
   endtry
 endfunction"}}}
 

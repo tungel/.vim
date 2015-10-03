@@ -152,6 +152,8 @@ function! unite#handlers#_on_cursor_hold()  "{{{
         let is_async = unite.is_async
       endif
     endfor
+
+    call unite#handlers#_restore_updatetime()
   endif
 
   if is_async
@@ -270,7 +272,7 @@ function! unite#handlers#_on_buf_unload(bufname)  "{{{
     return
   endif
 
-  if &l:statusline == unite#get_current_unite().statusline
+  if &l:statusline == unite.statusline
     " Restore statusline.
     let &l:statusline = &g:statusline
   endif

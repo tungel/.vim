@@ -628,7 +628,7 @@ function! fireplace#client(...) abort
     if empty(client.piggiebacks)
       let result = client.piggieback('')
       if has_key(result, 'ex')
-        return result
+        throw 'Fireplace: '.result.ex
       endif
     endif
     return client.piggiebacks[0]
@@ -1595,9 +1595,9 @@ function! s:RunTests(bang, count, ...) abort
   if a:count < 0
     let pre = ''
     if a:0
-      let expr = '(clojure.test/run-all-tests #"'.join(a:000, '|').'")'
+      let expr = ['(clojure.test/run-all-tests #"'.join(a:000, '|').'")']
     else
-      let expr = '(clojure.test/run-all-tests)'
+      let expr = ['(clojure.test/run-all-tests)']
     endif
   else
     if a:0 && a:000 !=# [fireplace#ns()]
@@ -1618,7 +1618,7 @@ function! s:RunTests(bang, count, ...) abort
     let vars = filter(copy(reqs), 'v:val =~# "/"')
     let nses = filter(copy(reqs), 'v:val !~# "/"')
     if len(vars) == 1
-      call add(expr, '(clojure.test/test-var #' . vars[0] . ')')
+      call add(expr, '(clojure.test/test-vars [#' . vars[0] . '])')
     elseif !empty(vars)
       call add(expr, join(['(clojure.test/test-vars'] + map(vars, '"#".v:val'), ' ').')')
     endif

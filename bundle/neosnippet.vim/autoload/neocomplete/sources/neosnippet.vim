@@ -37,7 +37,7 @@ let s:source = {
       \}
 
 function! s:source.gather_candidates(context) "{{{
-  let snippets = values(neosnippet#helpers#get_snippets())
+  let snippets = values(neosnippet#helpers#get_completion_snippets())
   if matchstr(a:context.input, '\S\+$') !=#
         \ matchstr(a:context.input, '\w\+$')
     " Word filtering

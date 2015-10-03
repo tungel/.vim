@@ -88,3 +88,26 @@ git subtree pull --prefix bundle/vim-commentary https://github.com/tpope/vim-com
 git status
 git subtree pull --prefix bundle/indentLine https://github.com/Yggdroot/indentLine.git master --squash
 
+git status
+git subtree pull --prefix bundle/deoplete.nvim https://github.com/Shougo/deoplete.nvim.git master --squash
+
+git status
+git subtree pull --prefix bundle/vim-test https://github.com/janko-m/vim-test.git master --squash
+
+git status
+git subtree pull --prefix bundle/neoterm https://github.com/kassio/neoterm.git master --squash
+
+git status
+git subtree pull --prefix bundle/vim-follow-my-lead https://github.com/ktonga/vim-follow-my-lead.git master --squash
+
+# {{{ color scheme
+git status
+git subtree pull --prefix bundle/gruvbox https://github.com/morhetz/gruvbox.git master --squash
+
+git status
+git subtree pull --prefix bundle/jellybeans.vim https://github.com/nanotech/jellybeans.vim.git master --squash
+
+git status
+git subtree pull --prefix bundle/Apprentice https://github.com/romainl/Apprentice.git master --squash
+# end color scheme }}}
+

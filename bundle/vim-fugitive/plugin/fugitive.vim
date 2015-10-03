@@ -374,10 +374,10 @@ function! s:repo_git_chomp_in_tree(...) dict abort
   let cd = exists('*haslocaldir') && haslocaldir() ? 'lcd ' : 'cd '
   let dir = getcwd()
   try
-    execute cd.'`=s:repo().tree()`'
+    execute 'cd '.s:repo().tree()
     return call(s:repo().git_chomp, a:000, s:repo())
   finally
-    execute cd.'`=dir`'
+    execute 'cd '.dir
   endtry
 endfunction
 
@@ -665,10 +665,10 @@ function! s:ExecuteInTree(cmd) abort
   let cd = exists('*haslocaldir') && haslocaldir() ? 'lcd ' : 'cd '
   let dir = getcwd()
   try
-    execute cd.'`=s:repo().tree()`'
+    execute 'cd '.s:repo().tree()
     execute a:cmd
   finally
-    execute cd.'`=dir`'
+    execute 'cd '.dir
   endtry
 endfunction
 
@@ -683,7 +683,7 @@ function! s:Git(bang, args) abort
   let args = matchstr(a:args,'\v\C.{-}%($|\\@<!%(\\\\)*\|)@=')
   if exists(':terminal')
     let dir = s:repo().tree()
-    tabnew
+    tabedit %
     execute 'lcd' fnameescape(dir)
     execute 'terminal' git args
   else
@@ -1049,7 +1049,7 @@ function! s:Commit(args, ...) abort
         noautocmd silent execute '!'.command.' > '.outfile.' 2> '.errorfile
       endif
     finally
-      execute cd.'`=dir`'
+      execute 'cd '.dir
     endtry
     if !has('gui_running')
       redraw!
@@ -1262,7 +1262,7 @@ function! s:Grep(cmd,bang,arg) abort
   let cd = exists('*haslocaldir') && haslocaldir() ? 'lcd ' : 'cd '
   let dir = getcwd()
   try
-    execute cd.'`=s:repo().tree()`'
+    execute 'cd '.s:repo().tree()
     let &grepprg = s:repo().git_command('--no-pager', 'grep', '-n', '--no-color')
     let &grepformat = '%f:%l:%m,%f'
     exe a:cmd.'! '.escape(matchstr(a:arg,'\v\C.{-}%($|[''" ]\@=\|)@='),'|')
@@ -1291,7 +1291,7 @@ function! s:Grep(cmd,bang,arg) abort
   finally
     let &grepprg = grepprg
     let &grepformat = grepformat
-    execute cd.'`=dir`'
+    execute 'cd '.dir
   endtry
 endfunction
 
@@ -1322,14 +1322,14 @@ function! s:Log(cmd, line1, line2, ...) abort
   let cd = exists('*haslocaldir') && haslocaldir() ? 'lcd ' : 'cd '
   let dir = getcwd()
   try
-    execute cd.'`=s:repo().tree()`'
+    execute 'cd '.s:repo().tree()
     let &grepprg = escape(call(s:repo().git_command,cmd,s:repo()),'%#')
     let &grepformat = '%Cdiff %.%#,%C--- %.%#,%C+++ %.%#,%Z@@ -%\d%\+\,%\d%\+ +%l\,%\d%\+ @@,%-G-%.%#,%-G+%.%#,%-G %.%#,%A%f::%m,%-G%.%#'
     exe a:cmd
   finally
     let &grepformat = grepformat
     let &grepprg = grepprg
-    execute cd.'`=dir`'
+    execute 'cd '.dir
   endtry
 endfunction
 
@@ -1926,7 +1926,7 @@ function! s:Blame(bang,line1,line2,count,args) abort
       let cd = exists('*haslocaldir') && haslocaldir() ? 'lcd ' : 'cd '
       if !s:repo().bare()
         let dir = getcwd()
-        execute cd.'`=s:repo().tree()`'
+        execute 'cd '.s:repo().tree()
       endif
       if a:count
         execute 'write !'.substitute(basecmd,' blame ',' blame -L '.a:line1.','.a:line2.' ','g')
@@ -1939,7 +1939,7 @@ function! s:Blame(bang,line1,line2,count,args) abort
           silent! execute '%write !'.basecmd.' > '.temp.' 2> '.error
         endif
         if exists('l:dir')
-          execute cd.'`=dir`'
+          execute 'cd '.dir
           unlet dir
         endif
         if v:shell_error
@@ -1999,8 +1999,8 @@ function! s:Blame(bang,line1,line2,count,args) abort
         nnoremap <buffer> <silent> P    :<C-U>exe <SID>BlameJump('^'.v:count1)<CR>
         nnoremap <buffer> <silent> ~    :<C-U>exe <SID>BlameJump('~'.v:count1)<CR>
         nnoremap <buffer> <silent> i    :<C-U>exe <SID>BlameCommit("exe 'norm q'<Bar>edit")<CR>
-        nnoremap <buffer> <silent> o    :<C-U>exe <SID>BlameCommit((&splitbelow ? "botright" : "topleft")." split")<CR>
-        nnoremap <buffer> <silent> O    :<C-U>exe <SID>BlameCommit("tabedit")<CR>
+        nnoremap <buffer> <silent> s    :<C-U>exe <SID>BlameCommit((&splitbelow ? "botright" : "topleft")." split")<CR>
+        nnoremap <buffer> <silent> t    :<C-U>exe <SID>BlameCommit("tabedit")<CR>
         nnoremap <buffer> <silent> A    :<C-u>exe "vertical resize ".(<SID>linechars('.\{-\}\ze [0-9:/+-][0-9:/+ -]* \d\+)')+1+v:count)<CR>
         nnoremap <buffer> <silent> C    :<C-u>exe "vertical resize ".(<SID>linechars('^\S\+')+1+v:count)<CR>
         nnoremap <buffer> <silent> D    :<C-u>exe "vertical resize ".(<SID>linechars('.\{-\}\ze\d\ze\s\+\d\+)')+1-v:count)<CR>
@@ -2009,7 +2009,7 @@ function! s:Blame(bang,line1,line2,count,args) abort
       endif
     finally
       if exists('l:dir')
-        execute cd.'`=dir`'
+        execute 'cd '.dir
       endif
     endtry
     return ''
@@ -2328,7 +2328,7 @@ function! s:github_url(opts, ...) abort
     if get(a:opts, 'line2') && a:opts.line1 == a:opts.line2
       let url .= '#L' . a:opts.line1
     elseif get(a:opts, 'line2')
-      let url .= '#L' . a:opts.line1 . '-' . a:opts.line2
+      let url .= '#L' . a:opts.line1 . '-L' . a:opts.line2
     endif
   elseif a:opts.type == 'tag'
     let commit = matchstr(getline(3),'^tag \zs.*')
@@ -2462,10 +2462,11 @@ function! s:BufReadIndex() abort
               \ 'status')
       endif
       try
-        execute cd.'`=s:repo().tree()`'
+        " Tung
+        execute 'cd '.s:repo().tree()
         call s:ReplaceCmd(cmd, index)
       finally
-        execute cd.'`=dir`'
+        execute 'cd '.dir
       endtry
       set ft=gitcommit
       set foldtext=fugitive#foldtext()
@@ -2705,9 +2706,9 @@ augroup END
 function! s:JumpInit() abort
   nnoremap <buffer> <silent> <CR>    :<C-U>exe <SID>GF("edit")<CR>
   if !&modifiable
-    nnoremap <buffer> <silent> o     :<C-U>exe <SID>GF("split")<CR>
-    nnoremap <buffer> <silent> S     :<C-U>exe <SID>GF("vsplit")<CR>
-    nnoremap <buffer> <silent> O     :<C-U>exe <SID>GF("tabedit")<CR>
+    nnoremap <buffer> <silent> s     :<C-U>exe <SID>GF("split")<CR>
+    nnoremap <buffer> <silent> v     :<C-U>exe <SID>GF("vsplit")<CR>
+    nnoremap <buffer> <silent> t     :<C-U>exe <SID>GF("tabedit")<CR>
     nnoremap <buffer> <silent> -     :<C-U>exe <SID>Edit('edit',0,<SID>buffer().up(v:count1))<Bar> if fugitive#buffer().type('tree')<Bar>call search('^'.escape(expand('#:t'),'.*[]~\').'/\=$','wc')<Bar>endif<CR>
     nnoremap <buffer> <silent> P     :<C-U>exe <SID>Edit('edit',0,<SID>buffer().commit().'^'.v:count1.<SID>buffer().path(':'))<CR>
     nnoremap <buffer> <silent> ~     :<C-U>exe <SID>Edit('edit',0,<SID>buffer().commit().'~'.v:count1.<SID>buffer().path(':'))<CR>

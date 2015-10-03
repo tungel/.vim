@@ -2,7 +2,6 @@
 " FILE: vimproc.vim
 " AUTHOR:  Shougo Matsushita <Shougo.Matsu@gmail.com> (Modified)
 "          Yukihiro Nakadaira <yukihiro.nakadaira at gmail.com> (Original)
-" Last Modified: 03 Mar 2014.
 " License: MIT license  {{{
 "     Permission is hereby granted, free of charge, to any person obtaining
 "     a copy of this software and associated documentation files (the
@@ -36,7 +35,7 @@ set cpo&vim
 " }}}
 
 function! s:print_error(string)
-  echohl Error | echomsg a:string | echohl None
+  echohl Error | echomsg '[vimproc] ' . a:string | echohl None
 endfunction
 
 " Check 'encoding' "{{{
@@ -61,6 +60,10 @@ elseif glob('/lib*/ld-linux*64.so.2',1) != ''
   let s:vimproc_dll_basename = 'vimproc_linux64.so'
 elseif glob('/lib*/ld-linux*.so.2',1) != ''
   let s:vimproc_dll_basename = 'vimproc_linux32.so'
+elseif system('uname -s') =~? '^.\+BSD\n$'
+  let s:vimproc_dll_basename = system(
+        \ 'uname -sm | tr "[:upper:]" "[:lower:]"'
+        \ .' | sed -e "s/ /_/" | xargs -I "{}" echo vimproc_{}.so')[0 : -2]
 else
   let s:vimproc_dll_basename = 'vimproc_unix.so'
 endif
@@ -74,7 +77,7 @@ unlet s:vimproc_dll_basename
 
 call vimproc#util#set_default(
       \ 'g:vimproc#password_pattern',
-      \ '\%(Enter \|[Oo]ld \|[Nn]ew \|login '  .
+      \ '\%(Enter \|Repeat \|[Oo]ld \|[Nn]ew \|login ' .
       \'\|Kerberos \|EncFS \|CVS \|UNIX \| SMB \|LDAP \|\[sudo] ' .
       \'\|^\|\n\|''s \)\%([Pp]assword\|[Pp]assphrase\)\>',
       \ 'g:vimproc_password_pattern')
@@ -130,7 +133,7 @@ if !filereadable(g:vimproc#dll_path) || !has('libcall') "{{{
     call s:print_error(printf('vimproc''s DLL: "%s" is not found.
           \  Please read :help vimproc and make it.', g:vimproc#dll_path))
   else
-    call s:print_error('vimproc: libcall feature is disabled in this Vim.
+    call s:print_error('libcall feature is disabled in this Vim.
           \  To use vimproc, you must enable libcall feature.')
   endif
 
@@ -138,7 +141,7 @@ if !filereadable(g:vimproc#dll_path) || !has('libcall') "{{{
 endif"}}}
 
 function! vimproc#version() "{{{
-  return str2nr(printf('%2d%02d', 8, 0))
+  return str2nr(printf('%2d%02d', 9, 1))
 endfunction"}}}
 function! vimproc#dll_version() "{{{
   let [dll_version] = s:libcall('vp_dlversion', [])
@@ -300,7 +303,8 @@ function! s:system(cmdline, is_passwd, input, timeout, is_pty) "{{{
     call subproc.kill(g:vimproc#SIGTERM)
 
     if v:exception !~ '^Vim:Interrupt'
-      throw v:exception
+      call s:print_error(v:throwpoint)
+      call s:print_error(v:exception)
     endif
   finally
     let output = join(outbuf, '')
@@ -330,9 +334,14 @@ function! vimproc#system(cmdline, ...) "{{{
       let arg.statement = vimproc#parser#parse_pipe(arg.statement)
     endfor
   else
-    let args = [{'statement' :
-          \ [{ 'fd' : { 'stdin' : '', 'stdout' : '', 'stderr' : '' },
-          \   'args' : a:cmdline }], 'condition' : 'always' }]
+    let args = [{
+          \ 'statement' : [ {
+          \ 'fd' : { 'stdin' : '', 'stdout' : '', 'stderr' : '' },
+          \ 'args' : a:cmdline
+          \  }],
+          \ 'condition' : 'always',
+          \ 'cwd' : getcwd(),
+          \ }]
   endif
 
   let timeout = get(a:000, 1, 0)
@@ -395,9 +404,14 @@ function! vimproc#system_bg(cmdline) "{{{
       let arg.statement = vimproc#parser#parse_pipe(arg.statement)
     endfor
   else
-    let args = [{'statement' :
-          \ [{ 'fd' : { 'stdin' : '', 'stdout' : '', 'stderr' : '' },
-          \   'args' : a:cmdline }], 'condition' : 'always' }]
+    let args = [{
+          \ 'statement' : [ {
+          \ 'fd' : { 'stdin' : '', 'stdout' : '', 'stderr' : '' },
+          \ 'args' : a:cmdline
+          \  }],
+          \ 'condition' : 'always',
+          \ 'cwd' : getcwd(),
+          \ }]
   endif
 
   let subproc = vimproc#pgroup_open(args)
@@ -643,8 +657,16 @@ endfunction"}}}
 
 function! s:pgroup_open(statements, is_pty, npipe) "{{{
   let proc = {}
-  let proc.current_proc =
-        \ vimproc#plineopen{a:npipe}(a:statements[0].statement, a:is_pty)
+
+  let cwd = getcwd()
+  try
+    call vimproc#util#cd(a:statements[0].cwd)
+
+    let proc.current_proc =
+          \ vimproc#plineopen{a:npipe}(a:statements[0].statement, a:is_pty)
+  finally
+    call vimproc#util#cd(cwd)
+  endtry
 
   let proc.pid = proc.current_proc.pid
   let proc.pid_list = proc.current_proc.pid_list
@@ -869,7 +891,7 @@ function! s:read(...) dict "{{{
   let eof = 0
 
   while maxsize != 0 && !eof
-    let [out, eof] = self.f_read(maxsize, 
+    let [out, eof] = self.f_read(maxsize,
           \ (timeout < s:read_timeout ? timeout : s:read_timeout))
     if out ==# ''
       let timeout -= s:read_timeout
@@ -957,7 +979,7 @@ function! s:fdopen_pty(fd_stdin, fd_stdout, f_close, f_read, f_write) "{{{
   return {
         \ 'eof' : 0, '__eof' : 0, 'is_valid' : 1, 'buffer' : [],
         \ 'fd_stdin' : a:fd_stdin, 'fd_stdout' : a:fd_stdout,
-        \ 'f_close' : s:funcref(a:f_close), 'f_read' : s:funcref(a:f_read), 'f_write' : s:funcref(a:f_write), 
+        \ 'f_close' : s:funcref(a:f_close), 'f_read' : s:funcref(a:f_read), 'f_write' : s:funcref(a:f_write),
         \ 'close' : s:funcref('close'), 'read' : s:funcref('read'), 'write' : s:funcref('write'),
         \ 'read_line' : s:funcref('read_line'), 'read_lines' : s:funcref('read_lines'),
         \}
@@ -1169,66 +1191,82 @@ else
   endfunction
 endif
 
+" Encode a 32-bit integer into a 5-byte string.
+function! s:encode_size(n)
+  " Set each bit7 to 1 in order to avoid NUL byte.
+  return printf("%c%c%c%c%c",
+    \ ((a:n / 0x10000000) % 0x80) + 0x80,
+    \ ((a:n / 0x200000) % 0x80) + 0x80,
+    \ ((a:n / 0x4000) % 0x80) + 0x80,
+    \ ((a:n / 0x80) % 0x80) + 0x80,
+    \ ( a:n % 0x80) + 0x80)
+endfunction
+
+" Decode a 32-bit integer from a 5-byte string.
+function! s:decode_size(str, off)
+  return
+    \ (char2nr(a:str[a:off + 0]) - 0x80) * 0x10000000 +
+    \ (char2nr(a:str[a:off + 1]) - 0x80) * 0x200000 +
+    \ (char2nr(a:str[a:off + 2]) - 0x80) * 0x4000 +
+    \ (char2nr(a:str[a:off + 3]) - 0x80) * 0x80 +
+    \ (char2nr(a:str[a:off + 4]) - 0x80)
+endfunction
+
+" Encode a list into a string.
+function! s:encode_list(arr)
+  " End Of Value
+  let EOV = "\xFF"
+  " encoded size0, data0, EOV, encoded size1, data1, EOV, ...
+  return empty(a:arr) ? '' :
+    \ (EOV . join(map(copy(a:arr), 's:encode_size(strlen(v:val)) . v:val'), EOV) . EOV)
+endfunction
+
+" Decode a list from a string.
+function! s:decode_list(str)
+  let err = 0
+  " End Of Value
+  let EOV = "\xFF"
+  if a:str[0] != EOV
+    let err = 1
+    return [[a:str], err]
+  endif
+  let arr = []
+  let slen = strlen(a:str)
+  let off = 1
+  while slen - off >= 5
+    let size = s:decode_size(a:str, off)
+    let arr += [a:str[off + 5 : off + 5 + size - 1]]
+    let off += 5 + size + 1
+  endwhile
+  return [arr, err]
+endfunction
+
 function! s:libcall(func, args) "{{{
-  " End Of Value
-  let EOV = "\xFF"
-  let args = empty(a:args) ? '' : (join(reverse(copy(a:args)), EOV) . EOV)
-  let stack_buf = libcall(g:vimproc#dll_path, a:func, args)
-  let result = s:split(stack_buf, EOV)
-  if get(result, -1, 'error') != ''
-    if stack_buf[len(stack_buf) - 1] ==# EOV
-      " Note: If &encoding equals "cp932" and output ends multibyte first byte,
-      "       will fail split.
-      return result
-    endif
+  let stack_buf = libcall(g:vimproc#dll_path, a:func, s:encode_list(a:args))
+  if empty(stack_buf)
+    return []
+  endif
+  let [result, err] = s:decode_list(stack_buf)
+  if err
     let s:lasterr = result
     let msg = vimproc#util#iconv(string(result),
           \ vimproc#util#systemencoding(), &encoding)
 
     throw printf('vimproc: %s: %s', a:func, msg)
   endif
-  return result[:-2]
+  return result
 endfunction"}}}
 
+" args[0]: fd, args[1]: count, args[2]: timeout
 function! s:libcall_raw_read(func, args) "{{{
-  " End Of Value
-  let EOV = "\xFF"
-  let args = empty(a:args) ? '' : (join(reverse(copy(a:args)), EOV) . EOV)
-  let result = libcall(g:vimproc#dll_path, a:func, args)
-  " SUCCESS:: EOV | EOF[0|1] | Bin
-  " ERROR  :: ErrStr
-  if result[0] !=# EOV
-    let s:lasterr = [result]
-    let msg = vimproc#util#iconv(string(result),
-          \ vimproc#util#systemencoding(), &encoding)
+  let [err, hd] = s:libcall(a:func, a:args)
+  return [hd, err]
+endfunction "}}}
 
-    throw printf('vimproc: %s: %s', a:func, msg)
-  endif
-  return [result[2:], result[1]]
-endfunction"}}}
-
+" args[0]: fd, args[1]: data, args[2]: timeout
 function! s:libcall_raw_write(func, args) "{{{
-  " End Of Value
-  let EOV = "\xFF"
-  " Convert::
-  " [Fd, Bin, Timeout] => Bin | EOV | Timeout | EOV | Fd | EOV
-  let args = join((a:args[1:] + a:args[:0]), EOV) . EOV
-  let stack_buf = libcall(g:vimproc#dll_path, a:func, args)
-  let result = s:split(stack_buf, EOV)
-  if get(result, -1, 'error') != ''
-    if stack_buf[len(stack_buf) - 1] ==# EOV
-      " Note: If &encoding equals "cp932" and output ends multibyte first byte,
-      "       will fail split.
-      return result
-    endif
-    let s:lasterr = result
-    let msg = vimproc#util#iconv(string(result),
-          \ vimproc#util#systemencoding(), &encoding)
-
-    throw printf('vimproc: %s: %s', a:func, msg)
-  endif
-  return result[:-2]
-endfunction"}}}
+  return s:libcall(a:func, [a:args[0], a:args[2], a:args[1]])
+endfunction "}}}
 
 function! s:SID_PREFIX()
   if !exists('s:sid_prefix')
@@ -1304,7 +1342,7 @@ function! s:vp_pipe_open(npipe, hstdin, hstdout, hstderr, argv) "{{{
     call s:print_error(v:throwpoint)
     call s:print_error(v:exception)
     call s:print_error(
-          \ 'vimproc: Error occurred in calling s:vp_pipe_open()')
+          \ 'Error occurred in calling s:vp_pipe_open()')
     call s:print_error(printf(
           \ 'a:argv = %s', string(a:argv)))
     call s:print_error(printf(
@@ -1402,7 +1440,8 @@ function! s:read_pgroup(...) dict "{{{
     let output = self.fd.read(number, timeout)
   endif
 
-  if self.proc.current_proc.stdout.eof && self.proc.current_proc.stderr.eof
+  if self.proc.current_proc.stdout.eof
+        \ && self.proc.current_proc.stderr.eof
     " Get status.
     let [cond, status] = self.proc.current_proc.waitpid()
 
@@ -1416,7 +1455,16 @@ function! s:read_pgroup(...) dict "{{{
       let self.proc.status = status
     else
       " Initialize next statement.
-      let proc = vimproc#plineopen3(self.proc.statements[0].statement)
+
+      let cwd = getcwd()
+      try
+        call vimproc#util#cd(self.proc.statements[0].cwd)
+
+        let proc = vimproc#plineopen3(
+              \ self.proc.statements[0].statement)
+      finally
+        call vimproc#util#cd(cwd)
+      endtry
       let self.proc.current_proc = proc
 
       let self.pid = proc.pid
@@ -1426,9 +1474,15 @@ function! s:read_pgroup(...) dict "{{{
       let self.proc.condition = self.proc.statements[0].condition
       let self.proc.statements = self.proc.statements[1:]
 
-      let self.proc.stdin = s:fdopen_pgroup(self.proc, proc.stdin, 'vp_pgroup_close', 'read_pgroup', 'write_pgroup')
-      let self.proc.stdout = s:fdopen_pgroup(self.proc, proc.stdout, 'vp_pgroup_close', 'read_pgroup', 'write_pgroup')
-      let self.proc.stderr = s:fdopen_pgroup(self.proc, proc.stderr, 'vp_pgroup_close', 'read_pgroup', 'write_pgroup')
+      let self.proc.stdin = s:fdopen_pgroup(
+            \ self.proc, proc.stdin,
+            \ 'vp_pgroup_close', 'read_pgroup', 'write_pgroup')
+      let self.proc.stdout = s:fdopen_pgroup(
+            \ self.proc, proc.stdout,
+            \ 'vp_pgroup_close', 'read_pgroup', 'write_pgroup')
+      let self.proc.stderr = s:fdopen_pgroup(
+            \ self.proc, proc.stderr,
+            \ 'vp_pgroup_close', 'read_pgroup', 'write_pgroup')
     endif
   endif
 

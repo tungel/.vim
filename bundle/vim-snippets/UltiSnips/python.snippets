@@ -16,6 +16,12 @@ if __name__ == `!p snip.rv = get_quoting_style(snip)`__main__`!p snip.rv = get_q
 	${1:${VISUAL:main()}}
 endsnippet
 
+snippet with "with" b
+with ${1:expr}`!p snip.rv = " as " if t[2] else ""`${2:var}:
+	${3:${VISUAL:pass}}
+${0}
+endsnippet
+
 snippet for "for loop" b
 for ${1:item} in ${2:iterable}:
 	${3:${VISUAL:pass}}
@@ -578,14 +584,14 @@ endsnippet
 snippet try "Try / Except" b
 try:
 	${1:${VISUAL:pass}}
-except ${2:Exception}, ${3:e}:
+except ${2:Exception} as ${3:e}:
 	${4:raise $3}
 endsnippet
 
 snippet trye "Try / Except / Else" b
 try:
 	${1:${VISUAL:pass}}
-except ${2:Exception}, ${3:e}:
+except ${2:Exception} as ${3:e}:
 	${4:raise $3}
 else:
 	${5:pass}
@@ -594,7 +600,7 @@ endsnippet
 snippet tryf "Try / Except / Finally" b
 try:
 	${1:${VISUAL:pass}}
-except ${2:Exception}, ${3:e}:
+except ${2:Exception} as ${3:e}:
 	${4:raise $3}
 finally:
 	${5:pass}
@@ -603,7 +609,7 @@ endsnippet
 snippet tryef "Try / Except / Else / Finally" b
 try:
 	${1:${VISUAL:pass}}
-except${2: ${3:Exception}, ${4:e}}:
+except${2: ${3:Exception} as ${4:e}}:
 	${5:raise}
 else:
 	${6:pass}
