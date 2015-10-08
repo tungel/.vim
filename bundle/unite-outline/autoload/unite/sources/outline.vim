@@ -240,7 +240,7 @@ function! s:reload_autoload_script(funcname)
   let path = get(split(globpath(&runtimepath, path), "\<NL>"), 0, '')
   let path = fnamemodify(path, ':p')
   " Re-source the autoload script.
-  source `=path`
+  execute 'source' fnameescape(path)
 endfunction
 
 function! s:load_outline_info(load_func, context, reload)
@@ -560,7 +560,7 @@ endfunction
 function! s:Source_Hooks_on_syntax(source_args, unite_context)
   let bufnr = a:unite_context.source__outline_source_bufnr
   let odata = s:get_outline_data(bufnr)
-  if odata.state !=# 'OK'
+  if type(odata) != type({}) || odata.state !=# 'OK'
     return
   endif
   let oinfo = odata.context.outline_info
