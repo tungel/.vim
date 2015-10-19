@@ -32,7 +32,8 @@ import copy
 import deoplete.sources
 from deoplete.util import \
     globruntime, debug, \
-    get_simple_buffer_config, charpos2bytepos, bytepos2charpos
+    get_simple_buffer_config, charpos2bytepos, \
+    bytepos2charpos, get_custom
 import deoplete.filters
 
 class Deoplete(object):
@@ -45,37 +46,34 @@ class Deoplete(object):
     def load_sources(self):
         # Load sources from runtimepath
         for path in globruntime(self.vim,
-                'rplugin/python3/deoplete/sources/base.py') \
-                + globruntime(self.vim,
-                'rplugin/python3/deoplete/sources/*.py'):
+                                'rplugin/python3/deoplete/sources/base.py'
+                    ) + globruntime(self.vim,
+                                    'rplugin/python3/deoplete/sources/*.py'):
             name = os.path.basename(path)
             source = importlib.machinery.SourceFileLoader(
                 'deoplete.sources.' + name[: -3], path).load_module()
             if hasattr(source, 'Source'):
                 self.sources[name[: -3]] = source.Source(self.vim)
-        # self.debug(self.sources)
+        # debug(self.vim, self.sources)
 
     def load_filters(self):
         # Load filters from runtimepath
         for path in globruntime(self.vim,
-                'rplugin/python3/deoplete/filters/base.py') \
-                + globruntime(self.vim,
-                'rplugin/python3/deoplete/filters/*.py'):
+                                'rplugin/python3/deoplete/filters/base.py'
+                    ) + globruntime(self.vim,
+                                    'rplugin/python3/deoplete/filters/*.py'):
             name = os.path.basename(path)
             filter = importlib.machinery.SourceFileLoader(
                 'deoplete.filters.' + name[: -3], path).load_module()
             if hasattr(filter, 'Filter'):
                 self.filters[name[: -3]] = filter.Filter(self.vim)
-        # self.debug(self.filters)
-
-    def debug(self, msg):
-        self.vim.command('echomsg string("' + str(msg) + '")')
+        # debug(self.vim, self.filters)
 
     def gather_candidates(self, context):
         # Skip completion
-        if (self.vim.eval('&l:completefunc') != '' \
-                and self.vim.eval('&l:buftype').find('nofile') >= 0) \
-                or (context['event'] != 'Manual' and \
+        if (self.vim.eval('&l:completefunc') != ''
+                and self.vim.eval('&l:buftype').find('nofile') >= 0
+                ) or (context['event'] != 'Manual' and
                     get_simple_buffer_config(
                         self.vim,
                         'b:deoplete_disable_auto_complete',
@@ -88,11 +86,11 @@ class Deoplete(object):
             self.load_filters()
             self.runtimepath = self.vim.eval('&runtimepath')
 
-        # self.debug(context)
+        # debug(self.vim, context)
 
         # Set ignorecase
-        if context['smartcase'] \
-                and re.search(r'[A-Z]', context['complete_str']):
+        if context['smartcase'] and re.search(r'[A-Z]',
+                                              context['complete_str']):
             context['ignorecase'] = 0
 
         results = self.gather_results(context)
@@ -107,8 +105,8 @@ class Deoplete(object):
             'g:deoplete#auto_completion_start_length')
         for source_name, source in sorted(self.sources.items(),
                 key=lambda x: x[1].rank, reverse=True):
-            if (sources and not source_name in sources) \
-                    or (source.filetypes and
+            if (sources and not source_name in sources
+                    ) or (source.filetypes and
                         not context['filetype'] in source.filetypes):
                 continue
             cont = copy.deepcopy(context)
@@ -119,21 +117,21 @@ class Deoplete(object):
             cont['complete_str'] = cont['input'][charpos :]
             cont['complete_position'] = charpos2bytepos(
                 self.vim, cont['input'], charpos)
-            # self.debug(source.rank)
-            # self.debug(source_name)
-            # self.debug(cont['input'])
-            # self.debug(charpos)
-            # self.debug(cont['complete_position'])
-            # self.debug(cont['complete_str'])
+            # debug(self.vim, source.rank)
+            # debug(self.vim, source_name)
+            # debug(self.vim, cont['input'])
+            # debug(self.vim, charpos)
+            # debug(self.vim, cont['complete_position'])
+            # debug(self.vim, cont['complete_str'])
 
             min_pattern_length = source.min_pattern_length
             if min_pattern_length < 0:
                 # Use default value
                 min_pattern_length = start_length
 
-            if charpos < 0 \
-                    or (cont['event'] != 'Manual' \
-                        and len(cont['complete_str']) < min_pattern_length):
+            if charpos < 0 or (cont['event'] != 'Manual'
+                               and len(cont['complete_str'])
+                                     < min_pattern_length):
                 # Skip
                 continue
             results.append({
@@ -146,33 +144,42 @@ class Deoplete(object):
             context = result['context']
             source = result['source']
 
+            # debug(self.vim, source.name)
             context['candidates'] = source.gather_candidates(context)
-            if context['candidates'] \
-                    and type(context['candidates'][0]) == type(''):
+            if context['candidates'] and type(
+                    context['candidates'][0]) == type(''):
                 # Convert to dict
-                context['candidates'] = \
-                    [{ 'word': x } for x in context['candidates'] ]
+                context['candidates'] = [{ 'word': x }
+                                         for x in context['candidates'] ]
 
-            # self.debug(context['candidates'])
+            # debug(self.vim, context['candidates'])
 
-            # self.debug(context['complete_str'])
-            # self.debug(context['candidates'])
-            for filter_name in \
-                    source.matchers + source.sorters + source.converters:
+            # debug(self.vim, context['complete_str'])
+            # debug(self.vim, context['candidates'])
+            matchers = get_custom(self.vim, source.name).get(
+                'matchers', source.matchers)
+            sorters = get_custom(self.vim, source.name).get(
+                'sorters', source.sorters)
+            converters = get_custom(self.vim, source.name).get(
+                'converters', source.converters)
+            for filter_name in matchers + sorters + converters:
                 if filter_name in self.filters:
-                    context['candidates'] = \
-                        self.filters[filter_name].filter(context)
-            # self.debug(context['candidates'])
+                    context['candidates'] = self.filters[
+                        filter_name].filter(context)
+            # debug(self.vim, context['candidates'])
 
             # On post filter
             if hasattr(source, 'on_post_filter'):
                 context['candidates'] = source.on_post_filter(context)
 
-            # Set default menu
-            for candidate in context['candidates']:
-                candidate['menu'] = \
-                    source.mark + ' ' + candidate.get('menu', '')
-            # self.debug(context['candidates'])
+            if context['candidates'] and (
+                    not re.match(r'\[.*\]',
+                                 context['candidates'][0].get('menu', ''))):
+                # Set default menu
+                for candidate in context['candidates']:
+                    candidate['menu'] = source.mark + ' ' + candidate.get(
+                        'menu', '')
+            # debug(self.vim, context['candidates'])
         return results
 
     def merge_results(self, results):
@@ -190,8 +197,8 @@ class Deoplete(object):
                 complete_position = context['complete_position']
                 candidates += context['candidates']
                 continue
-            prefix = context['input']\
-                [: context['complete_position'] - complete_position]
+            prefix = context['input'][: context['complete_position']
+                                      - complete_position]
 
             context['complete_position'] = complete_position
             context['complete_str'] = prefix
@@ -200,5 +207,6 @@ class Deoplete(object):
             for candidate in context['candidates']:
                 candidate['word'] = prefix + candidate['word']
             candidates += context['candidates']
+        # debug(self.vim, candidates)
         return (complete_position, candidates)
 

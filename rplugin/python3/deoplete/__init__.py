@@ -29,34 +29,19 @@ import traceback
 
 import deoplete
 from deoplete.deoplete import Deoplete
-import deoplete.util
+from deoplete.util import \
+    debug, error, convert2list, get_buffer_config
 
 @neovim.plugin
 class DeopleteHandlers(object):
     def __init__(self, vim):
         self.vim = vim
-        self.msgfile = self.vim.eval('tempname()')
-
-    def debug(self, msg):
-        self.vim.command('echomsg string("' + str(msg) + '")')
-
-    def error(self, e):
-        with open(self.msgfile, 'a') as f:
-            traceback.print_exc(None, f)
-        self.vim.command('call deoplete#util#print_error('
-                         + '"The error is occurred.  Please read ".'
-                         + 'string("'+self.msgfile+'").'
-                         +'" file or execute :DeopleteMessages command.")')
 
     @neovim.command('DeopleteInitializePython', sync=True, nargs=0)
     def init_python(self):
         self.deoplete = Deoplete(self.vim)
         self.vim.command('let g:deoplete#_channel_id = '
         + str(self.vim.channel_id))
-
-    @neovim.command('DeopleteMessages', sync=True, nargs=0)
-    def print_error(self):
-        self.vim.command('edit ' + self.msgfile)
 
     @neovim.rpc_export('completion_begin')
     def completion_begin(self, context):
@@ -79,17 +64,16 @@ class DeopleteHandlers(object):
           'let g:deoplete#_context.position = ' + str(context['position']))
 
         # Call omni completion
-        omni_patterns = deoplete.util.convert2list(
-            deoplete.util.get_buffer_config(
-                self.vim, context,
-                'b:deoplete_omni_patterns',
-                'g:deoplete#omni_patterns',
-                'g:deoplete#_omni_patterns'))
-        # self.debug(omni_pattern)
+        omni_patterns = convert2list(get_buffer_config(
+            self.vim, context,
+            'b:deoplete_omni_patterns',
+            'g:deoplete#omni_patterns',
+            'g:deoplete#_omni_patterns'))
+        # debug(self.vim, omni_patterns)
         for pattern in omni_patterns:
             if self.vim.eval('mode()') == 'i' \
-                    and (pattern != '' \
-                         and self.vim.eval('&l:omnifunc') != '' \
+                    and (pattern != ''
+                         and self.vim.eval('&l:omnifunc') != ''
                          and re.search('('+pattern+')$', context['input'])) \
                          or self.vim.eval(
                              'deoplete#util#is_eskk_convertion()') != 0:
@@ -98,13 +82,18 @@ class DeopleteHandlers(object):
                 return
 
         try:
-            complete_position, candidates = \
-                self.deoplete.gather_candidates(context)
+            complete_position, candidates = self.deoplete.gather_candidates(
+                context)
         except Exception as e:
-            self.error(e)
+            for line in traceback.format_exc().splitlines():
+                 error(self.vim, line)
+            error(self.vim,
+                  'An error has occurred. Please execute :messages command.')
             candidates = []
         if not candidates or self.vim.eval('mode()') != 'i':
                 return
+        # debug(self.vim, candidates)
+        # debug(self.vim, 'hoge')
         self.vim.command(
           'let g:deoplete#_context.complete_position = '
             + str(complete_position))

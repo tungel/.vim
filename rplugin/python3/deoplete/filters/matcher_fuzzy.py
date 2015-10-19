@@ -25,6 +25,7 @@
 
 import re
 from .base import Base
+from deoplete.util import debug
 
 class Filter(Base):
     def __init__(self, vim):
@@ -39,18 +40,14 @@ class Filter(Base):
             complete_str = complete_str.lower()
         p = re.compile(fuzzy_escape(complete_str))
         input_len = len(complete_str)
-        return [x for x in context['candidates'] \
-                if len(x['word']) > input_len and p.match(x['word'].lower())] \
-            if context['ignorecase'] \
-            else [x for x in context['candidates'] \
-                  if len(x['word']) > input_len and p.match(x['word'])]
+        return [x for x in context['candidates']
+                if len(x['word']) > input_len and p.match(x['word'].lower())
+                ] if context['ignorecase'] \
+                  else [x for x in context['candidates']
+                        if len(x['word']) > input_len and p.match(x['word'])]
 
 def fuzzy_escape(string):
     # Escape string for python regexp.
-    string = re.sub(r'([a-zA-Z0-9_])', r'\1.*', escape(string))
+    string = re.sub(r'([a-zA-Z0-9_])', r'\1.*', re.escape(string))
     return string
-
-def escape(string):
-    # Escape string for python regexp.
-    return re.sub(r'([\[\]().*+?^$-])', r'\\\1', string)
 

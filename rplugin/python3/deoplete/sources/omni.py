@@ -26,7 +26,7 @@
 import re
 from .base import Base
 from deoplete.util import \
-    get_default_buffer_config, debug, escape, convert2list
+    get_default_buffer_config, debug, error, escape, convert2list
 
 class Source(Base):
     def __init__(self, vim):
@@ -55,50 +55,38 @@ class Source(Base):
 
             pos = self.vim.eval('getpos(".")')
             try:
-                complete_pos = self.vim.eval('call(&l:omnifunc, [1, ""])')
+                complete_pos = self.vim.call(
+                    self.vim.eval('&l:omnifunc'), 1, '')
             except:
-                self.vim.command(
-                    'call deoplete#util#print_error('
-                    + '"Error occurred calling omnifunction: "'
-                    + '. &l:omnifunc)')
+                error(self.vim, 'Error occurred calling omnifunction: '
+                    + self.vim.eval('&l:omnifunc'))
 
                 return -1
             finally:
                 if pos != self.vim.eval('getpos(".")'):
-                    self.vim.command(
-                        'call deoplete#util#print_error('
-                        + '"omnifunction: "'
-                        + '. &l:omnifunc . " moves cursor!")')
-                    self.vim.command(
-                        'call deoplete#util#print_error('
-                        + '"Deoplete cannot support it in omni source. "'
-                        + '. "You should use g:deoplete#omni_patterns.")')
+                    error(self.vim, 'omnifunction: '
+                        + self.vim.eval('&l:omnifunc') + ' moves cursor!')
+                    error(self.vim, 'Deoplete cannot support it in omni source.'
+                        + ' You should use g:deoplete#omni_patterns.')
             return complete_pos
         return -1
 
     def gather_candidates(self, context):
         pos = self.vim.eval('getpos(".")')
         try:
-            candidates = self.vim.eval(
-                "call(&l:omnifunc, [0, '{0}'])"
-                .format(escape(context['complete_str'])))
+            candidates = self.vim.call(
+                self.vim.eval('&l:omnifunc'), 0, context['complete_str'])
         except:
-            self.vim.command(
-                'call deoplete#util#print_error('
-                + '"Error occurred calling omnifunction: "'
-                + '. &l:omnifunc)')
+            error(self.vim, 'Error occurred calling omnifunction: '
+                + self.vim.eval('&l:omnifunc'))
 
             candidates = []
         finally:
             if pos != self.vim.eval('getpos(".")'):
-                self.vim.command(
-                    'call deoplete#util#print_error('
-                    + '"omnifunction: "'
-                    + '. &l:omnifunc . " moves cursor!")')
-                self.vim.command(
-                    'call deoplete#util#print_error('
-                    + '"Deoplete cannot support it in omni source. "'
-                    + '. "You should use g:deoplete#omni_patterns.")')
+                error(self.vim, 'omnifunction: '
+                    + self.vim.eval('&l:omnifunc') + ' moves cursor!')
+                error(self.vim, 'Deoplete cannot support it in omni source.'
+                    + ' You should use g:deoplete#omni_patterns.')
 
         return candidates
 
