@@ -482,7 +482,12 @@ function! s:toggle_mark_candidates(start, end) "{{{
   let pos = getpos('.')
   try
     call cursor(a:start, 1)
+    let prev = -1
     for _ in range(a:start, a:end)
+      if line('.') == prev || line('.') < a:start || line('.') > a:end
+        break
+      endif
+      let prev = line('.')
       if line('.') == unite.prompt_linenr
         call unite#helper#skip_prompt()
       else
@@ -521,15 +526,17 @@ function! unite#mappings#_choose_action(candidates, ...) "{{{
     return
   endif
 
-  let unite = unite#get_current_unite()
   let context = deepcopy(get(a:000, 0, {}))
-  let context.source__sources = unite.sources
+  let context.source__sources = unite#init#_loaded_sources(
+        \ unite#util#uniq(map(copy(a:candidates),
+        \                 'v:val.source')), context)
   let context.buffer_name = 'action'
   let context.profile_name = 'action'
   let context.start_insert = 1
   let context.truncate = 1
 
-  call call((has_key(context, 'vimfiler__current_directory') ?
+  call call((has_key(context, 'vimfiler__current_directory')
+        \    || &filetype !=# 'unite' ?
         \ 'unite#start' : 'unite#start_temporary'),
         \ [[[unite#sources#action#define(), a:candidates]], context])
 endfunction"}}}
@@ -539,7 +546,8 @@ function! s:insert_enter(key) "{{{
   let unite = unite#get_current_unite()
 
   return (line('.') != unite.prompt_linenr) ?
-        \     '0i' :
+        \ (unite.context.prompt_focus ?
+        \     unite.prompt_linenr.'GA' : 'gI') :
         \ (a:key == 'i' && col('.') <= 1
         \     || a:key == 'a' && col('.') < 1) ?
         \     'A' :
