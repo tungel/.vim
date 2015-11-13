@@ -14,16 +14,16 @@ endfunction
 let g:test#runners = get(g:, 'test#runners', {})
 call s:extend(g:test#runners, {
   \ 'Ruby':       ['Minitest', 'RSpec', 'Cucumber'],
-  \ 'Java':       ['Maven'],
   \ 'JavaScript': ['Mocha', 'Jasmine'],
   \ 'Python':     ['DjangoTest', 'PyTest', 'Nose'],
-  \ 'Elixir':     ['ExUnit'],
+  \ 'Elixir':     ['ExUnit', 'ESpec'],
   \ 'Go':         ['GoTest'],
   \ 'Clojure':    ['FireplaceTest'],
   \ 'Shell':      ['Bats'],
   \ 'VimL':       ['VSpec', 'Vader'],
   \ 'Lua':        ['Busted'],
   \ 'PHP':        ['PHPUnit', 'Behat', 'PHPSpec'],
+  \ 'Java':       ['MavenTest'],
 \})
 
 let g:test#custom_strategies = get(g:, 'test#custom_strategies', {})
