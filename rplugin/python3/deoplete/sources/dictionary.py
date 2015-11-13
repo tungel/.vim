@@ -1,5 +1,5 @@
 #=============================================================================
-# FILE: __init__.py
+# FILE: dictionary.py
 # AUTHOR: Shougo Matsushita <Shougo.Matsu at gmail.com>
 # License: MIT license  {{{
 #     Permission is hereby granted, free of charge, to any person obtaining
@@ -23,46 +23,46 @@
 # }}}
 #=============================================================================
 
-import neovim
-import traceback
+import re
+from os.path import getmtime, exists
+from collections import namedtuple
+from .base import Base
 
-from deoplete.deoplete import Deoplete
-from deoplete.util import error
+DictCacheItem = namedtuple('DictCacheItem', 'mtime candidates')
 
-@neovim.plugin
-class DeopleteHandlers(object):
+class Source(Base):
     def __init__(self, vim):
-        self.vim = vim
+        Base.__init__(self, vim)
 
-    @neovim.command('DeopleteInitializePython', sync=True, nargs=0)
-    def init_python(self):
-        self.deoplete = Deoplete(self.vim)
-        self.vim.vars['deoplete#_channel_id'] = self.vim.channel_id
+        self.name = 'dictionary'
+        self.mark = '[D]'
 
-    @neovim.rpc_export('completion_begin')
-    def completion_begin(self, context):
-        try:
-            complete_position, candidates = self.deoplete.gather_candidates(
-                context)
-        except Exception:
-            for line in traceback.format_exc().splitlines():
-                 error(self.vim, line)
-            error(self.vim,
-                  'An error has occurred. Please execute :messages command.')
-            candidates = []
+        self.cache = {}
 
-        var_context = {}
+    def gather_candidates(self, context):
+        candidates = []
+        for filename in [x for x in get_dictionaries(
+                self.vim, context['filetype']) if exists(x)]:
+            mtime = getmtime(filename)
+            if filename not in self.cache or self.cache[
+                    filename].mtime != mtime:
+                with open(filename, 'r', errors='replace') as f:
+                    new_candidates = parse_dictionary(
+                        f, context['keyword_patterns'])
+                    candidates += new_candidates
+                self.cache[filename] = DictCacheItem(mtime, new_candidates)
+            else:
+                candidates += self.cache[filename].candidates
+        return [{ 'word': x } for x in candidates]
 
-        if not candidates or self.vim.eval('mode()') != 'i':
-            self.vim.vars['deoplete#_context'] = var_context
-            return
+def parse_dictionary(f, keyword_patterns):
+    p = re.compile(keyword_patterns)
+    candidates = []
 
-        var_context['complete_position'] = complete_position
-        var_context['changedtick'] = context['changedtick']
-        var_context['candidates'] = candidates
-        self.vim.vars['deoplete#_context'] = var_context
+    for l in f.readlines():
+        candidates += p.findall(l)
+    return list(set(candidates))
 
-        # Note: cannot use vim.feedkeys()
-        self.vim.command(
-          'call feedkeys("\<Plug>(deoplete_start_complete)")')
+def get_dictionaries(vim, filetype):
+    return vim.eval('&l:dictionary').split(',')
 
