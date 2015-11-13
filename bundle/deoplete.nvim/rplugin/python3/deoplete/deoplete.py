@@ -23,18 +23,18 @@
 # }}}
 #=============================================================================
 
-import neovim
 import re
 import importlib.machinery
 import os.path
 import copy
 
 import deoplete.sources
+deoplete.sources  # silence pyflakes
 from deoplete.util import \
-    globruntime, debug, \
-    get_simple_buffer_config, charpos2bytepos, \
+    globruntime, get_simple_buffer_config, charpos2bytepos, \
     bytepos2charpos, get_custom
 import deoplete.filters
+deoplete.filters  # silence pyflakes
 
 class Deoplete(object):
     def __init__(self, vim):
@@ -49,11 +49,11 @@ class Deoplete(object):
                                 'rplugin/python3/deoplete/sources/base.py'
                     ) + globruntime(self.vim,
                                     'rplugin/python3/deoplete/sources/*.py'):
-            name = os.path.basename(path)
+            name = os.path.basename(path)[: -3]
             source = importlib.machinery.SourceFileLoader(
-                'deoplete.sources.' + name[: -3], path).load_module()
-            if hasattr(source, 'Source'):
-                self.sources[name[: -3]] = source.Source(self.vim)
+                'deoplete.sources.' + name, path).load_module()
+            if hasattr(source, 'Source') and not name in self.sources:
+                self.sources[name] = source.Source(self.vim)
         # debug(self.vim, self.sources)
 
     def load_filters(self):
@@ -62,11 +62,11 @@ class Deoplete(object):
                                 'rplugin/python3/deoplete/filters/base.py'
                     ) + globruntime(self.vim,
                                     'rplugin/python3/deoplete/filters/*.py'):
-            name = os.path.basename(path)
+            name = os.path.basename(path)[: -3]
             filter = importlib.machinery.SourceFileLoader(
-                'deoplete.filters.' + name[: -3], path).load_module()
-            if hasattr(filter, 'Filter'):
-                self.filters[name[: -3]] = filter.Filter(self.vim)
+                'deoplete.filters.' + name, path).load_module()
+            if hasattr(filter, 'Filter') and not name in self.filters:
+                self.filters[name] = filter.Filter(self.vim)
         # debug(self.vim, self.filters)
 
     def gather_candidates(self, context):
@@ -197,8 +197,8 @@ class Deoplete(object):
                 complete_position = context['complete_position']
                 candidates += context['candidates']
                 continue
-            prefix = context['input'][: context['complete_position']
-                                      - complete_position]
+            prefix = context['input'][context['complete_position']
+                                      - complete_position :]
 
             context['complete_position'] = complete_position
             context['complete_str'] = prefix

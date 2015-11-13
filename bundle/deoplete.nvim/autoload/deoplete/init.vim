@@ -41,8 +41,10 @@ function! deoplete#init#enable() abort "{{{
   augroup END
 
   if !has('nvim') || !has('python3')
-    echomsg '[deoplete] deoplete.nvim does not work with this version.'
-    echomsg '[deoplete] It requires Neovim with Python3 support ("+python3").'
+    call deoplete#util#print_error(
+          \ 'deoplete.nvim does not work with this version.')
+    call deoplete#util#print_error(
+          \ 'It requires Neovim with Python3 support("+python3").')
     return
   endif
 
@@ -50,15 +52,19 @@ function! deoplete#init#enable() abort "{{{
     try
       set completeopt+=noselect
     catch
-      echomsg '[deoplete] deoplete.nvim does not work with this version.'
-      echomsg '[deoplete] Please update neovim to latest version.'
+      call deoplete#util#print_error(
+            \ 'deoplete.nvim does not work with this version.')
+      call deoplete#util#print_error(
+            \ 'Please update neovim to latest version.')
       return
     endtry
   endif
 
   if !exists(':DeopleteInitializePython')
-    UpdateRemotePlugins
-    echomsg '[deoplete] Please restart Neovim.'
+    call deoplete#util#print_error(
+          \ 'deoplete.nvim is not registered as Neovim remote plugins.')
+    call deoplete#util#print_error(
+          \ 'Please execute :UpdateRemotePlugins command and restart Neovim.')
     return
   endif
 
@@ -69,9 +75,6 @@ function! deoplete#init#enable() abort "{{{
   call deoplete#init#_variables()
   call deoplete#handlers#_init()
   call deoplete#mappings#_init()
-  call deoplete#echodoc#init()
-
-  doautocmd <nomodeline> deoplete InsertEnter
 endfunction"}}}
 
 function! deoplete#init#_variables() abort "{{{
@@ -145,7 +148,9 @@ function! deoplete#init#_variables() abort "{{{
         \ 'css,scss,sass', ['^\s+\w+', '\w+[):;]?\s+\w*', '[@!]'])
   call deoplete#util#set_pattern(
         \ g:deoplete#omni#_input_patterns,
-        \ 'python', ['[^. \t0-9]\.\w*'])
+        \ 'python', ['[^. \t0-9]\.\w*', '^\s*@\w*',
+        \            '^\s*from\s.+import \w*', '^\s*from \w*',
+        \            '^\s*import \w*'])
   call deoplete#util#set_pattern(
         \ g:deoplete#omni#_input_patterns,
         \ 'ruby', ['[^. \t0-9]\.\w*', '[a-zA-Z_]\w*::\w*'])
@@ -176,10 +181,12 @@ endfunction"}}}
 
 function! deoplete#init#_context(event, sources) abort "{{{
   let filetype = (exists('*context_filetype#get_filetype') ?
-        \   context_filetype#get_filetype() : &filetype)
-  if filetype == ''
-    let filetype = 'nothing'
-  endif
+        \   context_filetype#get_filetype() :
+        \   (&filetype == '' ? 'nothing' : &filetype))
+  let filetypes = (exists('*context_filetype#get_filetypes') ?
+        \   context_filetype#get_filetypes() :
+        \   (&filetype == '' ? ['nothing'] : [&filetype]))
+
   let sources = a:sources
   if a:event !=# 'Manual' && empty(sources)
     " Use default sources
@@ -189,7 +196,8 @@ function! deoplete#init#_context(event, sources) abort "{{{
   let keyword_patterns = join(deoplete#util#convert2list(
         \   deoplete#util#get_default_buffer_config(
         \   filetype, 'b:deoplete_keyword_patterns',
-        \   g:deoplete#keyword_patterns, g:deoplete#_keyword_patterns)), '|')
+        \   'g:deoplete#keyword_patterns',
+        \   'g:deoplete#_keyword_patterns')), '|')
 
   return {
         \ 'changedtick': b:changedtick,
@@ -198,6 +206,7 @@ function! deoplete#init#_context(event, sources) abort "{{{
         \ 'complete_str': '',
         \ 'position': getpos('.'),
         \ 'filetype': filetype,
+        \ 'filetypes': filetypes,
         \ 'ignorecase': g:deoplete#enable_ignore_case,
         \ 'smartcase': g:deoplete#enable_smart_case,
         \ 'sources': sources,
@@ -206,10 +215,15 @@ function! deoplete#init#_context(event, sources) abort "{{{
 endfunction"}}}
 
 function! s:get_sources(filetype) abort "{{{
-  let sources = deoplete#util#get_default_buffer_config(a:filetype,
-        \ 'b:deoplete_sources', g:deoplete#sources, {}, [])
-  let ignore_sources = deoplete#util#get_default_buffer_config(a:filetype,
-        \ 'b:deoplete_ignore_sources', g:deoplete#ignore_sources, {}, [])
+  let sources = deoplete#util#get_default_buffer_config(
+        \ a:filetype,
+        \ 'b:deoplete_sources',
+        \ 'g:deoplete#sources',
+        \ '{}', [])
+  let ignore_sources = deoplete#util#get_default_buffer_config(
+        \ a:filetype,
+        \ 'b:deoplete_ignore_sources', 'g:deoplete#ignore_sources',
+        \ '{}', [])
 
   " Ignore sources
   return filter(sources, "index(ignore_sources, v:val) < 0")

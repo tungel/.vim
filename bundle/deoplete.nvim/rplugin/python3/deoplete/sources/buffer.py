@@ -26,7 +26,6 @@
 import re
 import operator
 import functools
-from deoplete.util import debug
 from .base import Base
 
 class Source(Base):
@@ -43,7 +42,6 @@ class Source(Base):
         current_candidates = functools.reduce(operator.add, [
                      p.findall(x) for x in self.vim.current.buffer
                      ])
-        # debug(self.vim, current_candidates)
 
         self.buffers[self.vim.current.buffer.number] = {
             'filetype': context['filetype'],
@@ -53,5 +51,5 @@ class Source(Base):
         return [{ 'word': x } for x in
                 functools.reduce(operator.add, [
                      x['candidates'] for x in self.buffers.values()
-                     if x['filetype'] == context['filetype']])]
+                     if x['filetype'] in context['filetypes']])]
 
