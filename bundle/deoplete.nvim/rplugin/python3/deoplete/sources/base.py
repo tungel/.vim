@@ -34,7 +34,7 @@ class Base(object):
         self.marker = ''
         self.min_pattern_length = -1
         self.matchers = ['matcher_fuzzy']
-        self.sorters = []
+        self.sorters = ['sorter_rank']
         self.converters = []
         self.filetypes = []
         self.is_bytepos = False

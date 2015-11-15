@@ -307,6 +307,8 @@ SOURCES						*deoplete-sources*
 buffer						*deoplete-source-buffer*
 		It collects keywords from current buffer and the buffers which
 		have same 'filetype'.
+		Note: It takes time to get the candidates in the first time if
+		you want to edit the large files(like Vim 22000 lines eval.c).
 
 member						*deoplete-source-member*
 		It collects members from current buffer.
@@ -329,6 +331,30 @@ USER SOURCES 					*deoplete-user-sources*
 
 ==============================================================================
 FILTERS						*deoplete-filters*
+
+					*deoplete-filter-matcher_default*
+Default matchers: ['matcher_fuzzy']
+	
+	You can change it by |deoplete#custom#set()|.
+
+					*deoplete-filter-sorter_default*
+Default sorters: ['sorter_rank'].
+
+	You can change it by |deoplete#custom#set()|.
+
+					*deoplete-filter-converter_default*
+Default converters: [].
+
+	You can change it by |deoplete#custom#set()|.
+
+					*deoplete-filter-matcher_head*
+matcher_head	Head matching matcher.
+
+					*deoplete-filter-matcher_fuzzy*
+matcher_fuzzy	Fuzzy matching matcher.
+
+					*deoplete-filter-sorter_rank*
+sorter_rank	Matched rank order sorter.  The higher the head matched word.
 
 ==============================================================================
 CREATE SOURCE					*deoplete-create-source*
@@ -388,6 +414,27 @@ is_bytepos
 			Because Vim script string uses byte position.  Python
 			string uses character position.
 
+					*deoplete-source-attribute-matchers*
+matchers		List			(Optional)
+			Source default matchers list.
+
+			If you omit it, |deoplete-filter-matcher_default| is
+			used.
+
+					*deoplete-source-attribute-sorters*
+sorters			List			(Optional)
+			Source default sorters list.
+
+			If you omit it, |deoplete-filter-sorter_default| is
+			used.
+
+					*deoplete-source-attribute-converters*
+converters		List			(Optional)
+			Source default converters list.
+
+			If you omit it, |deoplete-filter-converter_default| is
+			used.
+
 			*deoplete-source-attribute-get_complete_position*
 get_complete_position	Function	(Optional)
 			It is called to get complete position.
@@ -410,6 +457,12 @@ gather_candidates	Function	(Required)
 			|deoplete-candidate-attributes|.
 			Here, {context} is the context information when the
 			source is called(|deoplete-notation-{context}|).
+
+			*deoplete-source-attribute-source__*
+source__{name}		(Unknown)	(Optional)
+			Additional source information.
+			Note: Recommend sources save variables instead of
+			global variables.
 
 {context}				*deoplete-notation-{context}*
 			A dictionary to give context information.
