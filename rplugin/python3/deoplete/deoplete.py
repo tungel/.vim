@@ -74,7 +74,7 @@ class Deoplete(object):
     def gather_candidates(self, context):
         # Skip completion
         if (self.vim.eval('&l:completefunc') != ''
-                and self.vim.eval('&l:buftype').find('nofile') >= 0
+                and 'nofile' in self.vim.eval('&l:buftype')
                 ) or (context['event'] != 'Manual' and
                     get_simple_buffer_config(
                         self.vim,
@@ -121,7 +121,8 @@ class Deoplete(object):
             # debug(self.vim, cont['complete_position'])
             # debug(self.vim, cont['complete_str'])
 
-            min_pattern_length = source.min_pattern_length
+            min_pattern_length = get_custom(self.vim, source.name).get(
+                'min_pattern_length', source.min_pattern_length)
             if min_pattern_length < 0:
                 # Use default value
                 min_pattern_length = start_length

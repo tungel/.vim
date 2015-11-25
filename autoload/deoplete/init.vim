@@ -90,6 +90,9 @@ function! deoplete#init#_variables() abort "{{{
   call deoplete#util#set_default(
         \ 'g:deoplete#disable_auto_complete', 0)
   call deoplete#util#set_default(
+        \ 'g:deoplete#enable_auto_pairs', 1)
+
+  call deoplete#util#set_default(
         \ 'g:deoplete#keyword_patterns', {})
   call deoplete#util#set_default(
         \ 'g:deoplete#_keyword_patterns', {})
@@ -202,7 +205,7 @@ function! deoplete#init#_context(event, sources) abort "{{{
   return {
         \ 'changedtick': b:changedtick,
         \ 'event': a:event,
-        \ 'input': deoplete#helpers#get_input(a:event),
+        \ 'input': deoplete#util#get_input(a:event),
         \ 'complete_str': '',
         \ 'position': getpos('.'),
         \ 'filetype': filetype,
