@@ -84,6 +84,11 @@ If you like to use the context filetype feature, you need to install the
 context_filetype.vim plugin which you can find under the following repository:
 https://github.com/Shougo/context_filetype.vim
 
+						*deoplete-neopairs*
+
+If you want to insert the parentheses pairs automatically, you need to install
+the neopairs plugin (https://github.com/Shougo/neopairs.vim).
+
 ==============================================================================
 INTERFACE					*deoplete-interface*
 
@@ -125,6 +130,10 @@ g:deoplete#auto_completion_start_length
 		at the time of key input automatically.
 
 		Default value is 2.
+
+				*g:deoplete#enable_auto_pairs*
+g:deoplete#enable_auto_pairs
+		If it is enabled, close the parenthesis automatically.
 
 				*g:deoplete#disable_auto_complete*
 g:deoplete#disable_auto_complete
@@ -261,6 +270,9 @@ deoplete#custom#source({source-name}, {option-name}, {value})
 		" Examples:
 		" Use head matcher instead of fuzzy matcher
 		call deoplete#custom#set('_', 'matchers', ['matcher_head'])
+		" Disable auto completion in buffer source
+		call deoplete#custom#set('buffer',
+		\ 'min_pattern_length', 9999)
 <
 ------------------------------------------------------------------------------
 KEY MAPPINGS 					*deoplete-key-mappings*
@@ -273,7 +285,9 @@ deoplete#mappings#manual_complete([{sources}])
 		If you give {sources} argument, deoplete will call {sources}.
 		{sources} is name of source or list of sources name.
 >
-		inoremap <expr><Tab>  deoplete#mappings#manual_complete()
+		inoremap <silent><expr><Tab>
+		\ pumvisible() ? "\<C-n>" :
+		\ deoplete#mappings#manual_complete()
 <
 					*deoplete#mappings#smart_close_popup()*
 deoplete#mappings#smart_close_popup()
@@ -580,8 +594,8 @@ https://github.com/osyo-manga/vim-monster
 Q: I want to use C/C++ omni completion with deoplete.
 
 A: You can use |clang_complete| or |vim-marching|.
-But vim-marching is recommended.
 
+https://github.com/Rip-Rip/clang_complete
 https://github.com/osyo-manga/vim-marching
 
 For clang_complete configuration is below. >
@@ -590,6 +604,9 @@ For clang_complete configuration is below. >
 	let g:clang_auto_select = 0
 	let g:clang_default_keymappings = 0
 	"let g:clang_use_library = 1
+
+Current clang_complete supports the original deoplete source.
+It is better than using omni source.
 
 Q: I want to use head matcher instead of fuzzy matcher.
 
