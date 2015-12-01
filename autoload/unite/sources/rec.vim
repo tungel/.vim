@@ -127,7 +127,8 @@ function! s:source_file_rec.async_gather_candidates(args, context) "{{{
     let continuation.end = 1
   endif
 
-  let candidates = unite#helper#paths2candidates(files)
+  let candidates = unite#helper#ignore_candidates(
+        \ unite#helper#paths2candidates(files), a:context)
 
   let continuation.files += candidates
   if empty(continuation.rest)
@@ -348,7 +349,8 @@ function! s:source_file_async.async_gather_candidates(args, context) "{{{
     let paths = map(paths, 'unite#util#substitute_path_separator(v:val)')
   endif
 
-  let candidates = unite#helper#paths2candidates(paths)
+  let candidates = unite#helper#ignore_candidates(
+        \ unite#helper#paths2candidates(paths), a:context)
 
   if stdout.eof || (
         \  g:unite_source_rec_max_cache_files > 0 &&
@@ -410,14 +412,16 @@ function! s:job_handler(job_id, data, event) abort "{{{
   let lines = a:data
 
   let candidates = (a:event ==# 'stdout') ? job.candidates : job.errors
-  if !empty(lines) && lines[0] != "\n" && !empty(candidates)
+  if !empty(lines) && !empty(candidates)
+        \ && !filereadable(candidates[-1]) && candidates[-1] !~ '\r$'
     " Join to the previous line
     let candidates[-1] .= lines[0]
     call remove(lines, 0)
   endif
 
   call map(filter(lines, 'v:val != ""'),
-          \ "unite#util#iconv(v:val, 'char', &encoding)")
+          \ "substitute(unite#util#iconv(
+          \    v:val, 'char', &encoding), '\\r$', '', '')")
 
   if unite#util#is_windows()
     call map(lines,
@@ -519,7 +523,8 @@ function! s:source_file_neovim.async_gather_candidates(args, context) "{{{
   endif
 
   let continuation = a:context.source__continuation
-  let candidates = unite#helper#paths2candidates(job.candidates[: -2])
+  let candidates = unite#helper#ignore_candidates(
+        \ unite#helper#paths2candidates(job.candidates[: -2]), a:context)
   let job.candidates = job.candidates[-1:]
 
   if job.eof
