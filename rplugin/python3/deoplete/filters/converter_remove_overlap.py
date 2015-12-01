@@ -1,5 +1,5 @@
 # ============================================================================
-# FILE: sorter_rank.py
+# FILE: converter_remove_overlap.py
 # AUTHOR: Shougo Matsushita <Shougo.Matsu at gmail.com>
 # License: MIT license  {{{
 #     Permission is hereby granted, free of charge, to any person obtaining
@@ -23,20 +23,35 @@
 # }}}
 # ============================================================================
 
+import re
 from .base import Base
 
 
 class Filter(Base):
-
     def __init__(self, vim):
         Base.__init__(self, vim)
 
-        self.name = 'sorter_rank'
-        self.description = 'rank sorter'
+        self.name = 'converter_remove_overlap'
+        self.description = 'remove overlap converter'
 
     def filter(self, context):
-        complete_str = context['complete_str'].lower()
-        input_len = len(complete_str)
-        return sorted(context['candidates'],
-                      key=lambda x: abs(x['word'].lower().find(
-                          complete_str, 0, input_len)))
+        m = re.match('\S+', context['next_input'])
+        if not m:
+            return context['candidates']
+        next = m.group(0)
+        for [overlap, candidate] in [
+                [x, y] for x, y
+                in [[overlap_length(x['word'], next), x]
+                    for x in context['candidates']] if x > 0]:
+            if 'abbr' not in candidate:
+                candidate['abbr'] = candidate['word']
+            candidate['word'] = candidate['word'][: -overlap]
+        return [x for x in context['candidates']
+                if x['word'] != context['complete_str']]
+
+
+def overlap_length(left, right):
+    pos = len(right)
+    while pos > 0 and not left.endswith(right[: pos]):
+        pos -= 1
+    return pos
