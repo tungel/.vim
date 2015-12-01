@@ -6,19 +6,19 @@ A Vim wrapper for running tests on different granularities.
 
 Currently the following testing frameworks are supported:
 
-| Language       | Frameworks                            | Identifiers                     |
-| :------------: | ------------------------------------- | ------------------------------- |
-| **Ruby**       | RSpec, [Minitest][minitest], Cucumber | `rspec`, `minitest`, `cucumber` |
-| **JavaScript** | Mocha, Jasmine                        | `mocha`, `jasmine`              |
-| **Python**     | Nose, PyTest, Django                  | `nose`, `pytest`, `djangotest`  |
-| **Elixir**     | ExUnit, ESpec                         | `exunit`, `espec`               |
-| **Go**         | Go                                    | `gotest`                        |
-| **Clojure**    | Fireplace.vim                         | `fireplacetest`                 |
-| **Shell**      | Bats                                  | `bats`                          |
-| **VimScript**  | VSpec, Vader.vim                      | `vspec`, `vader`                |
-| **Lua**        | Busted                                | `busted`                        |
-| **PHP**        | PHPUnit, Behat, PHPSpec               | `phpunit`, `behat`, `phpspec`   |
-| **Java**       | Maven                                 | `maventest`                     |
+| Language       | Frameworks                            | Identifiers                                  |
+| :------------: | ------------------------------------- | -------------------------------              |
+| **Ruby**       | RSpec, [Minitest][minitest], Cucumber | `rspec`, `minitest`, `cucumber`              |
+| **JavaScript** | Mocha, Jasmine                        | `mocha`, `jasmine`                           |
+| **Python**     | Nose, PyTest, Django                  | `nose`, `pytest`, `djangotest`, `djangonose` |
+| **Elixir**     | ExUnit, ESpec                         | `exunit`, `espec`                            |
+| **Go**         | Go                                    | `gotest`                                     |
+| **Clojure**    | Fireplace.vim                         | `fireplacetest`                              |
+| **Shell**      | Bats                                  | `bats`                                       |
+| **VimScript**  | VSpec, Vader.vim                      | `vspec`, `vader`                             |
+| **Lua**        | Busted                                | `busted`                                     |
+| **PHP**        | PHPUnit, Behat, PHPSpec               | `phpunit`, `behat`, `phpspec`                |
+| **Java**       | Maven                                 | `maventest`                                  |
 
 ## Idea
 
@@ -87,8 +87,8 @@ let test#strategy = "dispatch"
 | [**Vimux**](https://github.com/benmills/vimux)                                  | `vimux`    | Runs test commands in a small tmux pane at the bottom of your terminal.          |
 | [**Tslime.vim**](https://github.com/kikijump/tslime.vim)                        | `tslime`   | Runs test commands in a tmux pane you specify.                                   |
 | [**Vim&nbsp;Tmux&nbsp;Runner**](https://github.com/christoomey/vim-tmux-runner) | `vtr`      | Runs test commands in a small tmux pane.                                         |
-| **Terminal.app**                                                                | `terminal` | Sends test commands to Terminal.app (useful in MacVim GUI).                      |
-| **iTerm2.app**                                                                  | `iterm`    | Sends test commands to iTerm2.app (useful in MacVim GUI).                        |
+| **Terminal.app**                                                                | `terminal` | Sends test commands to Terminal (useful in MacVim GUI).                          |
+| **iTerm2.app**                                                                  | `iterm`    | Sends test commands to iTerm2 >= 2.9 (useful in MacVim GUI).                     |
 | **Vagrant**                                                                     | `vagrant`  | Runs test commands with `vagrant ssh`.                                           |
 
 ### Custom Strategies
@@ -184,10 +184,7 @@ the first available will be chosen, but you can force a specific one:
 
 ``` vim
 let test#python#runner = 'pytest'
-" or
-let test#python#runner = 'nose'
-" or
-let test#python#runner = 'djangotest'
+" Runners available are 'pytest', 'nose', 'djangotest' and 'djangonose'
 ```
 
 ## Extending
