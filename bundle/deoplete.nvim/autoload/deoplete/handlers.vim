@@ -27,12 +27,10 @@ function! deoplete#handlers#_init() abort "{{{
   augroup deoplete
     autocmd InsertLeave * call s:on_insert_leave()
     autocmd CompleteDone * call s:complete_done()
-  augroup END
 
-  for event in ['TextChangedI', 'InsertEnter']
-    execute 'autocmd deoplete' event '*'
-          \ 'call s:completion_begin("' . event . '")'
-  endfor
+    autocmd TextChangedI * call s:completion_begin("TextChangedI")
+    autocmd InsertEnter * call s:completion_begin("InsertEnter")
+  augroup END
 endfunction"}}}
 
 function! s:completion_begin(event) abort "{{{
@@ -52,29 +50,38 @@ function! s:completion_begin(event) abort "{{{
   let g:deoplete#_context.position = context.position
 
   " Call omni completion
-  for pattern in deoplete#util#convert2list(
-        \ deoplete#util#get_buffer_config(
-        \ context.filetype,
-        \ 'b:deoplete_omni_patterns',
-        \ 'g:deoplete#omni_patterns',
-        \ 'g:deoplete#_omni_patterns'))
-    if deoplete#util#is_eskk_convertion()
-          \ || (pattern != '' && &l:omnifunc != ''
-          \ && context.input =~# '\%('.pattern.'\)$')
-      call deoplete#mappings#_set_completeopt()
-      call feedkeys("\<C-x>\<C-o>", 'n')
-      return
-    endif
+  for filetype in context.filetypes
+    for pattern in deoplete#util#convert2list(
+          \ deoplete#util#get_buffer_config(filetype,
+          \ 'b:deoplete_omni_patterns',
+          \ 'g:deoplete#omni_patterns',
+          \ 'g:deoplete#_omni_patterns'))
+      if deoplete#util#is_eskk_convertion()
+            \ || (pattern != '' && &l:omnifunc != ''
+            \ && context.input =~# '\%('.pattern.'\)$')
+        call deoplete#mappings#_set_completeopt()
+        call feedkeys("\<C-x>\<C-o>", 'n')
+        return
+      endif
+    endfor
   endfor
 
   call rpcnotify(g:deoplete#_channel_id, 'completion_begin', context)
 endfunction"}}}
 
 function! s:on_insert_leave() abort "{{{
+  if exists('g:deoplete#_context.saved_completeopt')
+    let &completeopt = g:deoplete#_context.saved_completeopt
+    unlet g:deoplete#_context.saved_completeopt
+  endif
   let g:deoplete#_context = {}
 endfunction"}}}
 
 function! s:complete_done() abort "{{{
+  if exists('g:deoplete#_context.saved_completeopt')
+    let &completeopt = g:deoplete#_context.saved_completeopt
+    unlet g:deoplete#_context.saved_completeopt
+  endif
   let g:deoplete#_context.position = getpos('.')
 endfunction"}}}
 

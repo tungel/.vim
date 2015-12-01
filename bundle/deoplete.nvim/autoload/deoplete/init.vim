@@ -49,6 +49,7 @@ function! deoplete#init#enable() abort "{{{
   endif
 
   if &completeopt !~# 'noinsert\|noselect'
+    let save_completeopt = &completeopt
     try
       set completeopt+=noselect
     catch
@@ -57,6 +58,8 @@ function! deoplete#init#enable() abort "{{{
       call deoplete#util#print_error(
             \ 'Please update neovim to latest version.')
       return
+    finally
+      let &completeopt = save_completeopt
     endtry
   endif
 
@@ -84,7 +87,7 @@ function! deoplete#init#_variables() abort "{{{
   call deoplete#util#set_default(
         \ 'g:deoplete#enable_ignore_case', &ignorecase)
   call deoplete#util#set_default(
-        \ 'g:deoplete#enable_smart_case', &ignorecase)
+        \ 'g:deoplete#enable_smart_case', &smartcase)
   call deoplete#util#set_default(
         \ 'g:deoplete#auto_completion_start_length', 2)
   call deoplete#util#set_default(
@@ -123,23 +126,23 @@ function! deoplete#init#_variables() abort "{{{
   call deoplete#util#set_pattern(
         \ g:deoplete#_keyword_patterns,
         \ '_',
-        \ '[a-zA-Z_]\w*')
+        \ '[a-zA-Z_]\k*')
   "}}}
 
   " Initialize omni completion pattern. "{{{
   " Note: HTML omni func use search().
   call deoplete#util#set_pattern(
-        \ g:deoplete#omni_patterns,
-        \ 'html,xhtml,xml,markdown,mkd', ['<[^>]*'])
+        \ g:deoplete#_omni_patterns,
+        \ 'html,xhtml,xml,markdown,mkd', ['<', '<[^>]*\s[[:alnum:]-]*'])
   " Note: vim-go and vim-javacomplete2 moves cursor.
   call deoplete#util#set_pattern(
-        \ g:deoplete#omni_patterns,
+        \ g:deoplete#_omni_patterns,
         \ 'go,java', ['[^. \t0-9]\.\w*'])
   call deoplete#util#set_pattern(
-        \ g:deoplete#omni_patterns,
+        \ g:deoplete#_omni_patterns,
         \ 'c', ['[^. \t0-9]\.\w*', '[^. \t0-9]->\w*'])
   call deoplete#util#set_pattern(
-        \ g:deoplete#omni_patterns,
+        \ g:deoplete#_omni_patterns,
         \ 'cpp', ['[^. \t0-9]\.\w*', '[^. \t0-9]->\w*',
         \         '[a-zA-Z_]\w*::\w*'])
 
@@ -186,9 +189,11 @@ function! deoplete#init#_context(event, sources) abort "{{{
   let filetype = (exists('*context_filetype#get_filetype') ?
         \   context_filetype#get_filetype() :
         \   (&filetype == '' ? 'nothing' : &filetype))
-  let filetypes = (exists('*context_filetype#get_filetypes') ?
+  let filetypes = exists('*context_filetype#get_filetypes') ?
         \   context_filetype#get_filetypes() :
-        \   (&filetype == '' ? ['nothing'] : [&filetype]))
+        \   &filetype == '' ? ['nothing'] :
+        \                     deoplete#util#uniq([&filetype]
+        \                          + split(&filetype, '\.'))
 
   let sources = a:sources
   if a:event !=# 'Manual' && empty(sources)
@@ -202,10 +207,17 @@ function! deoplete#init#_context(event, sources) abort "{{{
         \   'g:deoplete#keyword_patterns',
         \   'g:deoplete#_keyword_patterns')), '|')
 
+  " Convert keyword pattern.
+  let pattern = deoplete#util#vimoption2python(
+        \ &l:iskeyword . (&l:lisp ? ',-' : ''))
+  let keyword_patterns = substitute(keyword_patterns,
+        \ '\\k', '\=pattern', 'g')
+
   return {
         \ 'changedtick': b:changedtick,
         \ 'event': a:event,
         \ 'input': deoplete#util#get_input(a:event),
+        \ 'next_input': deoplete#util#get_next_input(a:event),
         \ 'complete_str': '',
         \ 'position': getpos('.'),
         \ 'filetype': filetype,

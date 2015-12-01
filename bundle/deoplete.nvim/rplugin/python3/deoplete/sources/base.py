@@ -1,4 +1,4 @@
-#=============================================================================
+# ============================================================================
 # FILE: base.py
 # AUTHOR: Shougo Matsushita <Shougo.Matsu at gmail.com>
 # License: MIT license  {{{
@@ -21,12 +21,14 @@
 #     TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 #     SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 # }}}
-#=============================================================================
+# ============================================================================
 
 import re
 from abc import abstractmethod
 
+
 class Base(object):
+
     def __init__(self, vim):
         self.vim = vim
         self.name = 'base'
@@ -35,16 +37,16 @@ class Base(object):
         self.min_pattern_length = -1
         self.matchers = ['matcher_fuzzy']
         self.sorters = ['sorter_rank']
-        self.converters = []
+        self.converters = ['converter_remove_overlap']
         self.filetypes = []
         self.is_bytepos = False
         self.rank = 100
 
     def get_complete_position(self, context):
-        m = re.search('('+context['keyword_patterns']+')$', context['input'])
+        m = re.search(
+            '(' + context['keyword_patterns'] + ')$', context['input'])
         return m.start() if m else -1
 
     @abstractmethod
     def gather_candidate(self, context):
         pass
-
