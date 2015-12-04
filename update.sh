@@ -70,8 +70,25 @@ git subtree pull --prefix bundle/tabular https://github.com/godlygeek/tabular.gi
 git status
 git subtree pull --prefix bundle/tagbar https://github.com/majutsushi/tagbar.git master --squash
 
+# Clojure {{{
 git status
 git subtree pull --prefix bundle/vim-fireplace https://github.com/tpope/vim-fireplace.git master --squash
+
+git status
+git subtree pull --prefix bundle/vim-clojure-static https://github.com/guns/vim-clojure-static.git master --squash
+
+git status
+git subtree pull --prefix bundle/vim-leiningen https://github.com/tpope/vim-leiningen master --squash
+
+git status
+git subtree pull --prefix bundle/vim-dispatch https://github.com/tpope/vim-dispatch.git master --squash
+
+git status
+git subtree pull --prefix bundle/vim-sexp https://github.com/guns/vim-sexp master --squash
+
+git status
+git subtree pull --prefix bundle/vim-sexp-mappings-for-regular-people https://github.com/tpope/vim-sexp-mappings-for-regular-people master --squash
+# end Clojure }}}
 
 git status
 git subtree pull --prefix bundle/vimux git@github.com:benmills/vimux.git master --squash
