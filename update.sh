@@ -117,6 +117,9 @@ git subtree pull --prefix bundle/neoterm https://github.com/kassio/neoterm.git m
 git status
 git subtree pull --prefix bundle/vim-follow-my-lead https://github.com/ktonga/vim-follow-my-lead.git master --squash
 
+git status
+git subtree pull --prefix bundle/vim-gitgutter https://github.com/airblade/vim-gitgutter.git master --squash
+
 # {{{ color scheme
 git status
 git subtree pull --prefix bundle/gruvbox https://github.com/morhetz/gruvbox.git master --squash
