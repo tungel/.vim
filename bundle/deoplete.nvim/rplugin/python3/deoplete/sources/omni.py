@@ -40,9 +40,16 @@ class Source(Base):
         self.is_bytepos = True
         self.min_pattern_length = 0
 
+        self.__prev_pos = -1
+        self.__prev_line = ''
+        self.__prev_candidates = []
+
     def get_complete_position(self, context):
-        # Check member prefix pattern.
-        if self.vim.eval('&l:omnifunc') == '':
+        if self.__use_previous_result(context):
+            return self.__prev_pos
+
+        omnifunc = self.vim.eval('&l:omnifunc')
+        if omnifunc == '' or omnifunc == 'ccomplete#Complete':
             return -1
         for input_pattern in convert2list(
             get_default_buffer_config(
@@ -56,24 +63,37 @@ class Source(Base):
                 continue
 
             try:
-                complete_pos = self.vim.call(
-                    self.vim.eval('&l:omnifunc'), 1, '')
+                complete_pos = self.vim.call(omnifunc, 1, '')
             except:
                 error(self.vim, 'Error occurred calling omnifunction: '
-                      + self.vim.eval('&l:omnifunc'))
+                      + omnifunc)
 
                 return -1
             return complete_pos
         return -1
 
     def gather_candidates(self, context):
+        if self.__use_previous_result(context):
+            return self.__prev_candidates
+
+        omnifunc = self.vim.eval('&l:omnifunc')
         try:
             candidates = self.vim.call(
-                self.vim.eval('&l:omnifunc'), 0, context['complete_str'])
+                omnifunc, 0, context['complete_str'])
         except:
             error(self.vim, 'Error occurred calling omnifunction: '
-                  + self.vim.eval('&l:omnifunc'))
+                  + omnifunc)
 
             candidates = []
+        self.__prev_pos = context['complete_position']
+        self.__prev_line = self.vim.current.buffer[
+            self.vim.current.window.cursor[0] - 1]
+        self.__prev_candidates = candidates
 
         return candidates
+
+    def __use_previous_result(self, context):
+        return (re.sub(r'\w+$', '', context['input']) ==
+                re.sub(r'\w+$', '', self.__prev_line)
+                and context['input'].find(self.__prev_line) == 0
+                and self.__prev_candidates)

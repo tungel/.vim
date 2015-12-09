@@ -25,6 +25,7 @@
 
 import re
 from abc import abstractmethod
+import deoplete.util
 
 
 class Base(object):
@@ -50,3 +51,6 @@ class Base(object):
     @abstractmethod
     def gather_candidate(self, context):
         pass
+
+    def debug(self, expr):
+        deoplete.util.debug(self.vim, expr)

@@ -93,7 +93,7 @@ function! deoplete#init#_variables() abort "{{{
   call deoplete#util#set_default(
         \ 'g:deoplete#disable_auto_complete', 0)
   call deoplete#util#set_default(
-        \ 'g:deoplete#enable_auto_pairs', 1)
+        \ 'g:deoplete#delimiters', ['/', '.', '::', ':', '#'])
 
   call deoplete#util#set_default(
         \ 'g:deoplete#keyword_patterns', {})
@@ -134,18 +134,17 @@ function! deoplete#init#_variables() abort "{{{
   call deoplete#util#set_pattern(
         \ g:deoplete#_omni_patterns,
         \ 'html,xhtml,xml,markdown,mkd', ['<', '<[^>]*\s[[:alnum:]-]*'])
-  " Note: vim-go and vim-javacomplete2 moves cursor.
+
   call deoplete#util#set_pattern(
-        \ g:deoplete#_omni_patterns,
-        \ 'go,java', ['[^. \t0-9]\.\w*'])
-  call deoplete#util#set_pattern(
-        \ g:deoplete#_omni_patterns,
+        \ g:deoplete#omni#input_patterns,
         \ 'c', ['[^. \t0-9]\.\w*', '[^. \t0-9]->\w*'])
   call deoplete#util#set_pattern(
-        \ g:deoplete#_omni_patterns,
+        \ g:deoplete#omni#input_patterns,
         \ 'cpp', ['[^. \t0-9]\.\w*', '[^. \t0-9]->\w*',
         \         '[a-zA-Z_]\w*::\w*'])
-
+  call deoplete#util#set_pattern(
+        \ g:deoplete#omni#input_patterns,
+        \ 'go,java', ['[^. \t0-9]\.\w*'])
   call deoplete#util#set_pattern(
         \ g:deoplete#omni#_input_patterns,
         \ 'javascript', ['[^. \t0-9]\.([a-zA-Z_]\w*)?'])
@@ -165,6 +164,9 @@ function! deoplete#init#_variables() abort "{{{
   " Initialize member prefix pattern. "{{{
   call deoplete#util#set_pattern(
         \ g:deoplete#member#_prefix_patterns,
+        \ '_', '\.')
+  call deoplete#util#set_pattern(
+        \ g:deoplete#member#_prefix_patterns,
         \ 'c,objc', ['\.', '->'])
   call deoplete#util#set_pattern(
         \ g:deoplete#member#_prefix_patterns,
@@ -172,10 +174,6 @@ function! deoplete#init#_variables() abort "{{{
   call deoplete#util#set_pattern(
         \ g:deoplete#member#_prefix_patterns,
         \ 'perl,php', ['->'])
-  call deoplete#util#set_pattern(
-        \ g:deoplete#member#_prefix_patterns,
-        \ 'cs,java,javascript,d,vim,ruby,python,perl6,scala,vb',
-        \ '\.')
   call deoplete#util#set_pattern(
         \ g:deoplete#member#_prefix_patterns,
         \ 'ruby', ['\.', '::'])
