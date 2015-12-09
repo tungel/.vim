@@ -116,25 +116,21 @@ g:deoplete#enable_ignore_case
 		variable controls whether deoplete ignores the upper-
 		and lowercase.  If it is 1, deoplete ignores case.
 
-		Default value is 'ignorecase'.
+		Default value: 'ignorecase'
 
 				*g:deoplete#enable_smart_case*
 g:deoplete#enable_smart_case
 		When a capital letter is included in input, deoplete does
 		not ignore the upper- and lowercase.
 
-		Default value is 'smartcase'.
+		Default value: 'smartcase'
 
 				*g:deoplete#auto_completion_start_length*
 g:deoplete#auto_completion_start_length
 		This variable controls the number of the input completion
 		at the time of key input automatically.
 
-		Default value is 2.
-
-				*g:deoplete#enable_auto_pairs*
-g:deoplete#enable_auto_pairs
-		If it is enabled, close the parenthesis automatically.
+		Default value: 2
 
 				*g:deoplete#disable_auto_complete*
 g:deoplete#disable_auto_complete
@@ -142,11 +138,17 @@ g:deoplete#disable_auto_complete
 		it is 1, automatic completion becomes invalid, but can use the
 		manual completion by |deoplete#mappings#manual_complete()|.
 
-		Default value is 0.
+		Default value: 0
 
 				*b:deoplete_disable_auto_complete*
 b:deoplete_disable_auto_complete
 		Buffer local variable of |g:deoplete#disable_auto_complete|.
+
+				*g:deoplete#delimiters*
+g:deoplete#delimiters
+		Delimiters list.
+
+		Default value: ['/', '.', '::', ':', '#']
 
 				*g:deoplete#keyword_patterns*
 g:deoplete#keyword_patterns
@@ -159,7 +161,7 @@ g:deoplete#keyword_patterns
 		let g:deoplete#keyword_patterns = {}
 		let g:deoplete#keyword_patterns.tex = '\\?[a-zA-Z_]\w*'
 <
-		Default value is in g:deoplete#_keyword_patterns.
+		Default value: in g:deoplete#_keyword_patterns
 
 				*b:deoplete_keyword_patterns*
 b:deoplete_keyword_patterns
@@ -181,7 +183,7 @@ g:deoplete#omni_patterns
 		\ ['[^. *\t]\.\w*', '\h\w*::']
 		let g:deoplete#omni_patterns.java = '[^. *\t]\.\w*'
 <
-		Default value is in g:deoplete#_omni_patterns.
+		Default value: in g:deoplete#_omni_patterns
 
 				*b:deoplete_omni_patterns*
 b:deoplete_omni_patterns
@@ -193,7 +195,8 @@ g:deoplete#sources		*g:deoplete#sources*
 		"_", the value will be used for default filetypes.  For
 		example, you can load some sources in C++ filetype.
 		If the value is [], it will load all sources.
-		Default value is {}.
+
+		Default value: {}
 >
 		" Examples:
 		let g:deoplete#sources = {}
@@ -209,7 +212,7 @@ b:deoplete_sources		*b:deoplete_sources*
 <
 g:deoplete#ignore_sources	*g:deoplete#ignore_sources*
 		It is a dictionary to decide ignore source names.
-		Default value is {}.
+		Default value: {}
 
 b:deoplete_ignore_sources	*b:deoplete_ignore_sources*
 		Buffer local variable of |g:deoplete#ignore_sources|.
@@ -223,7 +226,7 @@ g:deoplete#member#prefix_patterns
 		does not complete member candidates.
 		Note: It is Python3 regexp.
 
-		Default value is in g:deoplete#member#_prefix_patterns.
+		Default value: in g:deoplete#member#_prefix_patterns
 
 				*b:deoplete_member_prefix_patterns*
 b:deoplete_member_prefix_patterns
@@ -245,7 +248,7 @@ g:deoplete#omni#input_patterns
 		\ ['[^. *\t]\.\w*', '[a-zA-Z_]\w*::']
 		let g:deoplete#omni#input_patterns.java = '[^. *\t]\.\w*'
 <
-		Default value is in g:deoplete#omni#_input_patterns.
+		Default value: in g:deoplete#omni#_input_patterns
 
 				*b:deoplete_omni_input_patterns*
 b:deoplete_omni_input_patterns
@@ -261,8 +264,8 @@ deoplete#initialize()			*deoplete#initialize()*
 		User customization for deoplete must be set before
 		initialization of deoplete.
 
-deoplete#custom#source({source-name}, {option-name}, {value})
 						*deoplete#custom#source()*
+deoplete#custom#source({source-name}, {option-name}, {value})
 		Set {source-name} source specialized {option-name}
 		to {value}. You may specify multiple sources with
 		separating "," in {source-name}.
@@ -272,9 +275,13 @@ deoplete#custom#source({source-name}, {option-name}, {value})
 		" Examples:
 		" Use head matcher instead of fuzzy matcher
 		call deoplete#custom#set('_', 'matchers', ['matcher_head'])
-		" Disable auto completion in buffer source
+		" Use auto delimiter feature
+		call deoplete#custom#set('_', 'converters',
+		\ ['converter_auto_delimiter', 'remove_overlap'])
 		call deoplete#custom#set('buffer',
 		\ 'min_pattern_length', 9999)
+		" Change the source rank
+		call deoplete#custom#set('buffer', 'rank', 9999)
 <
 ------------------------------------------------------------------------------
 KEY MAPPINGS 					*deoplete-key-mappings*
@@ -390,6 +397,10 @@ sorter_rank	Matched rank order sorter.  The higher the head matched word.
 converter_remove_overlap
 		It removes overlapped text in a candidate's word.
 
+				*deoplete-filter-converter_auto_delimiter*
+converter_auto_delimiter
+		It adds delimiter characters in a candidate's word.
+
 ==============================================================================
 CREATE SOURCE					*deoplete-create-source*
 
@@ -492,8 +503,8 @@ gather_candidates	Function	(Required)
 			Here, {context} is the context information when the
 			source is called(|deoplete-notation-{context}|).
 
-			*deoplete-source-attribute-source__*
-source__{name}		(Unknown)	(Optional)
+			*deoplete-source-attribute-__*
+__{name}		(Unknown)	(Optional)
 			Additional source information.
 			Note: Recommend sources save variables instead of
 			global variables.
@@ -552,6 +563,36 @@ CREATE FILTER					*deoplete-create-filter*
 
 ==============================================================================
 EXTERNAL SOURCES				*deoplete-external-sources*
+
+neco-vim: vim source
+https://github.com/Shougo/neco-vim
+
+neosnippet: neosnippet source
+https://github.com/Shougo/neosnippet.vim
+
+neoinclude: include and file/include sources
+https://github.com/Shougo/neoinclude.vim
+
+neco-syntax: syntax source
+https://github.com/Shougo/neco-syntax
+
+vimshell: vimshell source
+https://github.com/Shougo/vimshell.vim
+
+neco-ghc: ghc source
+https://github.com/eagletmt/neco-ghc
+
+vim-racer: racer source
+https://github.com/racer-rust/vim-racer
+
+UltiSnips source: ultisnips source
+https://github.com/SirVer/ultisnips
+
+clang-complete: clang_complete source
+https://github.com/Rip-Rip/clang_complete
+
+deoplete-go: go source
+https://github.com/zchee/deoplete-go
 
 ==============================================================================
 FAQ						*deoplete-faq*
