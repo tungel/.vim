@@ -118,6 +118,10 @@ function! deoplete#init#_variables() abort "{{{
   call deoplete#util#set_default(
         \ 'g:deoplete#omni#_input_patterns', {})
   call deoplete#util#set_default(
+        \ 'g:deoplete#omni#functions', {})
+  call deoplete#util#set_default(
+        \ 'g:deoplete#omni#_functions', { '_': '' })
+  call deoplete#util#set_default(
         \ 'g:deoplete#member#prefix_patterns', {})
   call deoplete#util#set_default(
         \ 'g:deoplete#member#_prefix_patterns', {})
@@ -136,14 +140,14 @@ function! deoplete#init#_variables() abort "{{{
         \ 'html,xhtml,xml,markdown,mkd', ['<', '<[^>]*\s[[:alnum:]-]*'])
 
   call deoplete#util#set_pattern(
-        \ g:deoplete#omni#input_patterns,
+        \ g:deoplete#omni#_input_patterns,
         \ 'c', ['[^. \t0-9]\.\w*', '[^. \t0-9]->\w*'])
   call deoplete#util#set_pattern(
-        \ g:deoplete#omni#input_patterns,
+        \ g:deoplete#omni#_input_patterns,
         \ 'cpp', ['[^. \t0-9]\.\w*', '[^. \t0-9]->\w*',
         \         '[a-zA-Z_]\w*::\w*'])
   call deoplete#util#set_pattern(
-        \ g:deoplete#omni#input_patterns,
+        \ g:deoplete#omni#_input_patterns,
         \ 'go,java', ['[^. \t0-9]\.\w*'])
   call deoplete#util#set_pattern(
         \ g:deoplete#omni#_input_patterns,
@@ -159,6 +163,9 @@ function! deoplete#init#_variables() abort "{{{
   call deoplete#util#set_pattern(
         \ g:deoplete#omni#_input_patterns,
         \ 'ruby', ['[^. \t0-9]\.\w*', '[a-zA-Z_]\w*::\w*'])
+  call deoplete#util#set_pattern(
+        \ g:deoplete#omni#_input_patterns,
+        \ 'lua', ['\w+[.:]', 'require\s*\(?["'']\w*'])
   "}}}
 
   " Initialize member prefix pattern. "{{{
@@ -200,7 +207,7 @@ function! deoplete#init#_context(event, sources) abort "{{{
   endif
 
   let keyword_patterns = join(deoplete#util#convert2list(
-        \   deoplete#util#get_default_buffer_config(
+        \   deoplete#util#get_buffer_config(
         \   filetype, 'b:deoplete_keyword_patterns',
         \   'g:deoplete#keyword_patterns',
         \   'g:deoplete#_keyword_patterns')), '|')
@@ -228,12 +235,12 @@ function! deoplete#init#_context(event, sources) abort "{{{
 endfunction"}}}
 
 function! s:get_sources(filetype) abort "{{{
-  let sources = deoplete#util#get_default_buffer_config(
+  let sources = deoplete#util#get_buffer_config(
         \ a:filetype,
         \ 'b:deoplete_sources',
         \ 'g:deoplete#sources',
         \ '{}', [])
-  let ignore_sources = deoplete#util#get_default_buffer_config(
+  let ignore_sources = deoplete#util#get_buffer_config(
         \ a:filetype,
         \ 'b:deoplete_ignore_sources', 'g:deoplete#ignore_sources',
         \ '{}', [])
