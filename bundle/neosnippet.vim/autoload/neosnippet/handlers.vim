@@ -27,14 +27,8 @@ let s:save_cpo = &cpo
 set cpo&vim
 
 function! neosnippet#handlers#_complete_done() "{{{
-  if empty(v:completed_item)
-    return
-  endif
-
-  let snippets = neosnippet#helpers#get_snippets()
-  if has_key(snippets, v:completed_item.word)
-        \ && !get(snippets[v:completed_item.word], 'oneshot', 0)
-    " Don't overwrite exists snippets
+  if empty(v:completed_item) || !g:neosnippet#enable_complete_done
+        \ || v:completed_item.word !~ '($'
     return
   endif
 
@@ -50,44 +44,46 @@ function! neosnippet#handlers#_complete_done() "{{{
     let abbr = split(item.info, '\n')[0]
   endif
 
-  if abbr !~ '(.*)'
+  if abbr !~ '('
     return
   endif
 
   " Make snippet arguments
   let cnt = 1
-  let snippet = item.word
-  if snippet !~ '()\?$'
+  let snippet = ''
+  if item.word !~ '()\?$'
     let snippet .= '('
   endif
 
   for arg in split(substitute(neosnippet#handlers#_get_in_paren(abbr),
         \ '(\zs.\{-}\ze)', '', 'g'), '[^[]\zs\s*,\s*')
+    if arg ==# 'self' && &filetype ==# 'python'
+      " Ignore self argument
+      continue
+    endif
+
     if cnt != 1
       let snippet .= ', '
     endif
     let snippet .= printf('${%d:#:%s}', cnt, escape(arg, '{}'))
     let cnt += 1
   endfor
-  if snippet !~ ')$'
-    let snippet .= ')'
-  endif
+
   if s:is_auto_pairs()
     " Remove auto pair from the snippet
     let snippet = substitute(snippet, ')$', '', '')
+  else
+    if snippet =~ '($'
+      let snippet .= '${'. cnt .'})'
+    elseif snippet !~ ')$'
+      let snippet .= ')'
+    endif
+
+    let snippet .= '${0}'
   endif
-  let snippet .= '${0}'
 
-  let options = neosnippet#parser#_initialize_snippet_options()
-  let options.word = 1
-  let options.oneshot = 1
-
-  let neosnippet = neosnippet#variables#current_neosnippet()
-  let trigger = item.word
-  let neosnippet.snippets[trigger] =
-        \ neosnippet#parser#_initialize_snippet(
-        \   { 'name' : trigger, 'word' : snippet, 'options' : options },
-        \   '', 0, '', trigger)
+  let [cur_text, col, _] = neosnippet#mappings#_pre_trigger()
+  call neosnippet#view#_insert(snippet, {}, cur_text, col)
 endfunction"}}}
 
 function! neosnippet#handlers#_cursor_moved() "{{{
@@ -117,22 +113,23 @@ function! neosnippet#handlers#_get_in_paren(str) abort "{{{
         continue
       endif
     elseif c == ')'
-      if level == 1
+      if level == 1 && s != ''
         return s
       else
         let level -= 1
       endif
     endif
 
-    let s .= c
+    if level > 0
+      let s .= c
+    endif
   endfor
 
-  return s
+  return ''
 endfunction"}}}
 
 function! s:is_auto_pairs() abort "{{{
-  return get(g:, 'deoplete#enable_auto_pairs', 0)
-        \ || get(g:, 'neocomplete#enable_auto_pairs', 0)
+  return get(g:, 'neopairs#enable', 0)
 endfunction"}}}
 
 let &cpo = s:save_cpo
