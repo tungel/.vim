@@ -36,7 +36,6 @@ package_list = {
   # end Clojure }}}
 
   'vimux' => 'git@github.com:benmills/vimux.git',
-  'uritality' => 'https://github.com/dmedvinsky/uritality.vim.git',
   'vim-table-mode' => 'https://github.com/dhruvasagar/vim-table-mode',
   'vim-commentary' => 'https://github.com/tpope/vim-commentary.git',
   'indentLine' => 'https://github.com/Yggdroot/indentLine.git',
