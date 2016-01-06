@@ -4,7 +4,7 @@ function! neoterm#new(...)
     exec "source " . globpath(&rtp, "autoload/neoterm.term.vim")
   end
 
-  let current_window = g:neoterm.split()
+  let current_window = g:neoterm.new_split()
   let handlers = len(a:000) ? a:1 : {}
 
   let instance = g:neoterm.term.new(g:neoterm.next_id(), handlers)
@@ -17,6 +17,18 @@ function! neoterm#new(...)
     silent exec current_window . "wincmd w | set noinsertmode"
   else
     startinsert
+  end
+endfunction
+
+function! neoterm#toggle()
+  if neoterm#tab_has_neoterm()
+    call g:neoterm.last().close()
+  else
+    if g:neoterm.has_any()
+      call g:neoterm.last().open()
+    else
+      call neoterm#new()
+    end
   end
 endfunction
 
