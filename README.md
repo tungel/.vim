@@ -8,26 +8,27 @@ REPL commands, opens a terminal and the proper REPL, if it's not opened.
 - NeoVim terminal helper functions/commands.
 - Wraps some test libs to run easilly within NeoVim terminal.
   - Running, Success, Failed: status on statusline supported (matching the test result #25):
-    ![test-status-line](https://cloud.githubusercontent.com/assets/120483/8212291/425189d2-14f1-11e5-8059-822eda0b702c.gif)
+  - ![test-status-line](https://cloud.githubusercontent.com/assets/120483/8212291/425189d2-14f1-11e5-8059-822eda0b702c.gif)
 - Wraps some REPL to receive current line or selection.
-- Many terminals support
-  ![many-terms](https://cloud.githubusercontent.com/assets/120483/8921869/fe459572-34b1-11e5-93c9-c3b6f3b44719.gif)
+- Many terminals support:
+  - ![many-terms](https://cloud.githubusercontent.com/assets/120483/8921869/fe459572-34b1-11e5-93c9-c3b6f3b44719.gif)
+
 
 ## test libs
 
 Run test libs with 3 different scopes:
 
-* all (`neoterm#test_runner('all')`):
+* all (`neoterm#test#run('all')`):
 
 Run all tests from the current project. For a Rails project with rspec, it's the
 command: `rspec`.
 
-* file (`neoterm#test_runner('file')`):
+* file (`neoterm#test#run('file')`):
 
 Run the current test file. For a Rails project with rspec, it's the command:
 `rspec spec/path/to/file_spec.rb`.
 
-* current (`neoterm#test_runner('current')`):
+* current (`neoterm#test#run('current')`):
 
 Run the nearst test in the current test file. For a Rails project with rspec,
 it's the command: `rspec spec/path/to/file_spec.rb:123`.
@@ -45,6 +46,7 @@ it's the command: `rspec spec/path/to/file_spec.rb:123`.
   * Status in statusline supported
 * go-lang test ([partially implemented](https://github.com/kassio/neoterm/pull/8))
 * nose ([partially implemented](https://github.com/kassio/neoterm/pull/9))
+* Cargo ([partially implemented](https://github.com/kassio/neoterm/pull/59))
 * npm
   * You can override the default command (`npm test`) using the
     `g:neoterm_npm_lib_cmd`

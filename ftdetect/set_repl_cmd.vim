@@ -21,4 +21,9 @@ aug set_repl_cmd
         \ elseif executable('python') |
         \   call neoterm#repl#set('python') |
         \ end
+  " JavaScript
+  au BufEnter *
+        \ if &filetype == 'javascript' && executable('node') |
+        \   call neoterm#repl#set('node') |
+        \ end
 aug END
