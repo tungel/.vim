@@ -27,59 +27,16 @@ let s:save_cpo = &cpo
 set cpo&vim
 
 function! neosnippet#handlers#_complete_done() "{{{
-  if empty(v:completed_item) || !g:neosnippet#enable_complete_done
-        \ || v:completed_item.word !~ '($'
+  if empty(v:completed_item)
+        \ || !g:neosnippet#enable_completed_snippet
+        \ || s:is_auto_pairs()
     return
   endif
 
-  let item = v:completed_item
-
-  let abbr = (item.abbr != '') ? item.abbr : item.word
-  if len(item.menu) > 5
-    " Combine menu.
-    let abbr .= ' ' . item.menu
-  endif
-
-  if item.info != ''
-    let abbr = split(item.info, '\n')[0]
-  endif
-
-  if abbr !~ '('
+  let snippet = neosnippet#parser#_get_completed_snippet(
+        \ v:completed_item, neosnippet#util#get_next_text())
+  if snippet == ''
     return
-  endif
-
-  " Make snippet arguments
-  let cnt = 1
-  let snippet = ''
-  if item.word !~ '()\?$'
-    let snippet .= '('
-  endif
-
-  for arg in split(substitute(neosnippet#handlers#_get_in_paren(abbr),
-        \ '(\zs.\{-}\ze)', '', 'g'), '[^[]\zs\s*,\s*')
-    if arg ==# 'self' && &filetype ==# 'python'
-      " Ignore self argument
-      continue
-    endif
-
-    if cnt != 1
-      let snippet .= ', '
-    endif
-    let snippet .= printf('${%d:#:%s}', cnt, escape(arg, '{}'))
-    let cnt += 1
-  endfor
-
-  if s:is_auto_pairs()
-    " Remove auto pair from the snippet
-    let snippet = substitute(snippet, ')$', '', '')
-  else
-    if snippet =~ '($'
-      let snippet .= '${'. cnt .'})'
-    elseif snippet !~ ')$'
-      let snippet .= ')'
-    endif
-
-    let snippet .= '${0}'
   endif
 
   let [cur_text, col, _] = neosnippet#mappings#_pre_trigger()
@@ -98,34 +55,23 @@ function! neosnippet#handlers#_cursor_moved() "{{{
   let expand_info = expand_stack[-1]
   if expand_info.begin_line == expand_info.end_line
         \ && line('.') != expand_info.begin_line
-    call neosnippet#commands#_clear_markers()
+    call neosnippet#view#_clear_markers(expand_info)
   endif
 endfunction"}}}
 
-function! neosnippet#handlers#_get_in_paren(str) abort "{{{
-  let s = ''
-  let level = 0
-  for c in split(a:str, '\zs')
-    if c == '('
-      let level += 1
+function! neosnippet#handlers#_all_clear_markers() "{{{
+  let pos = getpos('.')
 
-      if level == 1
-        continue
-      endif
-    elseif c == ')'
-      if level == 1 && s != ''
-        return s
-      else
-        let level -= 1
-      endif
-    endif
+  try
+    while !empty(neosnippet#variables#expand_stack())
+      call neosnippet#view#_clear_markers(
+            \ neosnippet#variables#expand_stack()[-1])
+    endwhile
+  finally
+    stopinsert
 
-    if level > 0
-      let s .= c
-    endif
-  endfor
-
-  return ''
+    call setpos('.', pos)
+  endtry
 endfunction"}}}
 
 function! s:is_auto_pairs() abort "{{{

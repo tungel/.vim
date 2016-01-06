@@ -42,7 +42,10 @@ call neosnippet#util#set_default(
 call neosnippet#util#set_default(
       \ 'g:neosnippet#enable_conceal_markers', 1)
 call neosnippet#util#set_default(
-      \ 'g:neosnippet#enable_complete_done', 0)
+      \ 'g:neosnippet#enable_completed_snippet', 0,
+      \ 'g:neosnippet#enable_complete_done')
+call neosnippet#util#set_default(
+      \ 'g:neosnippet#enable_auto_clear_markers', 1)
 "}}}
 
 function! neosnippet#expandable_or_jumpable() "{{{
@@ -80,6 +83,12 @@ function! neosnippet#get_placeholder_marker_pattern() "{{{
 endfunction"}}}
 function! neosnippet#get_placeholder_marker_substitute_pattern() "{{{
   return '\${\(\d\+\%(:.\{-}\)\?\\\@<!\)}'
+endfunction"}}}
+function! neosnippet#get_placeholder_marker_substitute_nonzero_pattern() "{{{
+  return '\${\([1-9]\d*\%(:.\{-}\)\?\\\@<!\)}'
+endfunction"}}}
+function! neosnippet#get_placeholder_marker_substitute_zero_pattern() "{{{
+  return '\${\(0\%(:.\{-}\)\?\\\@<!\)}'
 endfunction"}}}
 function! neosnippet#get_placeholder_marker_default_pattern() "{{{
   return '<`\d\+:\zs.\{-}\ze\\\@<!`>'

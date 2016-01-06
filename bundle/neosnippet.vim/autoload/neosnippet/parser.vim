@@ -37,8 +37,8 @@ function! neosnippet#parser#_parse_snippets(filename) "{{{
 
   let cache_dir = neosnippet#variables#data_dir()
   if s:Cache.check_old_cache(cache_dir, a:filename)
-    let snippets = s:parse(a:filename)
-    if len(snippets) > 5 && !neosnippet#util#is_sudo()
+    let [snippets, sourced] = s:parse(a:filename)
+    if len(snippets) > 5 && !neosnippet#util#is_sudo() && !sourced
       call s:Cache.writefile(
             \ cache_dir, a:filename, [string(snippets)])
     endif
@@ -71,6 +71,7 @@ function! s:parse(snippets_file) "{{{
   let snippet_dict = {}
   let linenr = 1
   let snippets = {}
+  let sourced = 0
 
   for line in readfile(a:snippets_file)
     if line =~ '^\h\w*.*\s$'
@@ -81,14 +82,20 @@ function! s:parse(snippets_file) "{{{
     if line =~ '^#'
       " Ignore.
     elseif line =~ '^include'
-      " Include snippets.
-      let filename = matchstr(line, '^include\s\+\zs.*$')
-
-      for snippets_file in split(globpath(join(
+      " Include snippets file.
+      for file in split(globpath(join(
             \ neosnippet#helpers#get_snippets_directory(), ','),
-            \ filename), '\n')
+            \ matchstr(line, '^include\s\+\zs.*$')), '\n')
         let snippets = extend(snippets,
-              \ neosnippet#parser#_parse_snippets(snippets_file))
+              \ neosnippet#parser#_parse_snippets(file))
+      endfor
+    elseif line =~ '^source'
+      " Source Vim script file.
+      for file in split(globpath(join(
+            \ neosnippet#helpers#get_snippets_directory(), ','),
+            \ matchstr(line, '^source\s\+\zs.*$')), '\n')
+        execute 'source' fnameescape(file)
+        let sourced = 1
       endfor
     elseif line =~ '^delete\s'
       let name = matchstr(line, '^delete\s\+\zs.*$')
@@ -128,7 +135,7 @@ function! s:parse(snippets_file) "{{{
           \ snippets, dup_check, a:snippets_file)
   endif
 
-  return snippets
+  return [snippets, sourced]
 endfunction"}}}
 
 function! s:parse_snippet_name(snippets_file, line, linenr, dup_check) "{{{
@@ -238,8 +245,11 @@ endfunction"}}}
 
 function! neosnippet#parser#_initialize_snippet(dict, path, line, pattern, name) "{{{
   let a:dict.word = substitute(a:dict.word, '\n\+$', '', '')
-  if a:dict.word !~
-        \ neosnippet#get_placeholder_marker_substitute_pattern()
+  if a:dict.word !~ '\n'
+        \ && a:dict.word !~
+        \    neosnippet#get_placeholder_marker_substitute_pattern().'$'
+        \ && a:dict.word !~
+        \    neosnippet#get_placeholder_marker_substitute_zero_pattern()
     " Add placeholder.
     let a:dict.word .= '${0}'
   endif
@@ -281,6 +291,128 @@ function! neosnippet#parser#_initialize_snippet_options() "{{{
         \ 'oneshot' : 0,
         \ }
 endfunction"}}}
+
+function! neosnippet#parser#_get_completed_snippet(completed_item, next_text) "{{{
+  let item = a:completed_item
+
+  " Set abbr
+  let abbr = (item.abbr != '') ? item.abbr : item.word
+  if len(item.menu) > 5
+    " Combine menu.
+    let abbr .= ' ' . item.menu
+  endif
+  if item.info != ''
+    let abbr = split(item.info, '\n')[0]
+  endif
+
+  let pairs = { '(' : ')', '{' : '}', '"' : '"' }
+  let word_pattern = neosnippet#util#escape_pattern(item.word)
+  let angle_pattern = word_pattern . '<.\+>(.*)'
+  let no_key = index(keys(pairs), item.word[-1:]) < 0
+  if no_key && abbr !~# word_pattern . '\%(<.\+>\)\?(.*)'
+    return ''
+  endif
+
+  let key = no_key ? '(' : item.word[-1:]
+  if a:next_text[:0] ==# key
+    " Disable auto pair
+    return ''
+  endif
+
+  let pair = pairs[key]
+
+  " Make snippet arguments
+  let cnt = 1
+  let snippet = ''
+
+  if no_key && abbr !~# angle_pattern
+    " Auto key
+    let snippet .= key
+  endif
+
+  if empty(filter(values(pairs), 'stridx(abbr, v:val) > 0'))
+    " Pairs not found pattern
+    let snippet .= '${' . cnt . '}'
+    let cnt += 1
+  endif
+
+  if abbr =~# angle_pattern
+    " Add angle analysis
+    let snippet .= '<'
+
+    let args = ''
+    for arg in split(substitute(
+          \ neosnippet#parser#_get_in_paren('<', '>', abbr),
+          \ '<\zs.\{-}\ze>', '', 'g'), '[^[]\zs\s*,\s*')
+      if args != '' && arg !=# '...'
+        let args .= ', '
+      endif
+      let args .= printf('${%d:#:%s%s}',
+            \ cnt, ((args != '' && arg ==# '...') ? ', ' : ''),
+            \ escape(arg, '{}'))
+      let cnt += 1
+    endfor
+    let snippet .= args
+    let snippet .= '>'
+
+    if no_key
+      let snippet .= key
+    endif
+  endif
+
+  let args = ''
+  for arg in split(substitute(
+        \ neosnippet#parser#_get_in_paren(key, pair, abbr),
+        \ key.'\zs.\{-}\ze'.pair, '', 'g'), '[^[]\zs\s*,\s*')
+    if key ==# '(' && arg ==# 'self' && &filetype ==# 'python'
+      " Ignore self argument
+      continue
+    endif
+
+    if args != '' && arg !=# '...'
+      let args .= ', '
+    endif
+    let args .= printf('${%d:#:%s%s}',
+          \ cnt, ((args != '' && arg ==# '...') ? ', ' : ''),
+          \ escape(arg, '{}'))
+    let cnt += 1
+  endfor
+  let snippet .= args
+
+  if a:next_text[:0] !=# pair
+    let snippet .= pair
+    let snippet .= '${' . cnt . '}'
+  endif
+
+  return snippet
+endfunction"}}}
+
+function! neosnippet#parser#_get_in_paren(key, pair, str) abort "{{{
+  let s = ''
+  let level = 0
+  for c in split(a:str, '\zs')
+    if c ==# a:key
+      let level += 1
+
+      if level == 1
+        continue
+      endif
+    elseif c ==# a:pair
+      if level == 1 && s != ''
+        return s
+      else
+        let level -= 1
+      endif
+    endif
+
+    if level > 0
+      let s .= c
+    endif
+  endfor
+
+  return ''
+endfunction"}}}
+
 
 let &cpo = s:save_cpo
 unlet s:save_cpo
