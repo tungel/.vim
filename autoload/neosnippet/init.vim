@@ -50,16 +50,21 @@ function! s:initialize_others() "{{{
   augroup neosnippet "{{{
     autocmd!
     " Set make cache event.
-    autocmd FileType * call neosnippet#commands#_make_cache(&filetype)
+    autocmd FileType *
+          \ call neosnippet#commands#_make_cache(&filetype)
     " Re make cache events
     autocmd BufWritePost *.snip,*.snippets
           \ call neosnippet#variables#set_snippets({})
     autocmd BufEnter *
           \ call neosnippet#mappings#_clear_select_mode_mappings()
-    autocmd CursorMoved,CursorMovedI *
-          \ call neosnippet#handlers#_cursor_moved()
-    autocmd BufWritePre * NeoSnippetClearMarkers
   augroup END"}}}
+
+  if g:neosnippet#enable_auto_clear_markers
+    autocmd neosnippet CursorMoved,CursorMovedI *
+          \ call neosnippet#handlers#_cursor_moved()
+    autocmd neosnippet BufWritePre *
+          \ call neosnippet#handlers#_all_clear_markers()
+  endif
 
   if exists('v:completed_item')
     autocmd neosnippet CompleteDone *

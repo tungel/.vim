@@ -31,6 +31,7 @@ let s:edit_options = [
       \ '-runtime',
       \ '-vertical', '-horizontal', '-direction=', '-split',
       \]
+let s:Cache = neosnippet#util#get_vital().import('System.Cache')
 "}}}
 
 function! s:get_list() "{{{
@@ -108,8 +109,11 @@ function! neosnippet#commands#_make_cache(filetype) "{{{
   let snippets[filetype] = {}
 
   let path = join(neosnippet#helpers#get_snippets_directory(), ',')
+  let cache_dir = neosnippet#variables#data_dir()
 
   for filename in s:get_snippets_files(path, filetype)
+    " Clear cache file
+    call s:Cache.deletefile(cache_dir, filename)
     let snippets[filetype] = extend(snippets[filetype],
           \ neosnippet#parser#_parse_snippets(filename))
   endfor
@@ -142,42 +146,7 @@ function! neosnippet#commands#_clear_markers() "{{{
     return
   endif
 
-  let expand_info = expand_stack[-1]
-
-  " Search patterns.
-  let [begin, end] = neosnippet#view#_get_snippet_range(
-        \ expand_info.begin_line,
-        \ expand_info.begin_patterns,
-        \ expand_info.end_line,
-        \ expand_info.end_patterns)
-
-  let mode = mode()
-  let pos = getpos('.')
-
-  " Found snippet.
-  let found = 0
-  try
-    while neosnippet#view#_search_snippet_range(
-          \ begin, end, expand_info.holder_cnt, 0)
-
-      " Next count.
-      let expand_info.holder_cnt += 1
-      let found = 1
-    endwhile
-
-    " Search placeholder 0.
-    if neosnippet#view#_search_snippet_range(begin, end, 0)
-      let found = 1
-    endif
-  finally
-    if found && mode !=# 'i'
-      stopinsert
-    endif
-
-    call setpos('.', pos)
-
-    call neosnippet#variables#clear_expand_stack()
-  endtry
+  call neosnippet#view#_clear_markers(expand_stack[-1])
 endfunction"}}}
 
 " Complete helpers.
