@@ -47,8 +47,7 @@ INTRODUCTION					*deoplete-introduction*
 
 *deoplete* is the abbreviation of "dark powered neo-completion".  It
 provides asynchronous keyword completion system in the
-current buffer.  Deoplete cannot be customized and has not many
-features currently.
+current buffer.
 
 Note: deoplete may consume more memory than other plugins do.
 
@@ -106,14 +105,14 @@ g:deoplete#enable_ignore_case
 		variable controls whether deoplete ignores the upper-
 		and lowercase.  If it is 1, deoplete ignores case.
 
-		Default value: 'ignorecase'
+		Default value: same with your 'ignorecase' value
 
 				*g:deoplete#enable_smart_case*
 g:deoplete#enable_smart_case
 		When a capital letter is included in input, deoplete does
 		not ignore the upper- and lowercase.
 
-		Default value: 'smartcase'
+		Default value: same with your 'smartcase' value
 
 				*g:deoplete#auto_completion_start_length*
 g:deoplete#auto_completion_start_length
@@ -258,6 +257,17 @@ g:deoplete#omni#functions
 b:deoplete_omni_functions
 		Buffer local variable of |g:deoplete#omni#functions|.
 
+				*g:deoplete#file#enable_buffer_path*
+g:deoplete#file#enable_buffer_path
+		If it is 1, file source complete the files from the buffer
+		path instead of the current directory.
+
+		Default value: 0
+
+				*b:deoplete_file_enable_buffer_path*
+b:deoplete_file_enable_buffer_path
+		Buffer local variable of |g:deoplete#file#enable_buffer_path|.
+
 ------------------------------------------------------------------------------
 FUNCTIONS 					*deoplete-functions*
 
@@ -324,6 +334,12 @@ deoplete#mappings#smart_close_popup()
 deoplete#mappings#close_popup()
 		Insert candidate and close popup menu for deoplete.
 
+					*deoplete#mappings#undo_completion()*
+deoplete#mappings#undo_completion()
+		Undo inputted candidate. >
+
+		inoremap <expr><C-g>     deoplete#mappings#undo_completion()
+<
 ==============================================================================
 EXAMPLES					*deoplete-examples*
 >
@@ -338,7 +354,7 @@ EXAMPLES					*deoplete-examples*
 
 	" <CR>: close popup and save indent.
 	inoremap <silent> <CR> <C-r>=<SID>my_cr_function()<CR>
-	function! s:my_cr_function()
+	function! s:my_cr_function() abort
 	  return deoplete#mappings#close_popup() . "\<CR>"
 	endfunction
 <
@@ -738,7 +754,7 @@ A: It is Vim/neovim's default behavior (feature.)  If you want to insert the
 new line, you should map <CR>. >
 
 	inoremap <silent> <CR> <C-r>=<SID>my_cr_function()<CR>
-	function! s:my_cr_function()
+	function! s:my_cr_function() abort
 	  return deoplete#mappings#close_popup() . "\<CR>"
 	endfunction
 
