@@ -90,6 +90,9 @@ function! unite#start#standard(sources, ...) "{{{
 
     if empty(candidates)
       " Ignore.
+      call unite#view#_print_warning(
+            \ 'unite buffer "'
+            \ . current_unite.buffer_name.'" candidates are empty')
       call unite#variables#disable_current_unite()
       return
     elseif (context.immediately && len(candidates) == 1)
@@ -361,6 +364,7 @@ function! unite#start#resume(buffer_name, ...) "{{{
   let unite.preview_candidate = {}
   let unite.highlight_candidate = {}
   let unite.context.resume = 1
+  let unite.context.buffer_name = a:buffer_name
   if context.winwidth != 0
     let unite.context.unite__old_winwidth = 0
   endif
