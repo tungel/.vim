@@ -40,6 +40,7 @@ class Source(Base):
         self.is_bytepos = True
         self.min_pattern_length = 0
 
+        self.__prev_linenr = -1
         self.__prev_pos = -1
         self.__prev_input = ''
         self.__prev_candidates = []
@@ -63,7 +64,8 @@ class Source(Base):
                               'g:deoplete#omni#_input_patterns')):
 
             m = re.search('(' + input_pattern + ')$', context['input'])
-            if m is None or input_pattern == '':
+            if input_pattern == '' or (context['event'] != 'Manual'
+                                       and m is None):
                 continue
 
             try:
@@ -71,7 +73,6 @@ class Source(Base):
             except:
                 error(self.vim, 'Error occurred calling omnifunction: '
                       + omnifunc)
-
                 return -1
             return complete_pos
         return -1
@@ -87,13 +88,14 @@ class Source(Base):
         if omnifunc == '':
             omnifunc = self.vim.eval('&l:omnifunc')
         try:
+            self.debug(omnifunc)
             candidates = self.vim.call(
                 omnifunc, 0, context['complete_str'])
         except:
             error(self.vim, 'Error occurred calling omnifunction: '
                   + omnifunc)
-
             candidates = []
+        self.__prev_linenr = self.vim.funcs.line('.')
         self.__prev_pos = context['complete_position']
         self.__prev_input = context['input']
         self.__prev_candidates = candidates
@@ -101,7 +103,7 @@ class Source(Base):
         return candidates
 
     def __use_previous_result(self, context):
-        return (re.sub(r'\w+$', '', context['input']) ==
+        return (self.vim.funcs.line('.') == self.__prev_linenr
+                and re.sub(r'\w+$', '', context['input']) ==
                 re.sub(r'\w+$', '', self.__prev_input)
-                and context['input'].find(self.__prev_input) == 0
-                and self.__prev_candidates)
+                and context['input'].find(self.__prev_input) == 0)
