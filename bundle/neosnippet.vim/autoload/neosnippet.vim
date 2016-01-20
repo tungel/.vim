@@ -46,6 +46,11 @@ call neosnippet#util#set_default(
       \ 'g:neosnippet#enable_complete_done')
 call neosnippet#util#set_default(
       \ 'g:neosnippet#enable_auto_clear_markers', 1)
+call neosnippet#util#set_default(
+      \ 'g:neosnippet#completed_pairs', {})
+call neosnippet#util#set_default(
+      \ 'g:neosnippet#_completed_pairs',
+      \ {'_':{ '(' : ')', '{' : '}', '"' : '"' }})
 "}}}
 
 function! neosnippet#expandable_or_jumpable() "{{{
@@ -76,7 +81,7 @@ endfunction"}}}
 
 " Get marker patterns.
 function! neosnippet#get_placeholder_target_marker_pattern() "{{{
-  return '\${\d\+:TARGET\%(:.\{-}\)\?\\\@<!}'
+  return '\${\d\+:\(#:\)\?TARGET\%(:.\{-}\)\?\\\@<!}'
 endfunction"}}}
 function! neosnippet#get_placeholder_marker_pattern() "{{{
   return '<`\d\+\%(:.\{-}\)\?\\\@<!`>'
