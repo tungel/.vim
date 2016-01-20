@@ -49,51 +49,48 @@ class Source(Base):
         if self.__use_previous_result(context):
             return self.__prev_pos
 
-        omnifunc = get_buffer_config(self.vim, context,
-                                     'b:deoplete_omni_functions',
-                                     'g:deoplete#omni#functions',
-                                     'g:deoplete#omni#_functions')
-        if omnifunc == '':
-            omnifunc = self.vim.eval('&l:omnifunc')
-        if omnifunc == '' or omnifunc == 'ccomplete#Complete':
-            return -1
-        for input_pattern in convert2list(
-            get_buffer_config(self.vim, context,
-                              'b:deoplete_omni_input_patterns',
-                              'g:deoplete#omni#input_patterns',
-                              'g:deoplete#omni#_input_patterns')):
-
-            m = re.search('(' + input_pattern + ')$', context['input'])
-            if input_pattern == '' or (context['event'] != 'Manual'
-                                       and m is None):
+        for filetype in context['filetypes']:
+            omnifunc = get_buffer_config(self.vim, filetype,
+                                         'b:deoplete_omni_functions',
+                                         'g:deoplete#omni#functions',
+                                         'g:deoplete#omni#_functions')
+            if omnifunc == '':
+                omnifunc = self.vim.eval('&l:omnifunc')
+            if omnifunc == '' or omnifunc == 'ccomplete#Complete':
                 continue
+            self.__omnifunc = omnifunc
+            for input_pattern in convert2list(
+                get_buffer_config(self.vim, filetype,
+                                  'b:deoplete_omni_input_patterns',
+                                  'g:deoplete#omni#input_patterns',
+                                  'g:deoplete#omni#_input_patterns')):
 
-            try:
-                complete_pos = self.vim.call(omnifunc, 1, '')
-            except:
-                error(self.vim, 'Error occurred calling omnifunction: '
-                      + omnifunc)
-                return -1
-            return complete_pos
+                m = re.search('(' + input_pattern + ')$', context['input'])
+                if input_pattern == '' or (context['event'] !=
+                                           'Manual' and m is None):
+                    continue
+
+                try:
+                    complete_pos = self.vim.call(self.__omnifunc, 1, '')
+                except:
+                    error(self.vim,
+                          'Error occurred calling omnifunction: ' +
+                          self.__omnifunc)
+                    return -1
+                return complete_pos
         return -1
 
     def gather_candidates(self, context):
         if self.__use_previous_result(context):
             return self.__prev_candidates
 
-        omnifunc = get_buffer_config(self.vim, context,
-                                     'b:deoplete_omni_functions',
-                                     'g:deoplete#omni#functions',
-                                     'g:deoplete#omni#_functions')
-        if omnifunc == '':
-            omnifunc = self.vim.eval('&l:omnifunc')
         try:
-            self.debug(omnifunc)
             candidates = self.vim.call(
-                omnifunc, 0, context['complete_str'])
+                self.__omnifunc, 0, context['complete_str'])
         except:
-            error(self.vim, 'Error occurred calling omnifunction: '
-                  + omnifunc)
+            error(self.vim,
+                  'Error occurred calling omnifunction: ' +
+                  self.__omnifunc)
             candidates = []
         self.__prev_linenr = self.vim.funcs.line('.')
         self.__prev_pos = context['complete_position']
@@ -103,7 +100,7 @@ class Source(Base):
         return candidates
 
     def __use_previous_result(self, context):
-        return (self.vim.funcs.line('.') == self.__prev_linenr
-                and re.sub(r'\w+$', '', context['input']) ==
-                re.sub(r'\w+$', '', self.__prev_input)
-                and context['input'].find(self.__prev_input) == 0)
+        return (self.vim.funcs.line('.') == self.__prev_linenr and
+                re.sub(r'\w+$', '', context['input']) == re.sub(
+                    r'\w+$', '', self.__prev_input) and
+                context['input'].find(self.__prev_input) == 0)

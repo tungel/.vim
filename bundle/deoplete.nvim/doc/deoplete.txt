@@ -114,6 +114,14 @@ g:deoplete#enable_smart_case
 
 		Default value: same with your 'smartcase' value
 
+				*g:deoplete#enable_refresh_always*
+g:deoplete#enable_refresh_always
+		Deoplete refreshes the candidates automatically if this value
+		is 1.
+		Note: It increases the screen flicker.
+
+		Default value: 0
+
 				*g:deoplete#auto_completion_start_length*
 g:deoplete#auto_completion_start_length
 		This variable controls the number of the input completion
@@ -340,6 +348,12 @@ deoplete#mappings#undo_completion()
 
 		inoremap <expr><C-g>     deoplete#mappings#undo_completion()
 <
+					*deoplete#mappings#refresh()*
+deoplete#mappings#refresh()
+		Refresh the candidates.
+>
+		inoremap <expr><C-l>     deoplete#mappings#refresh()
+<
 ==============================================================================
 EXAMPLES					*deoplete-examples*
 >
@@ -379,6 +393,7 @@ file						*deoplete-source-file*
 
 omni						*deoplete-source-omni*
 		This source collects keywords from 'omnifunc'.
+		Note: It is not asynchronous.
 
 dictionary					*deoplete-source-dictionary*
 		This source collects keywords from 'dictionary'.
@@ -439,150 +454,156 @@ Source class must extend Base class in ".base".
 
 Note: The sources must be created by Python3 language.
 
+Note: If you call Vim functions in your source, it is not asynchronous.
+
 ------------------------------------------------------------------------------
 SOURCE ATTRIBUTES				*deoplete-source-attributes*
 
-					*deoplete-source-attribute-__init__*
-__init__		Function
-			Source constructor.  It will be called in
-			initializing.  It must call Base constructor.
-			This function takes {self} and {vim} as its
-			parameters.
+				*deoplete-source-attribute-__init__*
+__init__	Function
+		Source constructor.  It will be called in initializing.  It
+		must call Base constructor.  This function takes {self} and
+		{vim} as its parameters.
 
-					*deoplete-source-attribute-name*
-name			String				(Required)
-			The name of a source.
+				*deoplete-source-attribute-name*
+name		String				(Required)
+		The name of a source.
 
-					*deoplete-source-attribute-filetypes*
-filetypes		List			(Optional)
-			Available filetype list.
+				*deoplete-source-attribute-filetypes*
+filetypes	List			(Optional)
+		Available filetype list.
 
-			If you omit it, this source available in all
-			filetypes.
+		If you omit it, this source available in all filetypes.
 
-					*deoplete-source-attribute-rank*
-rank			Number				(Optional)
-			Source priority.  Higher values imply higher priority.
-			If you omit it, it is set 100.
-			Note: It is high priority than match position.
+				*deoplete-source-attribute-rank*
+rank		Number				(Optional)
+		Source priority.  Higher values imply higher priority.
+		If you omit it, it is set 100.
+		Note: It is high priority than match position.
 
 				*deoplete-source-attribute-min_pattern_length*
 min_pattern_length
-			Number				(Optional)
-			Required pattern length for completion.
+		Number				(Optional)
+		Required pattern length for completion.
 
-			If you omit it, it is set
-			|g:deoplete#auto_completion_start_length| value.
+		If you omit it, it is set
+		|g:deoplete#auto_completion_start_length| value.
+
+				*deoplete-source-attribute-input_pattern*
+input_pattern
+		String				(Optional)
+		If it is matched, deoplete ignores
+		|deoplete-source-attribute-min_pattern_length|.
+		It is useful for omni function sources.
+		Note: It is Python3 regexp.
+
+		If you omit it, this feature is ignored.
 
 				*deoplete-source-attribute-is_bytepos*
 is_bytepos
-			Bool				(Optional)
-			If it is True,
-			|deoplete-source-attribute-get_complete_position|
-			returns byteposition instead of character position.
-			The default is False.
-			It is useful for Vim script to create sources.
-			Because Vim script string uses byte position.  Python
-			string uses character position.
+		Bool				(Optional)
+		If it is True,
+		|deoplete-source-attribute-get_complete_position|
+		returns byteposition instead of character position.
+		The default is False.
+		It is useful for Vim script to create sources.
+		Because Vim script string uses byte position.  Python string
+		uses character position.
 
 					*deoplete-source-attribute-matchers*
-matchers		List			(Optional)
-			Source default matchers list.
+matchers	List			(Optional)
+		Source default matchers list.
 
-			If you omit it, |deoplete-filter-matcher_default| is
-			used.
+		If you omit it, |deoplete-filter-matcher_default| is used.
 
 					*deoplete-source-attribute-sorters*
-sorters			List			(Optional)
-			Source default sorters list.
+sorters		List			(Optional)
+		Source default sorters list.
 
-			If you omit it, |deoplete-filter-sorter_default| is
-			used.
+		If you omit it, |deoplete-filter-sorter_default| is
+		used.
 
 					*deoplete-source-attribute-converters*
-converters		List			(Optional)
-			Source default converters list.
+converters	List			(Optional)
+		Source default converters list.
 
-			If you omit it, |deoplete-filter-converter_default| is
-			used.
+		If you omit it, |deoplete-filter-converter_default| is used.
 
 			*deoplete-source-attribute-get_complete_position*
 get_complete_position	Function	(Optional)
-			It is called to get complete position.
-			It takes {self} and {context} as its parameter and
-			returns complete position in current line.
-			Here, {context} is the context information when the
-			source is called(|deoplete-notation-{context}|).
-			If you omit it, deoplete will use the position
-			using |g:deoplete#keyword_patterns|.
+		It is called to get complete position.
+		It takes {self} and {context} as its parameter and returns
+		complete position in current line.
+		Here, {context} is the context information when the source is
+		called(|deoplete-notation-{context}|).
+		If you omit it, deoplete will use the position using
+		|g:deoplete#keyword_patterns|.
 
-			Note: |deoplete-source-attribute-is_bytepos| is True,
-			it must return byte position.
+		Note: |deoplete-source-attribute-is_bytepos| is True, it must
+		return byte position.
 
-			*deoplete-source-attribute-gather_candidates*
+				*deoplete-source-attribute-gather_candidates*
 gather_candidates	Function	(Required)
-			It is called to gather candidates.
-			It takes {self} and {context} as its parameter and
-			returns a list of {candidate}.
-			{candidate} must be String or Dictionary contains
-			|deoplete-candidate-attributes|.
-			Here, {context} is the context information when the
-			source is called(|deoplete-notation-{context}|).
+		It is called to gather candidates.
+		It takes {self} and {context} as its parameter and returns a
+		list of {candidate}.
+		{candidate} must be String or Dictionary contains
+		|deoplete-candidate-attributes|.
+		Here, {context} is the context information when the source is
+		called(|deoplete-notation-{context}|).
 
-			*deoplete-source-attribute-__*
-__{name}		(Unknown)	(Optional)
-			Additional source information.
-			Note: Recommend sources save variables instead of
-			global variables.
+					*deoplete-source-attribute-__*
+__{name}	(Unknown)	(Optional)
+		Additional source information.
+		Note: Recommend sources save variables instead of
+		global variables.
 
 {context}				*deoplete-notation-{context}*
-			A dictionary to give context information.
-			The followings are the primary information.
+		A dictionary to give context information.
+		The followings are the primary information.
 
-			input			(String)
-				The input string of current line.
+		input			(String)
+			The input string of current line.
 
-			complete_pos		(Number)
-				The complete position of current source.
+		complete_pos		(Number)
+			The complete position of current source.
 
-			complete_str		(String)
-				The complete string of current source.
+		complete_str		(String)
+			The complete string of current source.
 
-			filetype		(String)
-				Current 'filetype'.
+		filetype		(String)
+			Current 'filetype'.
 
-			filetypes		(List)
-				It contains current 'filetype' and same
-				filetypes and composite filetypes.
+		filetypes		(List)
+			It contains current 'filetype' and same
+			filetypes and composite filetypes.
 
 ------------------------------------------------------------------------------
 CANDIDATE ATTRIBUTES				*deoplete-candidate-attributes*
 
 					*deoplete-candidate-attribute-name*
-word			String		(Required)
-			The completion word of a candidate. It is used for
-			matching inputs.
+word		String		(Required)
+		The completion word of a candidate. It is used for matching
+		inputs.
 
 					*deoplete-candidate-attribute-abbr*
-abbr			String		(Optional)
-			The abbreviation of a candidate. It is displayed in
-			popup window.
+abbr		String		(Optional)
+		The abbreviation of a candidate. It is displayed in popup
+		window.
 
 					*deoplete-candidate-attribute-kind*
-kind			String		(Optional)
-			The kind of a candidate. It is displayed in popup
-			window.
+kind		String		(Optional)
+		The kind of a candidate. It is displayed in popup window.
 
 					*deoplete-candidate-attribute-menu*
-menu			String		(Optional)
-			The menu information of a candidate. It is displayed
-			in popup window.
+menu		String		(Optional)
+		The menu information of a candidate. It is displayed in popup
+		window.
 
 					*deoplete-candidate-attribute-info*
-info			String		(Optional)
-			The preview information of a candidate. If
-			'completeopt' contains "preview", it will be displayed
-			in |preview-window|.
+info		String		(Optional)
+		The preview information of a candidate. If 'completeopt'
+		contains "preview", it will be displayed in |preview-window|.
 
 ==============================================================================
 CREATE FILTER					*deoplete-create-filter*
@@ -619,6 +640,9 @@ https://github.com/Rip-Rip/clang_complete
 
 deoplete-go: go source
 https://github.com/zchee/deoplete-go
+
+elixir.nvim: elixir source
+https://github.com/awetzel/elixir.nvim
 
 ==============================================================================
 EXTERNAL PLUGINS				*deoplete-external-plugins*
@@ -715,7 +739,8 @@ For clang_complete configuration is below. >
 
 	let g:clang_complete_auto = 0
 	let g:clang_auto_select = 0
-	let g:clang_default_keymappings = 0
+	let g:clang_omnicppcomplete_compliance = 0
+	let g:clang_make_default_keymappings = 0
 	"let g:clang_use_library = 1
 
 Current clang_complete supports the original deoplete source.
@@ -771,6 +796,24 @@ A: Please set the config as below.
 	let g:deoplete#omni#functions.lua = 'xolox#lua#omnifunc'
 	"let g:deoplete#omni#functions.lua = 'xolox#lua#completefunc'
 <
+Q: I want to disable buffer source.
+
+A: You can use |g:deoplete#ignore_sources|. >
+
+	let g:deoplete#ignore_sources = {}
+	let g:deoplete#ignore_sources._ = ['buffer']
+
+Q: I want to complete go candidates.
+
+A: You should install deoplete-go source.
+https://github.com/zchee/deoplete-go
+
+Q: I want to complete the candidates from other files.
+https://github.com/Shougo/deoplete.nvim/issues/133
+
+A: You must install context_filetype plugin.
+https://github.com/Shougo/context_filetype.vim
+And you must set |g:context_filetype#same_filetypes| variable.
 
 ==============================================================================
 vim:tw=78:ts=8:ft=help:norl:noet:fen:noet:
