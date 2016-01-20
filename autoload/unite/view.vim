@@ -251,8 +251,6 @@ function! unite#view#_redraw(is_force, winnr, is_gather_all) "{{{
           \ context.default_action, [unite.current_candidates[0]])
 
     " Note: It is workaround
-    " Change updatetime to leave insertmode
-    set updatetime=10
     stopinsert
   endif
   if context.auto_preview
@@ -394,6 +392,7 @@ function! unite#view#_resize_window() "{{{
   if (winheight(0) + &cmdheight + 2 >= &lines
         \ && !context.vertical)
         \ || !context.resize
+        \ || !context.split
     " Cannot resize.
     let context.unite__is_resize = 0
     return
@@ -652,8 +651,7 @@ function! unite#view#_quit(is_force, ...)  "{{{
 
     call unite#view#_close_preview_window()
 
-    if winnr('$') != 1 && !unite.context.temporary
-          \ && winnr('$') == unite.winmax
+    if winnr('$') != 1 && winnr('$') == unite.winmax
       execute unite.win_rest_cmd
       noautocmd execute unite.prev_winnr 'wincmd w'
     endif
