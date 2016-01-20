@@ -34,29 +34,16 @@ function! test#strategy#tslime(cmd) abort
   call Send_to_Tmux(s:pretty_command(a:cmd)."\n")
 endfunction
 
+function! test#strategy#vimshell(cmd) abort
+  execute 'VimShellExecute '.a:cmd
+endfunction
+
 function! test#strategy#terminal(cmd) abort
   call s:execute_script('osx_terminal', s:pretty_command(a:cmd))
 endfunction
 
 function! test#strategy#iterm(cmd) abort
   call s:execute_script('osx_iterm', s:pretty_command(a:cmd))
-endfunction
-
-function! test#strategy#vagrant(cmd) abort
-  let vagrant_project = get(matchlist(s:cat('Vagrantfile'), '\vconfig\.vm.synced_folder ["''].+[''"], ["''](.+)[''"]'), 1)
-
-  if empty(vagrant_project)
-    if empty(glob('Vagrantfile'))
-      echoerr "Vagrantfile wasn't found"
-    else
-      echoerr "Cannot find Vagrant project root"
-    endif
-    return
-  endif
-
-  let cmd = "vagrant ssh --command ".shellescape('cd '.vagrant_project.'; '.a:cmd)
-
-  call test#strategy#basic(cmd)
 endfunction
 
 function! s:execute_script(name, cmd) abort
