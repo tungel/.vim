@@ -78,18 +78,18 @@ it like this:
 let test#strategy = "dispatch"
 ```
 
-| Strategy                                                                        | Identifier | Description                                                                      |
-| :-----:                                                                         | :-----:    | :----------                                                                      |
-| **Basic**&nbsp;(default)                                                        | `basic`    | Runs test commands with `:!`, which switches your Vim to the terminal.           |
-| **Neovim**                                                                      | `neovim`   | Runs test commands with `:terminal`, which spawns a terminal inside your Neovim. |
-| [**Neoterm**](https://github.com/kassio/neoterm)                                | `neoterm`  | Runs test commands with `:T`, see neoterm docs for display customization.        |
-| [**Dispatch.vim**](https://github.com/tpope/vim-dispatch)                       | `dispatch` | Runs test commands with `:Dispatch`.                                             |
-| [**Vimux**](https://github.com/benmills/vimux)                                  | `vimux`    | Runs test commands in a small tmux pane at the bottom of your terminal.          |
-| [**Tslime.vim**](https://github.com/kikijump/tslime.vim)                        | `tslime`   | Runs test commands in a tmux pane you specify.                                   |
-| [**Vim&nbsp;Tmux&nbsp;Runner**](https://github.com/christoomey/vim-tmux-runner) | `vtr`      | Runs test commands in a small tmux pane.                                         |
-| **Terminal.app**                                                                | `terminal` | Sends test commands to Terminal (useful in MacVim GUI).                          |
-| **iTerm2.app**                                                                  | `iterm`    | Sends test commands to iTerm2 >= 2.9 (useful in MacVim GUI).                     |
-| **Vagrant**                                                                     | `vagrant`  | Runs test commands with `vagrant ssh`.                                           |
+| Strategy                        | Identifier | Description                                                                      |
+| :-----:                         | :-----:    | :----------                                                                      |
+| **Basic**&nbsp;(default)        | `basic`    | Runs test commands with `:!`, which switches your Vim to the terminal.           |
+| **Neovim**                      | `neovim`   | Runs test commands with `:terminal`, which spawns a terminal inside your Neovim. |
+| **[Neoterm]**                   | `neoterm`  | Runs test commands with `:T`, see neoterm docs for display customization.        |
+| **[Dispatch]**                  | `dispatch` | Runs test commands with `:Dispatch`.                                             |
+| **[Vimux]**                     | `vimux`    | Runs test commands in a small tmux pane at the bottom of your terminal.          |
+| **[Tslime]**                    | `tslime`   | Runs test commands in a tmux pane you specify.                                   |
+| **[VimShell]**                  | `vimshell` | Runs test commands in a shell written in VimScript.                              |
+| **[Vim&nbsp;Tmux&nbsp;Runner]** | `vtr`      | Runs test commands in a small tmux pane.                                         |
+| **Terminal.app**                | `terminal` | Sends test commands to Terminal (useful in MacVim GUI).                          |
+| **iTerm2.app**                  | `iterm`    | Sends test commands to iTerm2 >= 2.9 (useful in MacVim GUI).                     |
 
 Some strategies clear the screen before executing the test command, but you can
 disable that by setting `g:test#preserve_screen`:
@@ -106,12 +106,28 @@ comes with many predefined strategies (see above), but if none of them suit
 your needs, you can define your own custom strategy like this:
 
 ```vim
-function! MyStrategy(cmd)
+function! EchoStrategy(cmd)
   echo 'It works! Command for running tests: ' . a:cmd
 endfunction
 
-let g:test#custom_strategies = {'my_strategy': function('MyStrategy')}
-let g:test#strategy = 'my_strategy'
+let g:test#custom_strategies = {'echo': function('EchoStrategy')}
+let g:test#strategy = 'echo'
+```
+
+## Transformations
+
+You can automatically apply transformations of your test commands by
+registering a "transformation" function. The following example demonstrates how
+you could set up a transformation for Vagrant:
+
+```vim
+function! VagrantTransform(cmd) abort
+  let vagrant_project = get(matchlist(s:cat('Vagrantfile'), '\vconfig\.vm.synced_folder ["''].+[''"], ["''](.+)[''"]'), 1)
+  return 'vagrant ssh --command '.shellescape('cd '.vagrant_project.'; '.a:cmd)
+endfunction
+
+let g:test#custom_transformations = {'vagrant': function('VagrantTransform')}
+let g:test#transformation = 'vagrant'
 ```
 
 ## Commands
@@ -262,3 +278,9 @@ Copyright © Janko Marohnić. Distributed under the same terms as Vim itself. Se
 `:help license`.
 
 [minitest]: https://github.com/janko-m/vim-test/wiki/Minitest
+[Neoterm]: https://github.com/kassio/neoterm
+[Dispatch]: https://github.com/tpope/vim-dispatch
+[Vimux]: https://github.com/benmills/vimux
+[Tslime]: https://github.com/kikijump/tslime.vim
+[Vim&nbsp;Tmux&nbsp;Runner]: https://github.com/christoomey/vim-tmux-runner
+[VimShell]: https://github.com/Shougo/vimshell.vim
