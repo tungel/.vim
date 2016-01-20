@@ -23,30 +23,6 @@ function! g:neoterm.last()
   end
 endfunction
 
-function! g:neoterm.new_split()
-  let current_window = winnr()
-
-  if g:neoterm_position == "horizontal"
-    exec "botright".g:neoterm_size." new"
-  else
-    exec "botright vert".g:neoterm_size." new"
-  end
-
-  return current_window
-endfunction
-
-function! g:neoterm.split_with(buffer)
-  let current_window = winnr()
-
-  if g:neoterm_position == "horizontal"
-    exec "botright ".g:neoterm_size."split +b".a:buffer
-  else
-    exec "botright ".g:neoterm_size."vsplit +b".a:buffer
-  end
-
-  return current_window
-endfunction
-
 let g:neoterm_statusline = ""
 
 if !exists("g:neoterm_shell")
@@ -71,6 +47,10 @@ end
 
 if !exists("g:neoterm_keep_term_open")
   let g:neoterm_keep_term_open = 1
+end
+
+if !exists("g:neoterm_split_on_tnew")
+  let g:neoterm_split_on_tnew = 1
 end
 
 if !exists("g:neoterm_run_tests_bg")
@@ -106,7 +86,7 @@ aug neoterm_setup
   au TermOpen term://*neoterm* setlocal nonumber norelativenumber
 aug END
 
-command! -bar -complete=shellcmd Tnew silent call neoterm#new()
+command! -bar -complete=shellcmd Tnew silent call neoterm#tnew()
 command! -bar -complete=shellcmd Topen silent call neoterm#open()
 command! -bar -complete=shellcmd Tclose silent call neoterm#close()
 command! -bar -complete=shellcmd Ttoggle silent call neoterm#toggle()

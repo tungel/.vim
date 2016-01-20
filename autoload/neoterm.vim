@@ -1,23 +1,11 @@
 " Internal: Creates a new neoterm buffer.
 function! neoterm#new(...)
-  if !has_key(g:neoterm, "term")
-    exec "source " . globpath(&rtp, "autoload/neoterm.term.vim")
-  end
-
-  let current_window = g:neoterm.new_split()
   let handlers = len(a:000) ? a:1 : {}
+  call neoterm#window#create(handlers, '')
+endfunction
 
-  let instance = g:neoterm.term.new(g:neoterm.next_id(), handlers)
-  let g:neoterm.instances[instance.id] = instance
-  let b:neoterm_id = instance.id
-
-  call instance.mappings()
-
-  if g:neoterm_keep_term_open
-    silent exec current_window . "wincmd w | set noinsertmode"
-  else
-    startinsert
-  end
+function! neoterm#tnew()
+  call neoterm#window#create({}, 'tnew')
 endfunction
 
 function! neoterm#toggle()
