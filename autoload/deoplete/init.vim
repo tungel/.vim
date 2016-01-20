@@ -89,6 +89,8 @@ function! deoplete#init#_variables() abort "{{{
   call deoplete#util#set_default(
         \ 'g:deoplete#enable_smart_case', &smartcase)
   call deoplete#util#set_default(
+        \ 'g:deoplete#enable_refresh_always', 0)
+  call deoplete#util#set_default(
         \ 'g:deoplete#auto_completion_start_length', 2)
   call deoplete#util#set_default(
         \ 'g:deoplete#disable_auto_complete', 0)
@@ -107,10 +109,6 @@ function! deoplete#init#_variables() abort "{{{
         \ 'g:deoplete#sources', {})
   call deoplete#util#set_default(
         \ 'g:deoplete#ignore_sources', {})
-
-  " Internal vairables
-  call deoplete#util#set_default(
-        \ 'g:deoplete#_skip_next_complete', 0)
 
   " Source variables
   call deoplete#util#set_default(
@@ -148,7 +146,7 @@ function! deoplete#init#_variables() abort "{{{
         \         '[a-zA-Z_]\w*::\w*'])
   call deoplete#util#set_pattern(
         \ g:deoplete#omni#_input_patterns,
-        \ 'go,java', ['[^. \t0-9]\.\w*'])
+        \ 'java', ['[^. \t0-9]\.\w*'])
   call deoplete#util#set_pattern(
         \ g:deoplete#omni#_input_patterns,
         \ 'javascript,typescript', ['[^. \t0-9]\.([a-zA-Z_]\w*)?'])
@@ -203,7 +201,11 @@ function! deoplete#init#_context(event, sources) abort "{{{
   let sources = a:sources
   if a:event !=# 'Manual' && empty(sources)
     " Use default sources
-    let sources = s:get_sources(filetype)
+    let sources = deoplete#util#get_buffer_config(
+          \ filetype,
+          \ 'b:deoplete_sources',
+          \ 'g:deoplete#sources',
+          \ '{}', [])
   endif
 
   let keyword_patterns = join(deoplete#util#convert2list(
@@ -232,21 +234,6 @@ function! deoplete#init#_context(event, sources) abort "{{{
         \ 'sources': sources,
         \ 'keyword_patterns': keyword_patterns,
         \ }
-endfunction"}}}
-
-function! s:get_sources(filetype) abort "{{{
-  let sources = deoplete#util#get_buffer_config(
-        \ a:filetype,
-        \ 'b:deoplete_sources',
-        \ 'g:deoplete#sources',
-        \ '{}', [])
-  let ignore_sources = deoplete#util#get_buffer_config(
-        \ a:filetype,
-        \ 'b:deoplete_ignore_sources', 'g:deoplete#ignore_sources',
-        \ '{}', [])
-
-  " Ignore sources
-  return filter(sources, "index(ignore_sources, v:val) < 0")
 endfunction"}}}
 
 " vim: foldmethod=marker

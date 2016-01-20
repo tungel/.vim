@@ -45,16 +45,17 @@ class Source(Base):
     def gather_candidates(self, context):
         candidates = []
         for filename in [x for x in self.vim.eval(
-                'map(tagfiles() + (get(g:, "loaded_neoinclude", 0) ? '
-                + ' neoinclude#include#get_tag_files() : []), '
-                + '"fnamemodify(v:val, \\":p\\")")') if exists(x)]:
+                'map(tagfiles() + (get(g:, "loaded_neoinclude", 0) ? ' +
+                ' neoinclude#include#get_tag_files() : []), ' +
+                '"fnamemodify(v:val, \\":p\\")")') if exists(x)]:
             mtime = getmtime(filename)
             if filename not in self.__cache or self.__cache[
                     filename].mtime != mtime:
                 with open(filename, 'r', errors='replace') as f:
                     new_candidates = parse_tags(f)
                     candidates += new_candidates
-                self.__cache[filename] = TagsCacheItem(mtime, new_candidates)
+                    self.__cache[filename] = TagsCacheItem(
+                        mtime, new_candidates)
             else:
                 candidates += self.__cache[filename].candidates
         return [{'word': x} for x in candidates]

@@ -27,6 +27,7 @@ function! deoplete#handlers#_init() abort "{{{
   augroup deoplete
     autocmd InsertLeave * call s:on_insert_leave()
     autocmd CompleteDone * call s:complete_done()
+    autocmd InsertCharPre * call s:on_insert_char_pre()
 
     autocmd TextChangedI * call s:completion_begin("TextChangedI")
     autocmd InsertEnter * call s:completion_begin("InsertEnter")
@@ -36,17 +37,22 @@ endfunction"}}}
 function! s:completion_begin(event) abort "{{{
   let context = deoplete#init#_context(a:event, [])
 
+  let disable_auto_complete =
+        \ deoplete#util#get_simple_buffer_config(
+        \   'b:deoplete_disable_auto_complete',
+        \   'g:deoplete#disable_auto_complete')
+
   " Skip
-  if g:deoplete#_skip_next_complete
-    let deoplete#_skip_next_complete = 0
-    return
-  endif
-  if &paste || (context.position ==#
-        \      get(g:deoplete#_context, 'position', [])
-        \      && (empty(v:completed_item)
+  if &paste
+        \ || (a:event !=# 'Manual' && disable_auto_complete)
+        \ || (&l:completefunc != '' && &l:buftype =~# 'nofile')
+        \ || (context.position ==# get(g:deoplete#_context, 'position', [])
+        \      && (get(v:completed_item, 'word', '') == ''
         \         || empty(filter(copy(g:deoplete#delimiters),
         \         'strridx(v:completed_item.word, v:val)
         \          == (len(v:completed_item.word) - len(v:val))'))))
+        \ || (a:event ==# 'InsertEnter'
+        \     && has_key(g:deoplete#_context, 'position'))
     return
   endif
 
@@ -82,11 +88,27 @@ function! s:on_insert_leave() abort "{{{
 endfunction"}}}
 
 function! s:complete_done() abort "{{{
+  if get(g:deoplete#_context, 'refresh', 0)
+    " Don't skip completion
+    let g:deoplete#_context.refresh = 0
+    return
+  endif
+
   if exists('g:deoplete#_context.saved_completeopt')
     let &completeopt = g:deoplete#_context.saved_completeopt
     unlet g:deoplete#_context.saved_completeopt
   endif
+
   let g:deoplete#_context.position = getpos('.')
+endfunction"}}}
+
+function! s:on_insert_char_pre() abort "{{{
+  if !pumvisible() || !g:deoplete#enable_refresh_always
+    return
+  endif
+
+  " Auto refresh
+  call feedkeys("\<Plug>(deoplete_auto_refresh)")
 endfunction"}}}
 
 " vim: foldmethod=marker

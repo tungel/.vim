@@ -23,19 +23,21 @@
 # }}}
 # ============================================================================
 
+from deoplete.util import \
+    globruntime, charpos2bytepos, \
+    bytepos2charpos, get_custom, get_buffer_config
+
+import deoplete.sources
+import deoplete.filters
+import deoplete.util
+
 import re
 import importlib.machinery
 import os.path
 import copy
 
-import deoplete.sources
 deoplete.sources  # silence pyflakes
-from deoplete.util import \
-    globruntime, get_simple_buffer_config, charpos2bytepos, \
-    bytepos2charpos, get_custom
-import deoplete.filters
 deoplete.filters  # silence pyflakes
-import deoplete.util
 
 
 class Deoplete(object):
@@ -78,16 +80,6 @@ class Deoplete(object):
         # self.debug(self.filters)
 
     def gather_candidates(self, context):
-        # Skip completion
-        if (self.vim.eval('&l:completefunc') != ''
-                and 'nofile' in self.vim.eval('&l:buftype')
-            ) or (context['event'] != 'Manual' and
-                  get_simple_buffer_config(
-                self.vim,
-                'b:deoplete_disable_auto_complete',
-                'g:deoplete#disable_auto_complete')):
-            return (-1, [])
-
         if self.vim.eval('&runtimepath') != self.runtimepath:
             # Recache
             self.load_sources()
@@ -109,11 +101,18 @@ class Deoplete(object):
         results = []
         start_length = self.vim.eval(
             'g:deoplete#auto_completion_start_length')
+        ignore_sources = get_buffer_config(
+            self.vim, context['filetype'],
+            'b:deoplete_ignore_sources',
+            'g:deoplete#ignore_sources',
+            '{}')
         for source_name, source in sources:
-            if (context['sources']
-                    and source_name not in context['sources']
-                ) or (source.filetypes
-                      and context['filetype'] not in source.filetypes):
+            in_sources = not context['sources'] or (
+                source_name in context['sources'])
+            in_fts = not source.filetypes or (
+                context['filetype'] in source.filetypes)
+            in_ignore = source_name in ignore_sources
+            if not in_sources or not in_fts or in_ignore:
                 continue
             cont = copy.deepcopy(context)
             charpos = source.get_complete_position(cont)
@@ -135,10 +134,12 @@ class Deoplete(object):
             if min_pattern_length < 0:
                 # Use default value
                 min_pattern_length = start_length
+            input_pattern = get_custom(self.vim, source.name).get(
+                'input_pattern', source.input_pattern)
 
-            if charpos < 0 or (cont['event'] != 'Manual'
-                               and len(cont['complete_str'])
-                               < min_pattern_length):
+            if charpos < 0 or self.is_skip(cont,
+                                           min_pattern_length,
+                                           input_pattern):
                 # Skip
                 continue
             results.append({
@@ -214,8 +215,8 @@ class Deoplete(object):
                 complete_position = context['complete_position']
                 candidates += context['candidates']
                 continue
-            prefix = context['input'][context['complete_position']
-                                      - complete_position:]
+            prefix = context['input'][context[
+                'complete_position'] - complete_position:]
 
             context['complete_position'] = complete_position
             context['complete_str'] = prefix
@@ -226,3 +227,9 @@ class Deoplete(object):
             candidates += context['candidates']
         # self.debug(candidates)
         return (complete_position, candidates)
+
+    def is_skip(self, context, min_pattern_length, input_pattern):
+        return (input_pattern == '' or
+                not re.search(input_pattern + '$', context['input'])
+                ) and (context['event'] != 'Manual' and
+                       len(context['complete_str']) < min_pattern_length)
