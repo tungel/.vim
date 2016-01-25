@@ -134,7 +134,7 @@ let g:test#transformation = 'vagrant'
 
 ![nearest polyfill](/screenshots/nearest.gif)
 
-You can execute Test.vim commands directly, and pass them CLI options:
+You can execute test.vim commands directly, and pass them CLI options:
 
 ```
 :TestNearest --verbose
@@ -202,6 +202,19 @@ certain testing framework. You can override that pattern by overriding the
 let test#ruby#minitest#file_pattern = '_spec\.rb' " the default is '_test\.rb'
 ```
 
+### Filename modifier
+
+By default test.vim generates file paths relative to the working directory. If
+you're using a strategy which sends commands to a shell which is `cd`-ed into
+another directory, you might want to change the filename modifier to generate
+absolute paths:
+
+```vim
+let test#filename_modifier = ':.' " test/models/user_test.rb (default)
+let test#filename_modifier = ':p' " /User/janko/Code/my_project/test/models/user_test.rb
+let test#filename_modifier = ':~' " ~/Code/my_project/test/models/user_test.rb
+```
+
 ### Language-specific
 
 #### Python
@@ -213,6 +226,15 @@ the first available will be chosen, but you can force a specific one:
 ``` vim
 let test#python#runner = 'pytest'
 " Runners available are 'pytest', 'nose', 'djangotest' and 'djangonose'
+```
+
+#### Ruby
+
+By default test commands will be prepended with `bundle exec` if a Gemfile is
+detected, but you can turn it off with
+
+```vim
+let test#ruby#bundle_exec = 0
 ```
 
 ## Extending
