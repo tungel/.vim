@@ -147,6 +147,13 @@ g:deoplete#delimiters
 
 		Default value: ['/', '.', '::', ':', '#']
 
+				*g:deoplete#max_list*
+g:deoplete#max_list
+		If the list of candidates exceeds the limit, not all
+		candidates will show up.
+
+		Default value: 100
+
 				*g:deoplete#keyword_patterns*
 g:deoplete#keyword_patterns
 		This dictionary records keyword patterns to buffer completion.
@@ -551,6 +558,15 @@ gather_candidates	Function	(Required)
 		|deoplete-candidate-attributes|.
 		Here, {context} is the context information when the source is
 		called(|deoplete-notation-{context}|).
+		Note: The source must not filter the candidates by user input.
+		It is |deoplete-filters| work.  If the source filter the
+		candidates, user cannot filter the candidates by fuzzy match.
+
+				*deoplete-source-attribute-on_post_filter*
+on_post_filter	Function	(Optional)
+		It is called after the candidates are filtered.
+		It takes {self} and {context} as its parameter and returns a
+		list of {candidate}.
 
 					*deoplete-source-attribute-__*
 __{name}	(Unknown)	(Optional)
@@ -604,6 +620,11 @@ menu		String		(Optional)
 info		String		(Optional)
 		The preview information of a candidate. If 'completeopt'
 		contains "preview", it will be displayed in |preview-window|.
+
+					*deoplete-candidate-attribute-dup*
+dup		Number		(Optional)
+		If it is non zero, the item will be displayed in the popup
+		menu when an item with the same word is already present.
 
 ==============================================================================
 CREATE FILTER					*deoplete-create-filter*
