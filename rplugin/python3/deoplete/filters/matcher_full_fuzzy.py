@@ -1,5 +1,5 @@
 # ============================================================================
-# FILE: sorter_rank.py
+# FILE: matcher_full_fuzzy.py
 # AUTHOR: Shougo Matsushita <Shougo.Matsu at gmail.com>
 # License: MIT license  {{{
 #     Permission is hereby granted, free of charge, to any person obtaining
@@ -23,6 +23,7 @@
 # }}}
 # ============================================================================
 
+import re
 from .base import Base
 
 
@@ -31,15 +32,25 @@ class Filter(Base):
     def __init__(self, vim):
         Base.__init__(self, vim)
 
-        self.name = 'sorter_rank'
-        self.description = 'rank sorter'
+        self.name = 'matcher_full_fuzzy'
+        self.description = 'full fuzzy matcher'
 
     def filter(self, context):
-        rank = self.vim.vars['deoplete#_rank']
-        complete_str = context['complete_str'].lower()
+        complete_str = context['complete_str']
+        if context['ignorecase']:
+            complete_str = complete_str.lower()
+        p = re.compile(fuzzy_escape(complete_str))
         input_len = len(complete_str)
-        return sorted(context['candidates'],
-                      key=lambda x: -1 * rank[x['word']]
-                      if x['word'] in rank
-                      else abs(x['word'].lower().find(
-                          complete_str, 0, input_len)))
+        if context['ignorecase']:
+            return [x for x in context['candidates']
+                    if len(x['word']) > input_len and
+                    p.search(x['word'].lower())]
+        else:
+            return [x for x in context['candidates']
+                    if len(x['word']) > input_len and
+                    p.search(x['word'])]
+
+
+def fuzzy_escape(string):
+    # Escape string for python regexp.
+    return re.sub(r'([a-zA-Z0-9_])', r'\1.*', re.escape(string))

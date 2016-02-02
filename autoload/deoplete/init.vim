@@ -82,6 +82,7 @@ endfunction"}}}
 
 function! deoplete#init#_variables() abort "{{{
   let g:deoplete#_context = {}
+  let g:deoplete#_rank = {}
 
   " User vairables
   call deoplete#util#set_default(
@@ -154,12 +155,7 @@ function! deoplete#init#_variables() abort "{{{
         \ 'javascript,typescript', ['[^. \t0-9]\.([a-zA-Z_]\w*)?'])
   call deoplete#util#set_pattern(
         \ g:deoplete#omni#_input_patterns,
-        \ 'css,scss,sass', ['^\s+\w+', '\w+[):;]?\s+\w*', '[@!]'])
-  call deoplete#util#set_pattern(
-        \ g:deoplete#omni#_input_patterns,
-        \ 'python', ['[^. \t0-9]\.\w*', '^\s*@\w*',
-        \            '^\s*from\s.+import \w*', '^\s*from \w*',
-        \            '^\s*import \w*'])
+        \ 'css,scss,sass', ['\w+', '\w+[):;]?\s+\w*', '[@!]'])
   call deoplete#util#set_pattern(
         \ g:deoplete#omni#_input_patterns,
         \ 'ruby', ['[^. \t0-9]\.\w*', '[a-zA-Z_]\w*::\w*'])
