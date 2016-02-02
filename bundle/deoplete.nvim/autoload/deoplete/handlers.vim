@@ -80,23 +80,23 @@ function! s:completion_begin(event) abort "{{{
 endfunction"}}}
 
 function! s:on_insert_leave() abort "{{{
-  if exists('g:deoplete#_context.saved_completeopt')
-    let &completeopt = g:deoplete#_context.saved_completeopt
-    unlet g:deoplete#_context.saved_completeopt
-  endif
   let g:deoplete#_context = {}
 endfunction"}}}
 
 function! s:complete_done() abort "{{{
+  if get(v:completed_item, 'word', '') != ''
+    let word = v:completed_item.word
+    if !has_key(g:deoplete#_rank, word)
+      let g:deoplete#_rank[word] = 1
+    else
+      let g:deoplete#_rank[word] += 1
+    endif
+  endif
+
   if get(g:deoplete#_context, 'refresh', 0)
     " Don't skip completion
     let g:deoplete#_context.refresh = 0
     return
-  endif
-
-  if exists('g:deoplete#_context.saved_completeopt')
-    let &completeopt = g:deoplete#_context.saved_completeopt
-    unlet g:deoplete#_context.saved_completeopt
   endif
 
   let g:deoplete#_context.position = getpos('.')

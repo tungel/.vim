@@ -311,6 +311,8 @@ deoplete#custom#source({source-name}, {option-name}, {value})
 		\ 'min_pattern_length', 9999)
 		" Change the source rank
 		call deoplete#custom#set('buffer', 'rank', 9999)
+		" Enable buffer source in C/C++ files only.
+		call deoplete#custom#set('buffer', 'filetypes', ['c', 'cpp'])
 <
 ------------------------------------------------------------------------------
 KEY MAPPINGS 					*deoplete-key-mappings*
@@ -432,8 +434,14 @@ matcher_head	Head matching matcher.
 					*deoplete-filter-matcher_fuzzy*
 matcher_fuzzy	Fuzzy matching matcher.
 
+					*deoplete-filter-matcher_full_fuzzy*
+matcher_full_fuzzy
+		Full fuzzy matching matcher.
+		It accepts partial fuzzy matches like YouCompleteMe.
+
 					*deoplete-filter-sorter_rank*
-sorter_rank	Matched rank order sorter.  The higher the head matched word.
+sorter_rank	Matched rank order sorter.  The higher the head matched word
+		or already selected.
 
 				*deoplete-filter-converter_remove_overlap*
 converter_remove_overlap
@@ -581,7 +589,7 @@ __{name}	(Unknown)	(Optional)
 		input			(String)
 			The input string of current line.
 
-		complete_pos		(Number)
+		complete_position	(Number)
 			The complete position of current source.
 
 		complete_str		(String)
@@ -665,6 +673,12 @@ https://github.com/zchee/deoplete-go
 elixir.nvim: elixir source
 https://github.com/awetzel/elixir.nvim
 
+deoplete-jedi: jedi source
+https://github.com/zchee/deoplete-jedi
+
+perlomni.vim: perlomni source
+https://github.com/c9s/perlomni.vim
+
 ==============================================================================
 EXTERNAL PLUGINS				*deoplete-external-plugins*
 
@@ -693,7 +707,7 @@ https://github.com/Konfekt/FastFold
 ==============================================================================
 FAQ						*deoplete-faq*
 
-Q: deoplete deos not work.
+Q: deoplete does not work.
 
 A:
   1. Please update neovim to latest version.
@@ -784,15 +798,10 @@ Q: I want to complete AAA using deoplete.
 
 A: You can create the source for it.  Why don't create the source if you need?
 
-Q: I want to use vim-jedi omni completion with deoplete.
+Q: I want to use jedi-vim omni completion with deoplete.
 
-A: For vim-jedi configuration is below. >
-
-	autocmd FileType python setlocal omnifunc=jedi#completions
-	let g:jedi#completions_enabled = 0
-	let g:jedi#auto_vim_configuration = 0
-	let g:jedi#smart_auto_mappings = 0
-	let g:jedi#show_call_signatures = 0
+A: You should install deoplete-jedi instead of jedi-vim. >
+https://github.com/zchee/deoplete-jedi
 
 Q: When I press enter, neovim close the popup instead of inserting new line.
 
