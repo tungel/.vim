@@ -41,11 +41,13 @@ Taking a page from the book of syntastic, you can configure "makers" (called
 "checkers" in syntastic) for different filetypes. Here is an example
 configuration:
 
-    let g:neomake_javascript_jshint_maker = {
-        \ 'args': ['--verbose'],
-        \ 'errorformat': '%A%f: line %l\, col %v\, %m \(%t%*\d\)',
-        \ }
-    let g:neomake_javascript_enabled_makers = ['jshint']
+```viml
+let g:neomake_javascript_jshint_maker = {
+    \ 'args': ['--verbose'],
+    \ 'errorformat': '%A%f: line %l\, col %v\, %m \(%t%*\d\)',
+    \ }
+let g:neomake_javascript_enabled_makers = ['jshint']
+```
 
 For use with the `:Neomake` command (makers that run on an individual file), it
 is critical that makers follow this naming convention:
@@ -112,6 +114,7 @@ Python:
 
 Ruby:
 - mri
+- jruby
 - rubocop
 - reek
 
@@ -124,6 +127,10 @@ C++:
 - clang++
 - g++
 - clang-tidy
+
+CSS:
+- csslint
+- stylelint
 
 D:
 - dmd
@@ -160,6 +167,9 @@ Lua:
 
 Standard ML:
 - smlnj
+
+Markdown:
+- mdl
 
 Since this list may be out of date, look in [autoload/neomake/makers](https://github.com/benekastah/neomake/tree/master/autoload/neomake/makers) for all supported makers.
 
