@@ -5,7 +5,6 @@ package_list = {
   'vim-fugitive' => 'https://github.com/tpope/vim-fugitive.git',
   'unite.vim' => 'https://github.com/Shougo/unite.vim.git',
   'vimproc.vim' => 'https://github.com/Shougo/vimproc.vim.git',
-  'neocomplete.vim' => 'https://github.com/Shougo/neocomplete.vim.git',
   'neosnippet.vim' => 'https://github.com/Shougo/neosnippet.vim.git',
   'unite-outline' => 'https://github.com/Shougo/unite-outline.git',
   'vim-airline' => 'https://github.com/bling/vim-airline.git',
@@ -35,6 +34,12 @@ package_list = {
   'vim-sexp-mappings-for-regular-people' => 'https://github.com/tpope/vim-sexp-mappings-for-regular-people',
   # end Clojure }}}
 
+  # {{{ color scheme'
+  'gruvbox' => 'https://github.com/morhetz/gruvbox.git',
+  'jellybeans.vim' => 'https://github.com/nanotech/jellybeans.vim.git',
+  'Apprentice' => 'https://github.com/romainl/Apprentice.git',
+  # end color scheme }}}
+
   'vimux' => 'git@github.com:benmills/vimux.git',
   'vim-table-mode' => 'https://github.com/dhruvasagar/vim-table-mode',
   'vim-commentary' => 'https://github.com/tpope/vim-commentary.git',
@@ -44,12 +49,8 @@ package_list = {
   'neoterm' => 'https://github.com/kassio/neoterm.git',
   'vim-follow-my-lead' => 'https://github.com/ktonga/vim-follow-my-lead.git',
   'vim-gitgutter' => 'https://github.com/airblade/vim-gitgutter.git',
-
-  # {{{ color scheme'
-  'gruvbox' => 'https://github.com/morhetz/gruvbox.git',
-  'jellybeans.vim' => 'https://github.com/nanotech/jellybeans.vim.git',
-  'Apprentice' => 'https://github.com/romainl/Apprentice.git'
-  # end color scheme }}}
+  'vim-rest-console' => 'https://github.com/diepm/vim-rest-console.git',
+  'neomake' => 'https://github.com/benekastah/neomake.git'
 }
 
 package_list.each do |name, link|
