@@ -91,9 +91,9 @@ function! s:kind.action_table.preview.func(candidate) "{{{
   wincmd P
   try
     if !buflisted
-      doautocmd BufRead
+      silent doautocmd BufRead
       setlocal nomodified
-      call unite#add_previewed_buffer_list(a:candidate.action__path)
+      call unite#add_previewed_buffer_list(bufnr('%'))
     endif
   finally
     execute winnr.'wincmd w'
