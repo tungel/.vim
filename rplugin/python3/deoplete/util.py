@@ -23,7 +23,10 @@
 # }}}
 # ============================================================================
 
+import re
 import json
+import functools
+import operator
 
 
 def get_buffer_config(vim, filetype, buffer_var, user_var, default_var):
@@ -53,11 +56,14 @@ def convert2list(expr):
 
 
 def globruntime(vim, path):
-    return vim.funcs.globpath(vim.eval('&runtimepath'), path, 1, 1)
+    return vim.funcs.globpath(vim.options['runtimepath'], path, 1, 1)
 
 
 def debug(vim, expr):
-    vim.command('echomsg string(\'' + escape(json.dumps(expr)) + '\')')
+    if vim.vars['deoplete#enable_debug']:
+        vim.command('echomsg string(\'' + escape(json.dumps(expr)) + '\')')
+    else:
+        error(vim, "not in debug mode, but debug called")
 
 
 def error(vim, msg):
@@ -69,7 +75,7 @@ def escape(expr):
 
 
 def charpos2bytepos(vim, input, pos):
-    return len(bytes(input[: pos], vim.eval('&encoding')))
+    return len(bytes(input[: pos], vim.options['encoding']))
 
 
 def bytepos2charpos(vim, input, pos):
@@ -78,3 +84,17 @@ def bytepos2charpos(vim, input, pos):
 
 def get_custom(vim, source_name):
     return vim.call('deoplete#custom#get', source_name)
+
+
+def get_syn_name(vim):
+    return vim.call('deoplete#util#get_syn_name')
+
+
+def parse_file_pattern(f, pattern):
+    lines = f.readlines()
+    if not lines:
+        return []
+    p = re.compile(pattern)
+    return list(set(functools.reduce(operator.add, [
+        p.findall(x) for x in lines
+    ])))

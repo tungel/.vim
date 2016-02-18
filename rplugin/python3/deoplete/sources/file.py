@@ -40,6 +40,7 @@ class Source(Base):
         self.name = 'file'
         self.mark = '[F]'
         self.min_pattern_length = 0
+        self.rank = 150
 
         set_default(self.vim, 'g:deoplete#file#enable_buffer_path', 0)
 
@@ -67,7 +68,7 @@ class Source(Base):
     def __longest_path_that_exists(self, input_str):
         data = re.split(self.vim.call(
             'deoplete#util#vimoption2python_not',
-            self.vim.eval('&isfname')), input_str)
+            self.vim.options['isfname']), input_str)
         pos = [" ".join(data[i:]) for i in range(len(data))]
         existing_paths = list(filter(lambda x: exists(
             dirname(self.__substitute_path(x))), pos))

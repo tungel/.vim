@@ -34,8 +34,9 @@ class Base(object):
         self.vim = vim
         self.name = 'base'
         self.description = ''
-        self.marker = ''
+        self.mark = ''
         self.min_pattern_length = -1
+        self.max_pattern_length = 80
         self.input_pattern = ''
         self.matchers = ['matcher_fuzzy']
         self.sorters = ['sorter_rank']
@@ -43,6 +44,7 @@ class Base(object):
         self.filetypes = []
         self.is_bytepos = False
         self.rank = 100
+        self.disabled_syntaxes = []
 
     def get_complete_position(self, context):
         m = re.search(

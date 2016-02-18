@@ -1,6 +1,8 @@
 deoplete
 ========
 
+[![Join the chat at https://gitter.im/Shougo/deoplete.nvim](https://badges.gitter.im/Shougo/deoplete.nvim.svg)](https://gitter.im/Shougo/deoplete.nvim?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 Deoplete is the abbreviation of "dark powered neo-completion".  It
 provides an asynchronous keyword completion system in the
 current buffer.  Deoplete currently has few features and limited customization.
@@ -26,7 +28,7 @@ If `:echo has("python3")` returns `1`, then you're done; otherwise, see below.
 
 You can enable Python3 interface with pip:
 
-    sudo pip3 install neovim
+    pip3 install neovim
 
 If you want to read the Neovim-python/python3 interface install documentation,
 you should read `:help nvim-python`.
@@ -40,6 +42,8 @@ you should read `:help nvim-python`.
 ![Neosnippets and neco-ghc integration](https://cloud.githubusercontent.com/assets/7141867/11717032/b4159c0e-9f73-11e5-91ee-404e6390366a.png)
 
 ![deoplete + echodoc integration](https://github.com/archSeer/nvim-elixir/blob/master/autocomplete.gif)
+
+![deoplete + deoplete-go integration](https://camo.githubusercontent.com/cfdefba43971bd44d466ead357bb296e38d7f88c/68747470733a2f2f6d656469612e67697068792e636f6d2f6d656469612f6c344b6930316d30314939424f485745302f67697068792e676966)
 
 ## Configuration Examples
 
