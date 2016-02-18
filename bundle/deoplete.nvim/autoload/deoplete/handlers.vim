@@ -73,7 +73,8 @@ function! s:is_skip(event, context) abort "{{{
         \ || (a:event !=# 'Manual' && disable_auto_complete)
         \ || (&l:completefunc != '' && &l:buftype =~# 'nofile')
         \ || (a:event ==# 'InsertEnter'
-        \     && has_key(g:deoplete#_context, 'position'))
+        \     && (col('.') != virtcol('.')
+        \         || has_key(g:deoplete#_context, 'position')))
     return 1
   endif
 

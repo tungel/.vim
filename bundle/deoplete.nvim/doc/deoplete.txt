@@ -40,6 +40,7 @@ Create filter		|deoplete-create-filter|
 FILTERS			|deoplete-filters|
 External sources	|deoplete-external-sources|
 External plugins	|deoplete-external-plugins|
+External omnifuncs	|deoplete-external-omnifuncs|
 FAQ			|deoplete-faq|
 
 ==============================================================================
@@ -140,6 +141,16 @@ g:deoplete#disable_auto_complete
 				*b:deoplete_disable_auto_complete*
 b:deoplete_disable_auto_complete
 		Buffer local variable of |g:deoplete#disable_auto_complete|.
+
+				*g:deoplete#enable_debug*
+g:deoplete#enable_debug
+		It enables deoplete debug mode.  The debug print feature is
+		enabled.
+
+				*g:deoplete#enable_profile*
+g:deoplete#enable_profile
+		It enables deoplete profile mode.
+		If it is 1, deoplete will print the time information.
 
 				*g:deoplete#delimiters*
 g:deoplete#delimiters
@@ -283,6 +294,14 @@ g:deoplete#file#enable_buffer_path
 b:deoplete_file_enable_buffer_path
 		Buffer local variable of |g:deoplete#file#enable_buffer_path|.
 
+				*g:deoplete#tag#cache_limit_size*
+g:deoplete#tag#cache_limit_size
+		It sets file size to make a cache of a file in
+		tag source.  If a tag file is bigger than this size,
+		deoplete does not make the tag file cache.
+
+		Default value: 500000
+
 ------------------------------------------------------------------------------
 FUNCTIONS 					*deoplete-functions*
 
@@ -313,6 +332,9 @@ deoplete#custom#source({source-name}, {option-name}, {value})
 		call deoplete#custom#set('buffer', 'rank', 9999)
 		" Enable buffer source in C/C++ files only.
 		call deoplete#custom#set('buffer', 'filetypes', ['c', 'cpp'])
+		" Disable the candidates in Comment/String syntaxes.
+		call deoplete#custom#set('_',
+		\ 'disabled_syntaxes', ['Comment', 'String'])
 <
 ------------------------------------------------------------------------------
 KEY MAPPINGS 					*deoplete-key-mappings*
@@ -508,6 +530,14 @@ min_pattern_length
 		If you omit it, it is set
 		|g:deoplete#auto_completion_start_length| value.
 
+				*deoplete-source-attribute-max_pattern_length*
+max_pattern_length
+		Number				(Optional)
+		Ignored pattern length for completion.
+		It is useful to edit BASE64 files.
+
+		If you omit it, it is set "80" value.
+
 				*deoplete-source-attribute-input_pattern*
 input_pattern
 		String				(Optional)
@@ -547,6 +577,13 @@ converters	List			(Optional)
 		Source default converters list.
 
 		If you omit it, |deoplete-filter-converter_default| is used.
+
+				*deoplete-source-attribute-disabled_syntaxes*
+disabled_syntaxes
+		List			(Optional)
+		Source disabled syntaxes list.
+
+		If you omit it, this feature is ignored.
 
 			*deoplete-source-attribute-get_complete_position*
 get_complete_position	Function	(Optional)
@@ -683,6 +720,9 @@ https://github.com/zchee/deoplete-jedi
 perlomni.vim: perlomni source
 https://github.com/c9s/perlomni.vim
 
+deoplete-typescript: typescript source
+https://github.com/mhartington/deoplete-typescript
+
 ==============================================================================
 EXTERNAL PLUGINS				*deoplete-external-plugins*
 
@@ -707,6 +747,15 @@ https://github.com/Shougo/neoinclude.vim
 FastFold:
 Speed up the updating folds when you use auto completion plugins.
 https://github.com/Konfekt/FastFold
+
+==============================================================================
+EXTERNAL OMNIFUNCS				*deoplete-external-omnifuncs*
+
+These are my recommended omnifuncs for deoplete.
+
+vim-dutly: Vim omnifunc
+
+phpcompleted-extended: PHP omnifunc
 
 ==============================================================================
 FAQ						*deoplete-faq*

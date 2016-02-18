@@ -99,6 +99,10 @@ function! deoplete#init#_variables() abort "{{{
         \ 'g:deoplete#delimiters', ['/', '.', '::', ':', '#'])
   call deoplete#util#set_default(
         \ 'g:deoplete#max_list', 100)
+  call deoplete#util#set_default(
+        \ 'g:deoplete#enable_debug', 0)
+  call deoplete#util#set_default(
+        \ 'g:deoplete#enable_profile', 0)
 
   call deoplete#util#set_default(
         \ 'g:deoplete#keyword_patterns', {})
@@ -126,6 +130,8 @@ function! deoplete#init#_variables() abort "{{{
         \ 'g:deoplete#member#prefix_patterns', {})
   call deoplete#util#set_default(
         \ 'g:deoplete#member#_prefix_patterns', {})
+  call deoplete#util#set_default(
+        \ 'g:deoplete#tag#cache_limit_size', 500000)
 
   " Initialize default keyword pattern. "{{{
   call deoplete#util#set_pattern(
