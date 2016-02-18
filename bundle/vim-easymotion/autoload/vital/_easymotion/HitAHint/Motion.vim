@@ -69,6 +69,7 @@ let s:overwin = {
 \     'highlight': {
 \       'shade': 'HitAHintShade',
 \       'target': 'HitAHintTarget',
+\       'cursor': 'HitAHintCursor',
 \     },
 \     'jump_first_target_keys': [],
 \     'do_shade': s:TRUE,
@@ -78,6 +79,16 @@ let s:overwin = {
 function! s:_init_hl() abort
   highlight default HitAHintShade ctermfg=242 guifg=#777777
   highlight default HitAHintTarget ctermfg=81 guifg=#66D9EF
+  " Cursor highlight doesn't exist for some environment with some
+  " colorscheme ref:#275
+  "   e.g.
+  "     - :colorscheme default
+  "     - :colorscheme hybrid
+  if hlexists('Cursor')
+    highlight default link HitAHintCursor Cursor
+  else
+    highlight default HitAHintCursor term=reverse cterm=reverse gui=reverse
+  endif
 endfunction
 
 call s:_init_hl()
@@ -287,7 +298,7 @@ function! s:Hinter.init(hint_dict) abort
 endfunction
 
 function! s:Hinter.before() abort
-  let self.highlight_id_cursor = matchadd('Cursor', '\%#', 101)
+  let self.highlight_id_cursor = matchadd(self.config.highlight.cursor, '\%#', 101)
   call self.save_options()
   call self.disable_conceal_in_other_win()
 endfunction
@@ -507,7 +518,7 @@ function! s:Hinter._show_hint_for_win(winnr) abort
     let hints += self._show_hint_for_line(a:winnr, lnum, col2hint)
   endfor
   " Restore syntax and show hints after replacing all lines for performance.
-  if !self.config.do_shade
+  if !s:can_preserve_syntax && !self.config.do_shade
     let &l:syntax = self.save_syntax[a:winnr]
   endif
   execute 'highlight! link Conceal' self.config.highlight.target
@@ -778,3 +789,4 @@ endfunction
 function! s:throw(message) abort
   throw 'vital: HitAHint.Motion: ' . a:message
 endfunction
+
