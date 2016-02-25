@@ -122,6 +122,7 @@ C:
 - clang
 - gcc
 - clang-tidy
+- checkpatch
 
 C++:
 - clang++
@@ -170,6 +171,9 @@ Standard ML:
 
 Markdown:
 - mdl
+
+Pug:
+- [pug-lint](https://github.com/pugjs/pug-lint)
 
 Since this list may be out of date, look in [autoload/neomake/makers](https://github.com/benekastah/neomake/tree/master/autoload/neomake/makers) for all supported makers.
 
