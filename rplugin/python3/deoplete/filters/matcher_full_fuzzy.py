@@ -25,6 +25,7 @@
 
 import re
 from .base import Base
+from deoplete.util import fuzzy_escape
 
 
 class Filter(Base):
@@ -39,18 +40,10 @@ class Filter(Base):
         complete_str = context['complete_str']
         if context['ignorecase']:
             complete_str = complete_str.lower()
-        p = re.compile(fuzzy_escape(complete_str))
-        input_len = len(complete_str)
+        p = re.compile(fuzzy_escape(complete_str, context['camelcase']))
         if context['ignorecase']:
             return [x for x in context['candidates']
-                    if len(x['word']) > input_len and
-                    p.search(x['word'].lower())]
+                    if p.search(x['word'].lower())]
         else:
             return [x for x in context['candidates']
-                    if len(x['word']) > input_len and
-                    p.search(x['word'])]
-
-
-def fuzzy_escape(string):
-    # Escape string for python regexp.
-    return re.sub(r'([a-zA-Z0-9_])', r'\1.*', re.escape(string))
+                    if p.search(x['word'])]

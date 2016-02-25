@@ -63,15 +63,15 @@ function! deoplete#init#enable() abort "{{{
     endtry
   endif
 
-  if !exists(':DeopleteInitializePython')
+  try
+    call _deoplete()
+  catch
     call deoplete#util#print_error(
           \ 'deoplete.nvim is not registered as Neovim remote plugins.')
     call deoplete#util#print_error(
           \ 'Please execute :UpdateRemotePlugins command and restart Neovim.')
     return
-  endif
-
-  DeopleteInitializePython
+  endtry
 
   let s:is_enabled = 1
 
@@ -89,6 +89,8 @@ function! deoplete#init#_variables() abort "{{{
         \ 'g:deoplete#enable_ignore_case', &ignorecase)
   call deoplete#util#set_default(
         \ 'g:deoplete#enable_smart_case', &smartcase)
+  call deoplete#util#set_default(
+        \ 'g:deoplete#enable_camel_case', 0)
   call deoplete#util#set_default(
         \ 'g:deoplete#enable_refresh_always', 0)
   call deoplete#util#set_default(
@@ -158,7 +160,7 @@ function! deoplete#init#_variables() abort "{{{
         \ 'java', ['[^. \t0-9]\.\w*'])
   call deoplete#util#set_pattern(
         \ g:deoplete#omni#_input_patterns,
-        \ 'javascript,typescript', ['[^. \t0-9]\.([a-zA-Z_]\w*)?'])
+        \ 'javascript', ['[^. \t0-9]\.([a-zA-Z_]\w*)?'])
   call deoplete#util#set_pattern(
         \ g:deoplete#omni#_input_patterns,
         \ 'css,scss,sass', ['\w+', '\w+[):;]?\s+\w*', '[@!]'])
@@ -235,6 +237,7 @@ function! deoplete#init#_context(event, sources) abort "{{{
         \ 'filetypes': filetypes,
         \ 'ignorecase': g:deoplete#enable_ignore_case,
         \ 'smartcase': g:deoplete#enable_smart_case,
+        \ 'camelcase': g:deoplete#enable_camel_case,
         \ 'sources': sources,
         \ 'keyword_patterns': keyword_patterns,
         \ }
