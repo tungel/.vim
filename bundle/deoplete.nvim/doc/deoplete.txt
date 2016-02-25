@@ -115,6 +115,17 @@ g:deoplete#enable_smart_case
 
 		Default value: same with your 'smartcase' value
 
+				*g:deoplete#enable_camel_case*
+g:deoplete#enable_camel_case
+		When a capital letter is matched with the uppercase, but a
+		lower letter is matched with the upper- and lowercase.
+		Ex: "foB" is matched with "FooBar" not "foobar".
+		Note: This feature is only available in
+		|deoplete-filter-matcher_fuzzy| or
+		|deoplete-filter-matcher_full_fuzzy|.
+
+		Default value: 0
+
 				*g:deoplete#enable_refresh_always*
 g:deoplete#enable_refresh_always
 		Deoplete refreshes the candidates automatically if this value
@@ -312,8 +323,8 @@ deoplete#initialize()			*deoplete#initialize()*
 		User customization for deoplete must be set before
 		initialization of deoplete.
 
-						*deoplete#custom#source()*
-deoplete#custom#source({source-name}, {option-name}, {value})
+						*deoplete#custom#set()*
+deoplete#custom#set({source-name}, {option-name}, {value})
 		Set {source-name} source specialized {option-name}
 		to {value}. You may specify multiple sources with
 		separating "," in {source-name}.
@@ -436,7 +447,7 @@ USER SOURCES 					*deoplete-user-sources*
 FILTERS						*deoplete-filters*
 
 					*deoplete-filter-matcher_default*
-Default matchers: ['matcher_fuzzy']
+Default matchers: ['matcher_length', 'matcher_fuzzy']
 	
 	You can change it by |deoplete#custom#set()|.
 
@@ -460,6 +471,11 @@ matcher_fuzzy	Fuzzy matching matcher.
 matcher_full_fuzzy
 		Full fuzzy matching matcher.
 		It accepts partial fuzzy matches like YouCompleteMe.
+
+					*deoplete-filter-matcher_length*
+matcher_length
+		Length matching matcher.
+		It removes shorter candidates than user input.
 
 					*deoplete-filter-sorter_rank*
 sorter_rank	Matched rank order sorter.  The higher the head matched word
@@ -723,6 +739,9 @@ https://github.com/c9s/perlomni.vim
 deoplete-typescript: typescript source
 https://github.com/mhartington/deoplete-typescript
 
+deoplete-clang: clang source for C/C++
+https://github.com/zchee/deoplete-clang
+
 ==============================================================================
 EXTERNAL PLUGINS				*deoplete-external-plugins*
 
@@ -818,10 +837,10 @@ https://github.com/osyo-manga/vim-monster
 
 Q: I want to use C/C++ omni completion with deoplete.
 
-A: You can use |clang_complete| or |vim-marching|.
+A: You can use |clang_complete| or |deoplete-clang|.
 
 https://github.com/Rip-Rip/clang_complete
-https://github.com/osyo-manga/vim-marching
+https://github.com/zchee/deoplete-clang
 
 For clang_complete configuration is below. >
 
@@ -898,5 +917,16 @@ A: You must install context_filetype plugin.
 https://github.com/Shougo/context_filetype.vim
 And you must set |g:context_filetype#same_filetypes| variable.
 
+Q: I want to close the preview window after completion is done.
+
+A: >
+	autocmd CompleteDone * pclose!
+
+Q: I want to see the typed word in the completion menu.
+
+A: You should remove |deoplete-filter-matcher_length| from the matchers.
+>
+	call deoplete#custom#set('_', 'matchers', ['matcher_fuzzy'])
+<
 ==============================================================================
 vim:tw=78:ts=8:ft=help:norl:noet:fen:noet:
