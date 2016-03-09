@@ -64,20 +64,25 @@ function! s:completion_begin(event) abort "{{{
   call rpcnotify(g:deoplete#_channel_id, 'completion_begin', context)
 endfunction"}}}
 function! s:is_skip(event, context) abort "{{{
+  let displaywidth = strdisplaywidth(deoplete#util#get_input(a:event)) + 1
+
+  if &l:formatoptions =~# '[tca]' && &l:textwidth > 0
+        \     && displaywidth >= &l:textwidth
+    if &l:formatoptions =~# '[ta]'
+          \ || deoplete#util#get_syn_name() ==# 'Comment'
+      return
+    endif
+  endif
+
   let disable_auto_complete =
         \ deoplete#util#get_simple_buffer_config(
         \   'b:deoplete_disable_auto_complete',
         \   'g:deoplete#disable_auto_complete')
 
-  let displaywidth = strdisplaywidth(deoplete#util#get_input(a:event)) + 1
   let is_virtual = virtcol('.') != displaywidth
-
-  if &paste
-        \ || (&l:formatoptions =~# '[tca]' && &l:textwidth > 0
-        \     && displaywidth >= &l:textwidth)
+  if &paste || is_virtual
         \ || (a:event !=# 'Manual' && disable_auto_complete)
         \ || (&l:completefunc != '' && &l:buftype =~# 'nofile')
-        \ || is_virtual
         \ || (a:event ==# 'InsertEnter'
         \     && has_key(g:deoplete#_context, 'position'))
     return 1
@@ -96,6 +101,10 @@ function! s:is_skip(event, context) abort "{{{
 endfunction"}}}
 
 function! s:on_insert_leave() abort "{{{
+  if exists('g:deoplete#_saved_completeopt')
+    let &completeopt = g:deoplete#_saved_completeopt
+    unlet g:deoplete#_saved_completeopt
+  endif
   let g:deoplete#_context = {}
 endfunction"}}}
 
@@ -112,6 +121,9 @@ function! s:complete_done() abort "{{{
   if get(g:deoplete#_context, 'refresh', 0)
     " Don't skip completion
     let g:deoplete#_context.refresh = 0
+    if deoplete#util#get_prev_event() ==# 'Manual'
+      let g:deoplete#_context.event = 'refresh'
+    endif
     return
   endif
 

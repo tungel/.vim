@@ -71,6 +71,7 @@ class Deoplete(object):
         var_context['complete_position'] = complete_position
         var_context['changedtick'] = context['changedtick']
         var_context['candidates'] = candidates
+        var_context['event'] = context['event']
         self.__vim.vars['deoplete#_context'] = var_context
 
         # Set (and store) current &completeopt setting.  This cannot be done
@@ -242,7 +243,7 @@ class Deoplete(object):
             candidates = candidates[: self.__vim.vars['deoplete#max_list']]
 
         # Set icase
-        for candidate in context['candidates']:
+        for candidate in candidates:
             candidate['icase'] = 1
         return (complete_position, candidates)
 
