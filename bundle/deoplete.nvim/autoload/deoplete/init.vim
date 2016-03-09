@@ -160,9 +160,6 @@ function! deoplete#init#_variables() abort "{{{
         \ 'java', ['[^. \t0-9]\.\w*'])
   call deoplete#util#set_pattern(
         \ g:deoplete#omni#_input_patterns,
-        \ 'javascript', ['[^. \t0-9]\.([a-zA-Z_]\w*)?'])
-  call deoplete#util#set_pattern(
-        \ g:deoplete#omni#_input_patterns,
         \ 'css,scss,sass', ['\w+', '\w+[):;]?\s+\w*', '[@!]'])
   call deoplete#util#set_pattern(
         \ g:deoplete#omni#_input_patterns,
@@ -204,7 +201,7 @@ function! deoplete#init#_context(event, sources) abort "{{{
         \                     deoplete#util#uniq([&filetype]
         \                          + split(&filetype, '\.'))
 
-  let sources = a:sources
+  let sources = deoplete#util#convert2list(a:sources)
   if a:event !=# 'Manual' && empty(sources)
     " Use default sources
     let sources = deoplete#util#get_buffer_config(
@@ -226,9 +223,12 @@ function! deoplete#init#_context(event, sources) abort "{{{
   let keyword_patterns = substitute(keyword_patterns,
         \ '\\k', '\=pattern', 'g')
 
+  let event = (deoplete#util#get_prev_event() ==# 'refresh') ?
+        \ 'Manual' : a:event
+
   return {
         \ 'changedtick': b:changedtick,
-        \ 'event': a:event,
+        \ 'event': event,
         \ 'input': deoplete#util#get_input(a:event),
         \ 'next_input': deoplete#util#get_next_input(a:event),
         \ 'complete_str': '',
