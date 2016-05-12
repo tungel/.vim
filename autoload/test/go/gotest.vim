@@ -7,15 +7,17 @@ function! test#go#gotest#test_file(file) abort
 endfunction
 
 function! test#go#gotest#build_position(type, position) abort
-  if a:type == 'nearest'
-    let name = s:nearest_test(a:position)
-    if !empty(name) | let name = '-run '.shellescape(name, 1) | endif
-    return [name]
-  elseif a:type == 'file'
-    let path = fnamemodify(a:position['file'], ':h')
-    return path != '.' ? ['./' . path . '/...'] : []
-  else
+  if a:type == 'suite'
     return ['./...']
+  else
+    let path = './'.fnamemodify(a:position['file'], ':h')
+
+    if a:type == 'file'
+      return path == './.' ? [] : [path . '/...']
+    elseif a:type == 'nearest'
+      let name = s:nearest_test(a:position)
+      return empty(name) ? [] : ['-run '.shellescape(name.'$', 1), path]
+    endif
   endif
 endfunction
 

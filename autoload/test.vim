@@ -1,4 +1,4 @@
-function! test#run(type, options) abort
+function! test#run(type, arguments) abort
   if &autowrite || &autowriteall
     silent! wall
   endif
@@ -12,18 +12,25 @@ function! test#run(type, options) abort
     call s:echo_failure('Not a test file') | return
   endif
 
+  call s:detect_command_strategy(a:arguments)
+
   let runner = test#determine_runner(position['file'])
 
   let args = test#base#build_position(runner, a:type, position)
-  let args = [a:options] + args
-  let args = [test#base#options(runner, a:type)] + args
+  let args = a:arguments + args
+  let args = test#base#options(runner, a:type) + args
 
   call test#execute(runner, args)
 endfunction
 
-function! test#run_last() abort
+function! test#run_last(arguments) abort
   if exists('g:test#last_command')
-    call test#shell(g:test#last_command)
+    call s:detect_command_strategy(a:arguments)
+
+    let cmd = [g:test#last_command]
+    let cmd = cmd + a:arguments
+
+    call test#shell(join(cmd))
   else
     call s:echo_failure('No tests were run so far')
   endif
@@ -39,7 +46,7 @@ endfunction
 
 function! test#execute(runner, args) abort
   let args = a:args
-  let args = [test#base#options(a:runner)] + args
+  let args = test#base#options(a:runner) + args
   call filter(args, '!empty(v:val)')
 
   let executable = test#base#executable(a:runner)
@@ -58,7 +65,10 @@ function! test#shell(cmd) abort
     let cmd = g:test#custom_transformations[g:test#transformation](cmd)
   endif
 
-  if cmd =~# '^:'
+  if exists('s:strategy')
+    let strategy = s:strategy
+    unlet s:strategy
+  elseif cmd =~# '^:'
     let strategy = 'vimscript'
   else
     let strategy = get(g:, 'test#strategy', 'basic')
@@ -92,6 +102,16 @@ function! s:get_position() abort
     \ 'line': line('.'),
     \ 'col':  col('.'),
   \}
+endfunction
+
+function! s:detect_command_strategy(arguments) abort
+  for idx in range(0, len(a:arguments) - 1)
+    if a:arguments[idx] =~# '^-strategy='
+      let option = remove(a:arguments, idx)
+      let s:strategy = substitute(option, '-strategy=', '', '')
+      break
+    endif
+  endfor
 endfunction
 
 function! s:echo_failure(message) abort

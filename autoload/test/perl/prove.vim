@@ -15,7 +15,18 @@ function! test#perl#prove#build_position(type, position) abort
 endfunction
 
 function! test#perl#prove#build_args(args)
-  let args = a:args
+  let args = []
+  let test_args = []
+
+  for idx in range(0, len(a:args) - 1)
+    if a:args[idx] == '::' || !empty(test_args) && !test#base#file_exists(a:args[idx])
+      call add(test_args, a:args[idx])
+    else
+      call add(args, a:args[idx])
+    endif
+  endfor
+
+  let args = args + test_args
 
   if !empty(filter(copy(args), 'isdirectory(v:val)'))
     let args = ['--recurse'] + args
