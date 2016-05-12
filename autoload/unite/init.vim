@@ -190,10 +190,12 @@ function! unite#init#_unite_buffer() abort "{{{
       setlocal norelativenumber
     endif
 
-    if context.vertical
-      setlocal winfixwidth
-    else
-      setlocal winfixheight
+    if context.split
+      if context.vertical
+        setlocal winfixwidth
+      else
+        setlocal winfixheight
+      endif
     endif
 
     " Autocommands.
@@ -473,6 +475,9 @@ endfunction"}}}
 
 function! unite#init#_candidates_source(candidates, source_name) abort "{{{
   let source = unite#variables#loaded_sources(a:source_name)
+  if empty(source)
+    return []
+  endif
 
   let default_candidate = {
         \ 'kind' : source.default_kind,
@@ -545,14 +550,23 @@ function! unite#init#_default_scripts(kind, names) abort "{{{
             \ fnamemodify(v:val, ':t')) < 0")
     endif
 
-    for define in map(files,
-          \ "unite#{a:kind}#{fnamemodify(v:val, ':t:r')}#define()")
-      for dict in filter(unite#util#convert2list(define),
-            \ '!empty(v:val) && !has_key(static[a:kind], v:val.name)')
-        let static[a:kind][dict.name] = dict
+    try
+      for file in files
+        let define = unite#{a:kind}#{fnamemodify(file, ':t:r')}#define()
+        for dict in filter(unite#util#convert2list(define),
+              \ '!empty(v:val) && !has_key(static[a:kind], v:val.name)')
+          let static[a:kind][dict.name] = dict
+        endfor
+        unlet define
       endfor
-      unlet define
-    endfor
+    catch
+      call unite#print_error(v:throwpoint)
+      call unite#print_error(v:exception)
+      call unite#print_error(
+            \ 'Error occurred in source initialization!')
+      call unite#print_error(
+            \ 'Source name is ' . file)
+    endtry
   endfor
 endfunction"}}}
 
