@@ -1,3 +1,5 @@
+setlocal commentstring=#%s
+
 let s:vrc_auto_format_response_patterns = {
 \   'json': 'python -m json.tool',
 \   'xml': 'xmllint --format -',
@@ -112,7 +114,8 @@ endfunction
 " @return dict
 "
 function! s:ParseHeaders(start, end)
-    let headers = {}
+    let contentTypeOpt = s:GetOptValue('vrc_header_content_type', 'application/json')
+    let headers = {'Content-Type': contentTypeOpt}
     if (a:end < a:start)
         return headers
     endif
@@ -127,16 +130,9 @@ function! s:ParseHeaders(start, end)
         let sepIdx = stridx(line, ':')
         if sepIdx > -1
             let key = s:StrTrim(line[0:sepIdx - 1])
-            if key ==? 'Content-Type'
-                let hasContentType = 1
-            endif
             let headers[key] = s:StrTrim(line[sepIdx + 1:])
         endif
     endfor
-    if !hasContentType
-      let headers['Content-Type'] =
-      \   s:GetOptValue('vrc_header_content_type', 'application/json')
-    endif
     return headers
 endfunction
 
@@ -204,7 +200,10 @@ function! s:ParseRequest(start, end, globSection)
     """ Parse http verb, query path, and data body.
     let [httpVerb; queryPath] = split(restQuery)
     let dataBody = getline(lineNumVerb + 1, a:end)
-    call filter(dataBody, 'v:val !~ ''\v^\s*(#|//).*$''')
+
+    """ Filter out comment and blank lines.
+    call filter(dataBody, 'v:val !~ ''\v^\s*(#|//).*$|\v^\s*$''')
+
     """ Some might need leading/trailing spaces in body rows.
     "call map(dataBody, 's:StrTrim(v:val)')
     return {
@@ -214,7 +213,7 @@ function! s:ParseRequest(start, end, globSection)
     \   'headers': headers,
     \   'httpVerb': httpVerb,
     \   'requestPath': join(queryPath, ''),
-    \   'dataBody': join(dataBody, '')
+    \   'dataBody': dataBody
     \}
 endfunction
 
@@ -271,7 +270,7 @@ function! s:GetCurlCommand(request)
     if !empty(dataBody)
         call add(
         \   curlArgs,
-        \   s:GetCurlDataOpt(httpVerb, dataBody) . ' ' . shellescape(dataBody)
+        \   s:GetCurlDataArgs(httpVerb, dataBody)
         \)
     endif
     return 'curl ' . join(curlArgs) . ' ' . shellescape(a:request.host . a:request.requestPath)
@@ -282,37 +281,57 @@ endfunction
 "
 function! s:GetCurlRequestOpt(httpVerb)
     if a:httpVerb ==? 'GET'
+        if s:GetOptValue('vrc_allow_get_request_body', 0)
+            return '-X GET'
+        endif
         return '--get'
     elseif a:httpVerb ==? 'HEAD'
         return '--head'
-    elseif a:httpVerb !=? 'POST'
-        """ Use -X/--request for any verbs other than POST.
-        return '-X ' . a:httpVerb
     endif
-    """ Return empty string for POST.
-    return ''
+    return '-X ' . a:httpVerb
 endfunction
 
 """
 " Get the cUrl option to include data body (--data, --data-urlencode...)
 "
-function! s:GetCurlDataOpt(httpVerb, dataBody)
+" @param  dict httpVerb
+" @param  list dataLines
+" @return string
+"
+function! s:GetCurlDataArgs(httpVerb, dataLines)
     """ These verbs should have request body passed as POST params.
     if a:httpVerb ==? 'POST'
     \  || a:httpVerb ==? 'PUT'
     \  || a:httpVerb ==? 'PATCH'
     \  || a:httpVerb ==? 'OPTIONS'
-        """ Should load from a file?
-        if stridx(a:dataBody, '@') == 0
-            """ Load from a file.
-            return '--data-binary'
-        else
-            return '--data'
+        """ If data is loaded from file.
+        if stridx(get(a:dataLines, 0, ''), '@') == 0
+            return '--data-binary ' . shellescape(a:dataLines[0])
         endif
+
+        """ If request body is split line by line.
+        if s:GetOptValue('vrc_split_request_body', 0)
+            call map(a:dataLines, '"--data " . shellescape(v:val)')
+            return join(a:dataLines)
+        endif
+
+        """ Otherwise, send the request body as a whole.
+        return '--data ' . shellescape(join(a:dataLines, ''))
+    endif
+
+    """ If verb is GET and GET request body is allowed.
+    if a:httpVerb ==? 'GET' && s:GetOptValue('vrc_allow_get_request_body', 0)
+        return '--data ' . shellescape(join(a:dataLines, ''))
     endif
 
     """ For other cases, request body is passed as GET params.
-    return '--data-urlencode'
+    if s:GetOptValue('vrc_split_request_body', 0)
+        """ If request body is split, url-encode each line.
+        call map(a:dataLines, '"--data-urlencode " . shellescape(v:val)')
+        return join(a:dataLines)
+    endif
+    """ Otherwise, url-encode and send the request body as a whole.
+    return '--data-urlencode ' . shellescape(join(a:dataLines, ''))
 endfunction
 
 function! s:DisplayOutput(tmpBufName, output)
@@ -324,8 +343,13 @@ function! s:DisplayOutput(tmpBufName, output)
     let origWin = winnr()
     let outputWin = bufwinnr(bufnr(a:tmpBufName))
     if outputWin == -1
+        let cmdSplit = 'vsplit'
+        if s:GetOptValue('vrc_horizontal_split', 0)
+            let cmdSplit = 'split'
+        endif
+
         """ Create view if not loadded or hidden.
-        execute 'rightbelow vsplit ' . a:tmpBufName
+        execute 'rightbelow ' . cmdSplit . ' ' . a:tmpBufName
         setlocal buftype=nofile
     else
         """ View already shown, switch to it.
@@ -362,6 +386,9 @@ function! s:DisplayOutput(tmpBufName, output)
                 \)
                 if v:shell_error == 0
                     execute (emptyLineNum + 1) . ',$delete _'
+                    if s:GetOptValue('vrc_auto_format_uhex', 0)
+                        let formattedBody = substitute(formattedBody, '\v\\u(\x{4})', '\=nr2char("0x" . submatch(1), 1)', 'g')
+                    endif
                     call append('$', split(formattedBody, '\v\n'))
                 elseif s:GetOptValue('vrc_debug', 0)
                     echom "VRC: auto-format error: " . v:shell_error
@@ -399,9 +426,15 @@ function! s:RunQuery(start, end)
     endif
     silent !clear
     redraw!
+
+    let output = system(curlCmd)
+    if s:GetOptValue('vrc_show_command', 0)
+        let output = curlCmd . "\n\n" . output
+    endif
+
     call s:DisplayOutput(
     \   s:GetOptValue('vrc_output_buffer_name', '__REST_response__'),
-    \   system(curlCmd)
+    \   output
     \)
 endfunction
 
