@@ -1,3 +1,5 @@
+**[Maintainers needed!](https://github.com/neomake/neomake)** Contact an organization owner if interested.
+
 # Neomake
 
 A plugin for asynchronous `:make` using [Neovim's](http://neovim.org/)
@@ -6,11 +8,6 @@ job-control functionality. It is inspired by the excellent vim plugins
 [Dispatch](https://github.com/tpope/vim-dispatch).
 
 **This plugin also works in ordinary vim, but without the asynchronous benefits.**
-
-This is alpha quality software. The APIs haven't totally levelled out yet, and
-things may break and change often until they do. That said, I'm using it daily
-(but also hacking on it as it breaks). Feel free to let me know what works /
-doesn't work for you!
 
 The minimum Neovim version supported by Neomake is `NVIM 0.0.0-alpha+201503292107` (commit `960b9108c`).
 The minimum Vim version supported by Neomake is 7.4.503 (although if you don't
@@ -117,6 +114,7 @@ Ruby:
 - jruby
 - rubocop
 - reek
+- rubylint
 
 C:
 - clang
@@ -174,6 +172,9 @@ Markdown:
 
 Pug:
 - [pug-lint](https://github.com/pugjs/pug-lint)
+
+YAML:
+- [yamllint](http://yamllint.readthedocs.org/)
 
 Since this list may be out of date, look in [autoload/neomake/makers](https://github.com/benekastah/neomake/tree/master/autoload/neomake/makers) for all supported makers.
 
