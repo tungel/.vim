@@ -1,26 +1,7 @@
 # ============================================================================
 # FILE: buffer.py
 # AUTHOR: Shougo Matsushita <Shougo.Matsu at gmail.com>
-# License: MIT license  {{{
-#     Permission is hereby granted, free of charge, to any person obtaining
-#     a copy of this software and associated documentation files (the
-#     "Software"), to deal in the Software without restriction, including
-#     without limitation the rights to use, copy, modify, merge, publish,
-#     distribute, sublicense, and/or sell copies of the Software, and to
-#     permit persons to whom the Software is furnished to do so, subject to
-#     the following conditions:
-#
-#     The above copyright notice and this permission notice shall be included
-#     in all copies or substantial portions of the Software.
-#
-#     THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-#     OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-#     MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-#     IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-#     CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-#     TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-#     SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-# }}}
+# License: MIT license
 # ============================================================================
 
 import re
@@ -39,29 +20,41 @@ class Source(Base):
         self.__buffers = {}
         self.__max_lines = 5000
 
-    def gather_candidates(self, context):
-        p = re.compile(context['keyword_patterns'])
+    def on_buffer(self, context):
+        if (self.vim.current.buffer.number
+                not in self.__buffers and
+                self.vim.current.buffer.options['modifiable']):
+            self.__make_cache(context, self.vim.current.buffer)
 
+    def gather_candidates(self, context):
+        self.__make_cache(context, self.vim.current.buffer)
+
+        buffers = [x['candidates'] for x in self.__buffers.values()
+                   if x['filetype'] in context['filetypes']]
+        if not buffers:
+            return []
+
+        return [{'word': x} for x in
+                functools.reduce(operator.add, buffers)
+                if x != context['complete_str']]
+
+    def __make_cache(self, context, buffer):
+        p = re.compile(context['keyword_patterns'])
+        bufnr = buffer.number
         try:
-            if (self.vim.current.buffer.number in self.__buffers) and len(
-                    self.vim.current.buffer) > self.__max_lines:
-                line = self.vim.current.window.cursor[0]
-                self.__buffers[self.vim.current.buffer.number][
+            if (bufnr in self.__buffers) and len(buffer) > self.__max_lines:
+                line = context['position'][1]
+                self.__buffers[bufnr][
                     'candidates'] += functools.reduce(operator.add, [
-                        p.findall(x) for x in self.vim.current.buffer[
-                            max([0, line - 500]): line + 500]
+                        p.findall(x) for x in
+                        buffer[max([0, line-500]):line+500]
                     ])
             else:
-                self.__buffers[self.vim.current.buffer.number] = {
+                self.__buffers[bufnr] = {
                     'filetype': context['filetype'],
                     'candidates': functools.reduce(operator.add, [
-                        p.findall(x) for x in self.vim.current.buffer
+                        p.findall(x) for x in buffer
                     ]),
                 }
         except UnicodeDecodeError:
             return []
-
-        return [{'word': x} for x in
-                functools.reduce(operator.add, [
-                    x['candidates'] for x in self.__buffers.values()
-                    if x['filetype'] in context['filetypes']])]

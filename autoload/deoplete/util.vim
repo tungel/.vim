@@ -1,26 +1,7 @@
 "=============================================================================
 " FILE: util.vim
 " AUTHOR: Shougo Matsushita <Shougo.Matsu at gmail.com>
-" License: MIT license  {{{
-"     Permission is hereby granted, free of charge, to any person obtaining
-"     a copy of this software and associated documentation files (the
-"     "Software"), to deal in the Software without restriction, including
-"     without limitation the rights to use, copy, modify, merge, publish,
-"     distribute, sublicense, and/or sell copies of the Software, and to
-"     permit persons to whom the Software is furnished to do so, subject to
-"     the following conditions:
-"
-"     The above copyright notice and this permission notice shall be included
-"     in all copies or substantial portions of the Software.
-"
-"     THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-"     OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-"     MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-"     IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-"     CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-"     TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-"     SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-" }}}
+" License: MIT license
 "=============================================================================
 
 function! deoplete#util#set_default(var, val, ...)  abort "{{{
@@ -60,11 +41,6 @@ function! deoplete#util#print_error(string) abort "{{{
 endfunction"}}}
 function! deoplete#util#print_warning(string) abort "{{{
   echohl WarningMsg | echomsg '[deoplete] ' . a:string | echohl None
-endfunction"}}}
-function! deoplete#util#is_eskk_convertion() abort "{{{
-  return exists('*eskk#is_enabled') && eskk#is_enabled()
-        \   && eskk#get_preedit().get_henkan_phase() !=#
-        \             g:eskk#preedit#PHASE_NORMAL
 endfunction"}}}
 
 function! deoplete#util#convert2list(expr) abort "{{{
@@ -146,10 +122,27 @@ function! deoplete#util#uniq(list) abort "{{{
   return map(list, 'v:val[0]')
 endfunction"}}}
 
+function! deoplete#util#redir(cmd) abort "{{{
+  let [save_verbose, save_verbosefile] = [&verbose, &verbosefile]
+  set verbose=0 verbosefile=
+  redir => res
+  silent! execute a:cmd
+  redir END
+  let [&verbose, &verbosefile] = [save_verbose, save_verbosefile]
+  return res
+endfunction"}}}
+
 function! deoplete#util#get_syn_name() abort "{{{
   return len(getline('.')) < 200 ?
         \ synIDattr(synIDtrans(synID(line('.'), mode() ==# 'i' ?
         \          col('.')-1 : col('.'), 1)), 'name') : ''
+endfunction"}}}
+
+function! deoplete#util#neovim_version() abort "{{{
+  redir => v
+  silent version
+  redir END
+  return split(v, '\n')[0]
 endfunction"}}}
 
 " vim: foldmethod=marker
