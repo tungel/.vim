@@ -1,26 +1,7 @@
 "=============================================================================
 " FILE: mappings.vim
 " AUTHOR: Shougo Matsushita <Shougo.Matsu at gmail.com>
-" License: MIT license  {{{
-"     Permission is hereby granted, free of charge, to any person obtaining
-"     a copy of this software and associated documentation files (the
-"     "Software"), to deal in the Software without restriction, including
-"     without limitation the rights to use, copy, modify, merge, publish,
-"     distribute, sublicense, and/or sell copies of the Software, and to
-"     permit persons to whom the Software is furnished to do so, subject to
-"     the following conditions:
-"
-"     The above copyright notice and this permission notice shall be included
-"     in all copies or substantial portions of the Software.
-"
-"     THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-"     OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-"     MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-"     IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-"     CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-"     TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-"     SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-" }}}
+" License: MIT license
 "=============================================================================
 
 function! deoplete#mappings#_init() abort "{{{
@@ -51,14 +32,19 @@ function! deoplete#mappings#_set_completeopt() abort "{{{
 endfunction"}}}
 
 function! deoplete#mappings#manual_complete(...) abort "{{{
+  if deoplete#initialize()
+    return
+  endif
+
   " Start complete.
   return (pumvisible() ? "\<C-e>" : '')
         \ . "\<C-r>=deoplete#mappings#_rpcnotify_wrapper("
         \ . string(get(a:000, 0, [])) . ")\<CR>"
 endfunction"}}}
 function! deoplete#mappings#_rpcnotify_wrapper(sources) abort "{{{
-  call rpcnotify(g:deoplete#_channel_id, 'completion_begin',
-        \  deoplete#init#_context('Manual', a:sources))
+  call rpcrequest(g:deoplete#_channel_id,
+        \ 'deoplete_manual_completion_begin',
+        \ deoplete#init#_context('Manual', a:sources))
   return ''
 endfunction"}}}
 

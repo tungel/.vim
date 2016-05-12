@@ -1,38 +1,22 @@
 "=============================================================================
 " FILE: init.vim
 " AUTHOR: Shougo Matsushita <Shougo.Matsu at gmail.com>
-" License: MIT license  {{{
-"     Permission is hereby granted, free of charge, to any person obtaining
-"     a copy of this software and associated documentation files (the
-"     "Software"), to deal in the Software without restriction, including
-"     without limitation the rights to use, copy, modify, merge, publish,
-"     distribute, sublicense, and/or sell copies of the Software, and to
-"     permit persons to whom the Software is furnished to do so, subject to
-"     the following conditions:
-"
-"     The above copyright notice and this permission notice shall be included
-"     in all copies or substantial portions of the Software.
-"
-"     THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-"     OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-"     MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-"     IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-"     CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-"     TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-"     SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-" }}}
+" License: MIT license
 "=============================================================================
 
 if !exists('s:is_enabled')
   let s:is_enabled = 0
 endif
 
-function! deoplete#init#is_enabled() abort "{{{
+function! deoplete#init#_is_enabled() abort "{{{
   return s:is_enabled
 endfunction"}}}
+function! s:is_initialized() abort "{{{
+  return exists('g:deoplete#_channel_id')
+endfunction"}}}
 
-function! deoplete#init#enable() abort "{{{
-  if deoplete#init#is_enabled()
+function! deoplete#init#_initialize() abort "{{{
+  if s:is_initialized()
     return
   endif
 
@@ -45,7 +29,7 @@ function! deoplete#init#enable() abort "{{{
           \ 'deoplete.nvim does not work with this version.')
     call deoplete#util#print_error(
           \ 'It requires Neovim with Python3 support("+python3").')
-    return
+    return 1
   endif
 
   if &completeopt !~# 'noinsert\|noselect'
@@ -57,27 +41,44 @@ function! deoplete#init#enable() abort "{{{
             \ 'deoplete.nvim does not work with this version.')
       call deoplete#util#print_error(
             \ 'Please update neovim to latest version.')
-      return
+      return 1
     finally
       let &completeopt = save_completeopt
     endtry
   endif
 
   try
+    if !exists('g:loaded_remote_plugins')
+      runtime! plugin/rplugin.vim
+    endif
     call _deoplete()
   catch
     call deoplete#util#print_error(
           \ 'deoplete.nvim is not registered as Neovim remote plugins.')
     call deoplete#util#print_error(
           \ 'Please execute :UpdateRemotePlugins command and restart Neovim.')
-    return
+    return 1
   endtry
 
-  let s:is_enabled = 1
-
-  call deoplete#init#_variables()
-  call deoplete#handlers#_init()
   call deoplete#mappings#_init()
+  call deoplete#init#_variables()
+
+  let s:is_enabled = g:deoplete#enable_at_startup
+  if s:is_enabled
+    call deoplete#init#_enable()
+  else
+    call deoplete#init#_disable()
+  endif
+endfunction"}}}
+function! deoplete#init#_enable() abort "{{{
+  call deoplete#handlers#_init()
+  let s:is_enabled = 1
+endfunction"}}}
+function! deoplete#init#_disable() abort "{{{
+  augroup deoplete
+    autocmd!
+  augroup END
+  let s:is_enabled = 0
 endfunction"}}}
 
 function! deoplete#init#_variables() abort "{{{
@@ -85,6 +86,8 @@ function! deoplete#init#_variables() abort "{{{
   let g:deoplete#_rank = {}
 
   " User vairables
+  call deoplete#util#set_default(
+        \ 'g:deoplete#enable_at_startup', 0)
   call deoplete#util#set_default(
         \ 'g:deoplete#enable_ignore_case', &ignorecase)
   call deoplete#util#set_default(
@@ -94,7 +97,8 @@ function! deoplete#init#_variables() abort "{{{
   call deoplete#util#set_default(
         \ 'g:deoplete#enable_refresh_always', 0)
   call deoplete#util#set_default(
-        \ 'g:deoplete#auto_completion_start_length', 2)
+        \ 'g:deoplete#auto_complete_start_length', 2,
+        \ 'g:deoplete#auto_completion_start_length')
   call deoplete#util#set_default(
         \ 'g:deoplete#disable_auto_complete', 0)
   call deoplete#util#set_default(
@@ -105,6 +109,12 @@ function! deoplete#init#_variables() abort "{{{
         \ 'g:deoplete#enable_debug', 0)
   call deoplete#util#set_default(
         \ 'g:deoplete#enable_profile', 0)
+  call deoplete#util#set_default(
+        \ 'g:deoplete#auto_complete_delay', 0)
+  call deoplete#util#set_default(
+        \ 'g:deoplete#max_abbr_width', 80)
+  call deoplete#util#set_default(
+        \ 'g:deoplete#max_menu_width', 40)
 
   call deoplete#util#set_default(
         \ 'g:deoplete#keyword_patterns', {})
@@ -148,13 +158,6 @@ function! deoplete#init#_variables() abort "{{{
         \ g:deoplete#_omni_patterns,
         \ 'html,xhtml,xml,markdown,mkd', ['<', '<[^>]*\s[[:alnum:]-]*'])
 
-  call deoplete#util#set_pattern(
-        \ g:deoplete#omni#_input_patterns,
-        \ 'c', ['[^. \t0-9]\.\w*', '[^. \t0-9]->\w*'])
-  call deoplete#util#set_pattern(
-        \ g:deoplete#omni#_input_patterns,
-        \ 'cpp', ['[^. \t0-9]\.\w*', '[^. \t0-9]->\w*',
-        \         '[a-zA-Z_]\w*::\w*'])
   call deoplete#util#set_pattern(
         \ g:deoplete#omni#_input_patterns,
         \ 'java', ['[^. \t0-9]\.\w*'])
@@ -226,10 +229,14 @@ function! deoplete#init#_context(event, sources) abort "{{{
   let event = (deoplete#util#get_prev_event() ==# 'refresh') ?
         \ 'Manual' : a:event
 
+  let input = deoplete#util#get_input(a:event)
+
+  let width = winwidth(0) - col('.') + len(matchstr(input, '\w*$'))
+
   return {
         \ 'changedtick': b:changedtick,
         \ 'event': event,
-        \ 'input': deoplete#util#get_input(a:event),
+        \ 'input': input,
         \ 'next_input': deoplete#util#get_next_input(a:event),
         \ 'complete_str': '',
         \ 'position': getpos('.'),
@@ -238,8 +245,11 @@ function! deoplete#init#_context(event, sources) abort "{{{
         \ 'ignorecase': g:deoplete#enable_ignore_case,
         \ 'smartcase': g:deoplete#enable_smart_case,
         \ 'camelcase': g:deoplete#enable_camel_case,
+        \ 'delay': g:deoplete#auto_complete_delay,
         \ 'sources': sources,
         \ 'keyword_patterns': keyword_patterns,
+        \ 'max_abbr_width': (width * 2 / 3),
+        \ 'max_menu_width': (width * 2 / 3),
         \ }
 endfunction"}}}
 

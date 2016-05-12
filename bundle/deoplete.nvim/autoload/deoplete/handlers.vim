@@ -1,36 +1,20 @@
 "=============================================================================
 " FILE: handlers.vim
 " AUTHOR: Shougo Matsushita <Shougo.Matsu at gmail.com>
-" License: MIT license  {{{
-"     Permission is hereby granted, free of charge, to any person obtaining
-"     a copy of this software and associated documentation files (the
-"     "Software"), to deal in the Software without restriction, including
-"     without limitation the rights to use, copy, modify, merge, publish,
-"     distribute, sublicense, and/or sell copies of the Software, and to
-"     permit persons to whom the Software is furnished to do so, subject to
-"     the following conditions:
-"
-"     The above copyright notice and this permission notice shall be included
-"     in all copies or substantial portions of the Software.
-"
-"     THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-"     OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-"     MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-"     IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-"     CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-"     TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-"     SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-" }}}
+" License: MIT license
 "=============================================================================
 
 function! deoplete#handlers#_init() abort "{{{
   augroup deoplete
+    autocmd!
     autocmd InsertLeave * call s:on_insert_leave()
     autocmd CompleteDone * call s:complete_done()
     autocmd InsertCharPre * call s:on_insert_char_pre()
 
     autocmd TextChangedI * call s:completion_begin("TextChangedI")
     autocmd InsertEnter * call s:completion_begin("InsertEnter")
+    autocmd BufEnter,BufRead,BufNewFile,BufNew,BufWinEnter,BufWritePost
+          \ * call s:on_buffer()
   augroup END
 endfunction"}}}
 
@@ -51,9 +35,8 @@ function! s:completion_begin(event) abort "{{{
           \ 'b:deoplete_omni_patterns',
           \ 'g:deoplete#omni_patterns',
           \ 'g:deoplete#_omni_patterns'))
-      if deoplete#util#is_eskk_convertion()
-            \ || (pattern != '' && &l:omnifunc != ''
-            \ && context.input =~# '\%('.pattern.'\)$')
+      if pattern != '' && &l:omnifunc != ''
+            \ && context.input =~# '\%('.pattern.'\)$'
         call deoplete#mappings#_set_completeopt()
         call feedkeys("\<C-x>\<C-o>", 'n')
         return
@@ -61,17 +44,12 @@ function! s:completion_begin(event) abort "{{{
     endfor
   endfor
 
-  call rpcnotify(g:deoplete#_channel_id, 'completion_begin', context)
+  call rpcnotify(g:deoplete#_channel_id,
+        \ 'deoplete_auto_completion_begin', context)
 endfunction"}}}
 function! s:is_skip(event, context) abort "{{{
-  let displaywidth = strdisplaywidth(deoplete#util#get_input(a:event)) + 1
-
-  if &l:formatoptions =~# '[tca]' && &l:textwidth > 0
-        \     && displaywidth >= &l:textwidth
-    if &l:formatoptions =~# '[ta]'
-          \ || deoplete#util#get_syn_name() ==# 'Comment'
-      return
-    endif
+  if s:is_skip_textwidth(deoplete#util#get_input(a:event))
+    return 1
   endif
 
   let disable_auto_complete =
@@ -79,8 +57,7 @@ function! s:is_skip(event, context) abort "{{{
         \   'b:deoplete_disable_auto_complete',
         \   'g:deoplete#disable_auto_complete')
 
-  let is_virtual = virtcol('.') != displaywidth
-  if &paste || is_virtual
+  if &paste
         \ || (a:event !=# 'Manual' && disable_auto_complete)
         \ || (&l:completefunc != '' && &l:buftype =~# 'nofile')
         \ || (a:event ==# 'InsertEnter'
@@ -97,7 +74,40 @@ function! s:is_skip(event, context) abort "{{{
     endif
   endif
 
+  " Detect foldmethod.
+  if a:event !=# 'Manual' && a:event !=# 'InsertEnter'
+        \ && !exists('b:deoplete_detected_foldmethod')
+        \ && (&l:foldmethod ==# 'expr' || &l:foldmethod ==# 'syntax')
+    let b:deoplete_detected_foldmethod = 1
+    call deoplete#util#print_error(
+          \ printf('foldmethod = "%s" is detected.', &foldmethod))
+    for msg in split(deoplete#util#redir(
+          \ 'verbose setlocal foldmethod?'), "\n")
+      call deoplete#util#print_error(msg)
+    endfor
+    call deoplete#util#print_error(
+          \ 'You should disable it or install FastFold plugin.')
+  endif
+
   return 0
+endfunction"}}}
+function! s:is_skip_textwidth(input) abort "{{{
+  let displaywidth = strdisplaywidth(a:input) + 1
+
+  if &l:formatoptions =~# '[tca]' && &l:textwidth > 0
+        \     && displaywidth >= &l:textwidth
+    if &l:formatoptions =~# '[ta]'
+          \ || deoplete#util#get_syn_name() ==# 'Comment'
+      return 1
+    endif
+  endif
+  return !pumvisible() && virtcol('.') != displaywidth
+endfunction"}}}
+
+function! s:on_buffer() abort "{{{
+  let context = deoplete#init#_context('BufEnter', [])
+  call rpcnotify(g:deoplete#_channel_id,
+        \ 'deoplete_on_buffer', context)
 endfunction"}}}
 
 function! s:on_insert_leave() abort "{{{
@@ -131,8 +141,10 @@ function! s:complete_done() abort "{{{
 endfunction"}}}
 
 function! s:on_insert_char_pre() abort "{{{
-  if !pumvisible() || !g:deoplete#enable_refresh_always
-    return
+  if !pumvisible()
+        \ || !g:deoplete#enable_refresh_always
+        \ || s:is_skip_textwidth(deoplete#util#get_input('InsertCharPre'))
+    return 1
   endif
 
   " Auto refresh

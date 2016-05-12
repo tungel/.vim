@@ -1,26 +1,7 @@
 # ============================================================================
 # FILE: util.py
 # AUTHOR: Shougo Matsushita <Shougo.Matsu at gmail.com>
-# License: MIT license  {{{
-#     Permission is hereby granted, free of charge, to any person obtaining
-#     a copy of this software and associated documentation files (the
-#     "Software"), to deal in the Software without restriction, including
-#     without limitation the rights to use, copy, modify, merge, publish,
-#     distribute, sublicense, and/or sell copies of the Software, and to
-#     permit persons to whom the Software is furnished to do so, subject to
-#     the following conditions:
-#
-#     The above copyright notice and this permission notice shall be included
-#     in all copies or substantial portions of the Software.
-#
-#     THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-#     OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-#     MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-#     IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-#     CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-#     TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-#     SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-# }}}
+# License: MIT license
 # ============================================================================
 
 import functools
@@ -29,6 +10,7 @@ import operator
 import os
 import re
 import sys
+import unicodedata
 
 
 def get_buffer_config(vim, filetype, buffer_var, user_var, default_var):
@@ -63,7 +45,13 @@ def globruntime(vim, path):
 
 def debug(vim, expr):
     if vim.vars['deoplete#enable_debug']:
-        vim.command('echomsg string(\'' + escape(json.dumps(expr)) + '\')')
+        try:
+            json_data = json.dumps(str(expr).strip())
+        except Exception:
+            vim.command('echomsg string(\'' + str(expr).strip() + '\')')
+        else:
+            vim.command('echomsg string(\'' + escape(json_data) + '\')')
+
     else:
         error(vim, "not in debug mode, but debug called")
 
@@ -81,7 +69,8 @@ def charpos2bytepos(vim, input, pos):
 
 
 def bytepos2charpos(vim, input, pos):
-    return len(vim.funcs.substitute(input[: pos], '.', 'x', 'g'))
+    return len(vim.funcs.substitute(
+        vim.funcs.strpart(input, 0, pos), '.', 'x', 'g'))
 
 
 def get_custom(vim, source_name):
@@ -108,6 +97,7 @@ def fuzzy_escape(string, camelcase):
     if camelcase and re.search(r'[A-Z]', string):
         p = re.sub(r'([a-z])', (lambda pat:
                                 '['+pat.group(1)+pat.group(1).upper()+']'), p)
+    p = re.sub(r'([a-zA-Z0-9_])\.\*', r'\1[^\1]*', p)
     return p
 
 
@@ -115,3 +105,43 @@ def load_external_module(file, module):
     current = os.path.dirname(os.path.abspath(file))
     module_dir = os.path.join(os.path.dirname(current), module)
     sys.path.insert(0, module_dir)
+
+
+def truncate_skipping(string, max, footer, footer_len):
+    if len(string) <= max/2:
+        return string
+    if strwidth(string) <= max:
+        return string
+
+    footer += string[
+            -len(truncate(string[::-1], footer_len)):]
+    return truncate(string, max - strwidth(footer)) + footer
+
+
+def truncate(string, max):
+    if len(string) <= max/2:
+        return string
+    if strwidth(string) <= max:
+        return string
+
+    width = 0
+    ret = ''
+    for c in string:
+        wc = charwidth(c)
+        if width + wc > max:
+            break
+        ret += c
+        width += wc
+    return ret
+
+
+def strwidth(string):
+    width = 0
+    for c in string:
+        width += charwidth(c)
+    return width
+
+
+def charwidth(c):
+    wc = unicodedata.east_asian_width(c)
+    return 2 if wc == 'F' or wc == 'W' else 1
