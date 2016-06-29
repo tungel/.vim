@@ -4,12 +4,11 @@
 # License: MIT license
 # ============================================================================
 
-import re
-import operator
-import functools
-from deoplete.util import \
-    get_buffer_config, convert2list
 from .base import Base
+
+import re
+from deoplete.util import \
+    get_buffer_config, convert2list, parse_buffer_pattern
 
 
 class Source(Base):
@@ -27,10 +26,10 @@ class Source(Base):
     def get_complete_position(self, context):
         # Check member prefix pattern.
         for prefix_pattern in convert2list(
-                get_buffer_config(self.vim, context['filetype'],
-                                  'b:deoplete_member_prefix_patterns',
-                                  'g:deoplete#member#prefix_patterns',
-                                  'g:deoplete#member#_prefix_patterns')):
+                get_buffer_config(context, context['filetype'],
+                                  'deoplete_member_prefix_patterns',
+                                  'deoplete#member#prefix_patterns',
+                                  'deoplete#member#_prefix_patterns')):
             m = re.search(self.__object_pattern + prefix_pattern + r'\w*$',
                           context['input'])
             if m is None or prefix_pattern == '':
@@ -40,9 +39,10 @@ class Source(Base):
         return -1
 
     def gather_candidates(self, context):
-        p = re.compile(r'(?<=' + re.escape(self.__prefix) + r')\w+(?:\(\)?)?')
-
         return [{'word': x} for x in
-                functools.reduce(operator.add, [
-                    p.findall(x) for x in self.vim.current.buffer
-                ]) if x != context['complete_str']]
+                parse_buffer_pattern(
+                    self.vim.current.buffer,
+                    r'(?<=' + re.escape(self.__prefix) + r')\w+(?:\(\)?)?',
+                    context['complete_str']
+                )
+                if x != context['complete_str']]

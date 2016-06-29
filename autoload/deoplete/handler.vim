@@ -1,10 +1,10 @@
 "=============================================================================
-" FILE: handlers.vim
+" FILE: handler.vim
 " AUTHOR: Shougo Matsushita <Shougo.Matsu at gmail.com>
 " License: MIT license
 "=============================================================================
 
-function! deoplete#handlers#_init() abort "{{{
+function! deoplete#handler#_init() abort "{{{
   augroup deoplete
     autocmd!
     autocmd InsertLeave * call s:on_insert_leave()
@@ -13,9 +13,15 @@ function! deoplete#handlers#_init() abort "{{{
 
     autocmd TextChangedI * call s:completion_begin("TextChangedI")
     autocmd InsertEnter * call s:completion_begin("InsertEnter")
-    autocmd BufEnter,BufRead,BufNewFile,BufNew,BufWinEnter,BufWritePost
-          \ * call s:on_buffer()
   augroup END
+
+  for event in [
+        \ 'BufNewFile', 'BufNew', 'BufRead', 'BufWritePost'
+        \ ]
+    execute 'autocmd deoplete' event '* call s:on_event('.string(event).')'
+  endfor
+
+  call s:on_event('')
 endfunction"}}}
 
 function! s:completion_begin(event) abort "{{{
@@ -28,6 +34,8 @@ function! s:completion_begin(event) abort "{{{
   " Save the previous position
   let g:deoplete#_context.position = context.position
 
+  let g:deoplete#_context.refresh = 0
+
   " Call omni completion
   for filetype in context.filetypes
     for pattern in deoplete#util#convert2list(
@@ -37,13 +45,14 @@ function! s:completion_begin(event) abort "{{{
           \ 'g:deoplete#_omni_patterns'))
       if pattern != '' && &l:omnifunc != ''
             \ && context.input =~# '\%('.pattern.'\)$'
-        call deoplete#mappings#_set_completeopt()
+        call deoplete#mapping#_set_completeopt()
         call feedkeys("\<C-x>\<C-o>", 'n')
         return
       endif
     endfor
   endfor
 
+  call deoplete#mapping#_set_completeopt()
   call rpcnotify(g:deoplete#_channel_id,
         \ 'deoplete_auto_completion_begin', context)
 endfunction"}}}
@@ -65,7 +74,8 @@ function! s:is_skip(event, context) abort "{{{
     return 1
   endif
 
-  if a:context.position ==# get(g:deoplete#_context, 'position', [])
+  if !get(g:deoplete#_context, 'refresh', 0)
+        \ && a:context.position ==# get(g:deoplete#_context, 'position', [])
     let word = get(v:completed_item, 'word', '')
     let delimiters = filter(copy(g:deoplete#delimiters),
         \         'strridx(word, v:val) == (len(word) - len(v:val))')
@@ -81,8 +91,9 @@ function! s:is_skip(event, context) abort "{{{
     let b:deoplete_detected_foldmethod = 1
     call deoplete#util#print_error(
           \ printf('foldmethod = "%s" is detected.', &foldmethod))
-    for msg in split(deoplete#util#redir(
-          \ 'verbose setlocal foldmethod?'), "\n")
+    let msg = substitute(deoplete#util#redir(
+          \ 'verbose setlocal foldmethod?'), '\t', '', 'g')
+    for msg in split(msg, "\n")
       call deoplete#util#print_error(msg)
     endfor
     call deoplete#util#print_error(
@@ -104,10 +115,9 @@ function! s:is_skip_textwidth(input) abort "{{{
   return !pumvisible() && virtcol('.') != displaywidth
 endfunction"}}}
 
-function! s:on_buffer() abort "{{{
-  let context = deoplete#init#_context('BufEnter', [])
-  call rpcnotify(g:deoplete#_channel_id,
-        \ 'deoplete_on_buffer', context)
+function! s:on_event(event) abort "{{{
+  let context = deoplete#init#_context(a:event, [])
+  call rpcnotify(g:deoplete#_channel_id, 'deoplete_on_event', context)
 endfunction"}}}
 
 function! s:on_insert_leave() abort "{{{
@@ -126,15 +136,6 @@ function! s:complete_done() abort "{{{
     else
       let g:deoplete#_rank[word] += 1
     endif
-  endif
-
-  if get(g:deoplete#_context, 'refresh', 0)
-    " Don't skip completion
-    let g:deoplete#_context.refresh = 0
-    if deoplete#util#get_prev_event() ==# 'Manual'
-      let g:deoplete#_context.event = 'refresh'
-    endif
-    return
   endif
 
   let g:deoplete#_context.position = getpos('.')
