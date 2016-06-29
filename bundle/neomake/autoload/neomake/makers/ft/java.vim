@@ -137,14 +137,14 @@ endfunction
 function! s:ReadClassPathFile(classpathFile)
     let cp = ''
     let file = g:neomake_java_checker_home. s:psep. 'java'. s:psep.  'classpath.py'
-    if has('python')
-        execute "pyfile" file
-        py import vim
-        py vim.command("let cp = '%s'" % os.pathsep.join(ReadClasspathFile(vim.eval('a:classpathFile'))).replace('\\', '/'))
-    else has('python3')
+    if has('python3')
         execute "py3file" file
         py3 import vim
         py3 vim.command("let cp = '%s'" % os.pathsep.join(ReadClasspathFile(vim.eval('a:classpathFile'))).replace('\\', '/'))
+    elseif has('python')
+        execute "pyfile" file
+        py import vim
+        py vim.command("let cp = '%s'" % os.pathsep.join(ReadClasspathFile(vim.eval('a:classpathFile'))).replace('\\', '/'))
     endif
     return cp
 endfunction
@@ -169,23 +169,23 @@ function! neomake#makers#ft#java#javac()
         let javac_opts = extend(javac_opts, ['-d', s:shescape(output_dir)])
     endif
 
-    let javac_classpath = ''
+    let javac_classpath = get(g:, 'neomake_java_javac_classpath', '')
 
-    if s:has_maven && g:neomake_java_javac_autoload_maven_classpath
+    if s:has_maven && g:neomake_java_javac_autoload_maven_classpath && empty(javac_classpath)
         if !g:neomake_java_javac_delete_output
             let javac_opts = extend(javac_opts, ['-d', s:shescape(s:MavenOutputDirectory())])
         endif
         let javac_classpath = s:AddToClasspath(javac_classpath, s:GetMavenClasspath())
     endif
 
-    if s:has_gradle && g:neomake_java_javac_autoload_gradle_classpath
+    if s:has_gradle && g:neomake_java_javac_autoload_gradle_classpath && empty(javac_classpath)
         if !g:neomake_java_javac_delete_output
             let javac_opts = extend(javac_opts, ['-d', s:shescape(s:GradleOutputDirectory())])
         endif
         let javac_classpath = s:AddToClasspath(javac_classpath, s:GetGradleClasspath())
     endif
 
-    if has('python') || has('python3')
+    if (has('python') || has('python3')) && empty(javac_classpath)
         let classpathFile = fnamemodify(findfile('.classpath', escape(expand('.'), '*[]?{}, ') . ';'), ':p')
         if !empty(classpathFile) && filereadable(classpathFile)
             let javac_classpath = s:ReadClassPathFile(classpathFile)
@@ -327,16 +327,14 @@ fu! s:GradleOutputDirectory()
     let items = split(gradle_build, s:psep)
     if len(items)==1
         return join(['build', 'intermediates', 'classes', 'debug'], s:psep)
-    else
-        let outputdir =''
-        for i in items
-            if i != 'build.gradle'
-                let outputdir .= i . s:psep
-            endif
-        endfor
-        return outputdir . join(['build', 'intermediates', 'classes', 'debug'], s:psep)
     endif
-    return '.'
+    let outputdir = ''
+    for i in items
+        if i != 'build.gradle'
+            let outputdir .= i . s:psep
+        endif
+    endfor
+    return outputdir . join(['build', 'intermediates', 'classes', 'debug'], s:psep)
 endf
 
 fu! s:GetGradleClasspath()
@@ -354,8 +352,10 @@ fu! s:GetGradleClasspath()
                 let ret = system(gradle_cmd . ' -q -I ' . shellescape(f) . ' classpath' )
                 if v:shell_error == 0
                     let cp = filter(split(ret, "\n"), 'v:val =~ "^CLASSPATH:"')[0][10:]
-                    if filereadable(getcwd() . sep ."build.gradle")
-                        let out_putdir = s:GlobPathList(getcwd(), join('**','build','intermediates','classes','debug',sep), 0)
+                    if filereadable(getcwd() . s:psep . 'build.gradle')
+                        let out_putdir = s:GlobPathList(getcwd(), join(
+                                    \ ['**', 'build', 'intermediates', 'classes', 'debug'],
+                                    \ s:psep), 0)
                         for classes in out_putdir
                             let cp .= s:ClassSep().classes
                         endfor

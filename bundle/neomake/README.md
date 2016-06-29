@@ -1,5 +1,7 @@
 **[Maintainers needed!](https://github.com/neomake/neomake)** Contact an organization owner if interested.
 
+[![Build Status](https://travis-ci.org/neomake/neomake.svg?branch=master)](https://travis-ci.org/neomake/neomake)
+
 # Neomake
 
 A plugin for asynchronous `:make` using [Neovim's](http://neovim.org/)
@@ -70,8 +72,32 @@ should be remedied).
 
 Makers provided by neomake as of this writing are:
 
+Applescript:
+- osacompile
+
+C:
+- clang
+- gcc
+- clang-tidy
+- checkpatch
+
+C++:
+- clang++
+- g++
+- clang-tidy
+
 Coffeescript:
 - coffeelint
+
+CSS:
+- csslint
+- stylelint
+
+D:
+- dmd
+
+Erlang:
+- erlc
 
 Go:
 - go
@@ -101,6 +127,28 @@ JSON:
 Jsx:
 - jsxhint
 
+Lua:
+- luac
+- luacheck
+
+Markdown:
+- [markdownlint](https://github.com/igorshubovych/markdownlint-cli)
+- [mdl](https://github.com/mivok/markdownlint)
+- [proselint](http://proselint.com)
+
+nix:
+- nix-instantiate
+
+Perl:
+- perlcritic
+
+Pug:
+- [pug-lint](https://github.com/pugjs/pug-lint)
+
+Puppet:
+- puppet
+- puppet-lint
+
 Python:
 - pep8
 - flake8
@@ -108,6 +156,8 @@ Python:
 - pylama
 - pylint
 - python
+- [vulture](https://bitbucket.org/jendrikseipp/vulture) [not enabled by default]
+- [mypy](http://mypy-lang.org/) [not enabled by default]
 
 Ruby:
 - mri
@@ -116,68 +166,57 @@ Ruby:
 - reek
 - rubylint
 
-C:
-- clang
-- gcc
-- clang-tidy
-- checkpatch
-
-C++:
-- clang++
-- g++
-- clang-tidy
-
-CSS:
-- csslint
-- stylelint
-
-D:
-- dmd
-
-sh:
-- shellcheck
-
 Rust:
 - rustc
-
-Tex/Latex:
-- chktex
-- lacheck
 
 Scala:
 - scalac
 - scalastyle
 
-TypeScript:
-- tsc
+sh:
+- shellcheck
 
-Erlang:
-- erlc
-
-Vimscript:
-- vint
-
-Puppet:
-- puppet
-- puppet-lint
-
-Lua:
-- luacheck
+Slim:
+- [slim-lint](https://github.com/sds/slim-lint)
 
 Standard ML:
 - smlnj
 
-Markdown:
-- mdl
+Stylus:
+- [stylint](https://rosspatton.github.io/stylint/)
 
-Pug:
-- [pug-lint](https://github.com/pugjs/pug-lint)
+SQL:
+- [sqlint](https://github.com/purcell/sqlint)
+
+Tex/Latex:
+- chktex
+- lacheck
+
+TypeScript:
+- tsc
+
+Vimscript:
+
+- vint
+- [vimlint](https://github.com/syngan/vim-vimlint)
+
+  It can be installed using npm:
+  [node-vimlint](https://www.npmjs.com/package/vimlint).
+
+  Or you could create a wrapper script ``vimlint`` and add it to your PATH:
+
+  ```sh
+  #!/bin/sh
+  ~/Vcs/vim-vimlint/bin/vimlint.sh -l ~/Vcs/vim-vimlint -p ~/Vcs/vim-vimlparser "$@"
+  ```
 
 YAML:
 - [yamllint](http://yamllint.readthedocs.org/)
 
-Since this list may be out of date, look in [autoload/neomake/makers](https://github.com/benekastah/neomake/tree/master/autoload/neomake/makers) for all supported makers.
+Since this list may be out of date, look at
+[autoload/neomake/makers](https://github.com/benekastah/neomake/tree/master/autoload/neomake/makers)
+for all supported makers.
 
 If you find this plugin useful, please contribute your maker recipes to the
-repository! Check out `autoload/neomake/makers/*.vim` to see how that is
+repository! Check out `autoload/neomake/makers/**/*.vim` to see how that is
 currently done.

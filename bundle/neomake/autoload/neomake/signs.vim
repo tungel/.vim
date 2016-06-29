@@ -1,5 +1,7 @@
 " vim: ts=4 sw=4 et
 
+scriptencoding utf-8
+
 function! s:InitSigns() abort
     let s:sign_queue = {
         \ 'project': {},
@@ -97,7 +99,7 @@ function! neomake#signs#PlaceSign(entry, type) abort
 endfunction
 
 function! neomake#signs#CleanAllOldSigns(type) abort
-    call neomake#utils#DebugObject("Removing signs", s:last_placed_signs)
+    call neomake#utils#DebugObject('Removing signs', s:last_placed_signs)
     for buf in keys(s:last_placed_signs[a:type])
         call neomake#signs#CleanOldSigns(buf, a:type)
     endfor
@@ -139,7 +141,7 @@ endfunction
 
 exe 'sign define neomake_invisible'
 
-function! neomake#signs#RedefineSign(name, opts)
+function! neomake#signs#RedefineSign(name, opts) abort
     let sign_define = 'sign define '.a:name
     for attr in keys(a:opts)
         let sign_define .= ' '.attr.'='.a:opts[attr]
@@ -155,8 +157,8 @@ function! neomake#signs#RedefineSign(name, opts)
     endfor
 endfunction
 
-function! neomake#signs#RedefineErrorSign(...)
-    let default_opts = {'text': '✖'}
+function! neomake#signs#RedefineErrorSign(...) abort
+    let default_opts = {'text': '✖', 'texthl': 'NeomakeErrorSign'}
     let opts = {}
     if a:0
         call extend(opts, a:1)
@@ -167,8 +169,8 @@ function! neomake#signs#RedefineErrorSign(...)
     call neomake#signs#RedefineSign('neomake_err', opts)
 endfunction
 
-function! neomake#signs#RedefineWarningSign(...)
-    let default_opts = {'text': '⚠'}
+function! neomake#signs#RedefineWarningSign(...) abort
+    let default_opts = {'text': '⚠', 'texthl': 'NeomakeWarningSign'}
     let opts = {}
     if a:0
         call extend(opts, a:1)
@@ -179,8 +181,8 @@ function! neomake#signs#RedefineWarningSign(...)
     call neomake#signs#RedefineSign('neomake_warn', opts)
 endfunction
 
-function! neomake#signs#RedefineMessageSign(...)
-    let default_opts = {'text': '➤'}
+function! neomake#signs#RedefineMessageSign(...) abort
+    let default_opts = {'text': '➤', 'texthl': 'NeomakeMessageSign'}
     let opts = {}
     if a:0
         call extend(opts, a:1)
@@ -191,8 +193,8 @@ function! neomake#signs#RedefineMessageSign(...)
     call neomake#signs#RedefineSign('neomake_msg', opts)
 endfunction
 
-function! neomake#signs#RedefineInformationalSign(...)
-    let default_opts = {'text': 'ℹ'}
+function! neomake#signs#RedefineInformationalSign(...) abort
+    let default_opts = {'text': 'ℹ', 'texthl': 'NeomakeInfoSign'}
     let opts = {}
     if a:0
         call extend(opts, a:1)
@@ -204,8 +206,45 @@ function! neomake#signs#RedefineInformationalSign(...)
 endfunction
 
 
+function! s:hlexists_and_is_not_cleared(group)
+    if !hlexists(a:group)
+        return 1
+    endif
+    redir => hlstatus | exec 'silent hi ' . a:group | redir END
+    return hlstatus !~# 'cleared'
+endfunction
+
+
+function! neomake#signs#DefineHighlights() abort
+    let ctermbg = neomake#utils#GetHighlight('SignColumn', 'bg')
+    let guibg = neomake#utils#GetHighlight('SignColumn', 'bg#')
+    let bg = 'ctermbg='.ctermbg.' guibg='.guibg
+
+    for [group, fgs] in items({
+                \ 'NeomakeErrorSign': [
+                \   neomake#utils#GetHighlight('Error', 'bg'),
+                \   neomake#utils#GetHighlight('Error', 'bg#')],
+                \ 'NeomakeWarningSign': [
+                \   neomake#utils#GetHighlight('Todo', 'fg'),
+                \   neomake#utils#GetHighlight('Todo', 'fg#')],
+                \ 'NeomakeInfoSign': [
+                \   neomake#utils#GetHighlight('Question', 'fg'),
+                \   neomake#utils#GetHighlight('Question', 'fg#')],
+                \ 'NeomakeMessageSign': [
+                \   neomake#utils#GetHighlight('ModeMsg', 'fg'),
+                \   neomake#utils#GetHighlight('ModeMsg', 'fg#')],
+                \ })
+        let [ctermfg, guifg] = fgs
+        exe 'hi '.group.'Default ctermfg='.ctermfg.' guifg='.guifg.' '.bg
+        if !s:hlexists_and_is_not_cleared(group)
+            exe 'hi link '.group.' '.group.'Default'
+        endif
+    endfor
+endfunction
+
+
 let s:signs_defined = 0
-function! neomake#signs#DefineSigns()
+function! neomake#signs#DefineSigns() abort
     if !s:signs_defined
         let s:signs_defined = 1
         call neomake#signs#RedefineErrorSign()
