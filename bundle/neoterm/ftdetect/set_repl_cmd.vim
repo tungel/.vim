@@ -3,10 +3,8 @@ if has('nvim')
     au!
     " Ruby
     au VimEnter,BufRead,BufNewFile *.rb,*.erb,Rakefile
-          \ if executable('pry') |
-          \   call neoterm#repl#set('pry') |
-          \ elseif executable('irb') |
-          \   call neoterm#repl#set('irb') |
+          \ if executable(g:neoterm_repl_ruby) |
+          \   call neoterm#repl#set(g:neoterm_repl_ruby) |
           \ end
     " Rails
     au VimEnter,BufRead,BufNewFile *
@@ -36,6 +34,11 @@ if has('nvim')
     au VimEnter,BufRead,BufNewFile *.jl,
           \ if executable('julia') |
           \   call neoterm#repl#set('julia') |
+          \ end
+    " R
+    au VimEnter,BufRead,BufNewFile *.R,*.Rmd
+          \ if executable('R') |
+          \   call neoterm#repl#set('R') |
           \ end
     " Idris
     au VimEnter,BufRead,BufNewFile *.idr,*.lidr,

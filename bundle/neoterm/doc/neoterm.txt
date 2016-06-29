@@ -28,7 +28,7 @@ neoterm is a neovim's terminal wrapper, its main goal is give an easier way to
 user interact with neovim's terminal.
 
 
-1.2 Many terms support
+1.2 Many terms support                              *neoterm-many-terms-support*
 
 neoterm is capable to control more than one term by time. To open a new term
 users can use |:Tnew| command. Each neoterm's term has an `ID` (neoterm job's
@@ -173,6 +173,11 @@ Default value: `,tt`.
 When set, neoterm terminal will be kept running in background.
 Default value: `1`.
 
+                                                          *g:neoterm_autoinsert*
+
+When set, neoterm will opens in insert mode.
+Default value: `0`.
+
                                                        *g:neoterm_split_on_tnew*
 
 When set, |:Tnew| command will create the neoterm in a splitted window.
@@ -186,6 +191,11 @@ Default value: `0`.
                                                *g:neoterm_raise_when_tests_fail*
 
 When set, the neoterm will open the its window if the tests break.
+Default value: `0`.
+
+                                               *g:neoterm_focus_when_tests_fail*
+
+When set, the neoterm window will get focused (normal mode).
 Default value: `0`.
 
                                             *g:neoterm_close_when_tests_succeed*
@@ -207,6 +217,11 @@ Default value: `{` `'running'``:` `'RUNNING'``,` `'success'``:` `'SUCCESS'``,` `
 
 When set, tests will be run using the relative path.
 Default value: 0
+
+                                                           *g:neoterm_repl_ruby*
+
+Sets what ruby REPl will be used.
+Default value: irb
 
 ===============================================================================
 4. Statusline                                    *neoterm-statusline* *statusline*

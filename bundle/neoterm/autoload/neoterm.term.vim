@@ -33,12 +33,16 @@ function! g:neoterm.term.open()
   call neoterm#window#reopen(self.buffer_id)
 endfunction
 
+function! g:neoterm.term.focus()
+  exec bufwinnr(self.buffer_id) . "wincmd w"
+endfunction
+
 function! g:neoterm.term.close()
   if bufwinnr(self.buffer_id) > 0
     if g:neoterm_keep_term_open
       exec bufwinnr(self.buffer_id) . "hide"
     else
-      exec bufwinnr(self.buffer_id) . "bdelete"
+      exec self.buffer_id . "bdelete!"
     end
   end
 endfunction
