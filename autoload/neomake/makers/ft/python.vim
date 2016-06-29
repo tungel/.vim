@@ -7,10 +7,10 @@ function! neomake#makers#ft#python#EnabledMakers()
 
     let makers = ['python', 'frosted']
 
-    if neomake#utils#Exists('pylama')
+    if executable('pylama')
         call add(makers, 'pylama')
     else
-        if neomake#utils#Exists('flake8')
+        if executable('flake8')
             call add(makers, 'flake8')
         else
             call extend(makers, ['pep257', 'pep8', 'pyflakes'])
@@ -122,7 +122,7 @@ endfunction
 function! neomake#makers#ft#python#pylama()
     return {
         \ 'args': ['--format', 'pep8'],
-        \ 'errorformat': '%f:%l:%c: %m',
+        \ 'errorformat': '%f:%l:%c: %t%m',
         \ }
 endfunction
 
@@ -152,5 +152,20 @@ function! neomake#makers#ft#python#frosted()
             \ '%E%f:%l: %m,' .
             \ '%-Z%p^,' .
             \ '%-G%.%#'
+        \ }
+endfunction
+
+function! neomake#makers#ft#python#vulture()
+    return {
+        \ 'errorformat': '%f:%l: %m',
+        \ }
+endfunction
+
+" Because this uses --silent-imports it requires mypy >= 0.4
+" It is annoying for new users to use MyPy without --silent-imports
+function! neomake#makers#ft#python#mypy()
+    return {
+        \ 'args': ['--silent-imports'],
+        \ 'errorformat': '%f:%l: error: %m',
         \ }
 endfunction
