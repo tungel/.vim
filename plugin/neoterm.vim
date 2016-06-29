@@ -1,6 +1,8 @@
-if !has("nvim")
+if !has("nvim") || get(g:, 'neoterm_loaded', 0)
   finish
 endif
+
+let g:neoterm_loaded = 1
 
 let g:neoterm = {
       \ "last_id": 0,
@@ -49,6 +51,10 @@ if !exists("g:neoterm_keep_term_open")
   let g:neoterm_keep_term_open = 1
 end
 
+if !exists("g:neoterm_autoinsert")
+  let g:neoterm_autoinsert = 0
+end
+
 if !exists("g:neoterm_split_on_tnew")
   let g:neoterm_split_on_tnew = 1
 end
@@ -59,6 +65,10 @@ end
 
 if !exists("g:neoterm_raise_when_tests_fail")
   let g:neoterm_raise_when_tests_fail = 0
+end
+
+if !exists("g:neoterm_focus_when_tests_fail")
+  let g:neoterm_focus_when_tests_fail = 0
 end
 
 if !exists("g:neoterm_close_when_tests_succeed")
@@ -79,6 +89,10 @@ end
 
 if !exists("g:neoterm_use_relative_path")
   let g:neoterm_use_relative_path = 0
+end
+
+if !exists("g:neoterm_repl_ruby")
+  let g:neoterm_repl_ruby = "irb"
 end
 
 hi! NeotermTestRunning ctermfg=11 ctermbg=0

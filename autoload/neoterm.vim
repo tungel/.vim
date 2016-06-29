@@ -1,11 +1,11 @@
 " Internal: Creates a new neoterm buffer.
 function! neoterm#new(...)
   let handlers = len(a:000) ? a:1 : {}
-  call neoterm#window#create(handlers, '')
+  call neoterm#window#create(handlers, "")
 endfunction
 
 function! neoterm#tnew()
-  call neoterm#window#create({}, 'tnew')
+  call neoterm#window#create({}, "tnew")
 endfunction
 
 function! neoterm#toggle()
@@ -32,7 +32,9 @@ function! neoterm#open()
 endfunction
 
 function! neoterm#close()
-  call g:neoterm.last().close()
+  if g:neoterm.has_any()
+    call g:neoterm.last().close()
+  end
 endfunction
 
 " Public: Executes a command on terminal.
@@ -58,7 +60,7 @@ endfunction
 
 " Internal: Expands "%" in commands to current file full path.
 function! neoterm#expand_cmd(command)
-  let command = substitute(a:command, '%\(:[phtre]\)\+', '\=expand(submatch(0))', 'g')
+  let command = substitute(a:command, '%\(:[phtre]\)\+', '\=expand(submatch(0))', "g")
 
   if g:neoterm_use_relative_path
     let path = expand('%')
@@ -66,7 +68,7 @@ function! neoterm#expand_cmd(command)
     let path = expand('%:p')
   end
 
-  return substitute(command, '%', path, 'g')
+  return substitute(command, '%', path, "g")
 endfunction
 
 " Internal: Open a new split with the current neoterm buffer if there is one.
