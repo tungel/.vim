@@ -14,10 +14,11 @@ endfunction
 let g:test#runners = get(g:, 'test#runners', {})
 call s:extend(g:test#runners, {
   \ 'Ruby':       ['Minitest', 'RSpec', 'Cucumber'],
-  \ 'JavaScript': ['Intern', 'Mocha', 'Jasmine'],
+  \ 'JavaScript': ['Intern', 'TAP', 'Mocha', 'Jasmine', 'Karma'],
   \ 'Python':     ['DjangoTest', 'PyTest', 'Nose'],
   \ 'Elixir':     ['ExUnit', 'ESpec'],
   \ 'Go':         ['GoTest'],
+  \ 'Rust':       ['CargoTest'],
   \ 'Clojure':    ['FireplaceTest'],
   \ 'Shell':      ['Bats'],
   \ 'VimL':       ['VSpec', 'Vader'],
@@ -48,3 +49,7 @@ for [s:language, s:runners] in items(g:test#runners)
     endif
   endfor
 endfor
+
+if &autochdir
+  let g:test#project_root = getcwd()
+endif
