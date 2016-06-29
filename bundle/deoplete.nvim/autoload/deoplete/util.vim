@@ -48,12 +48,15 @@ function! deoplete#util#convert2list(expr) abort "{{{
 endfunction"}}}
 
 function! deoplete#util#get_input(event) abort "{{{
-  let input = ((a:event ==# 'InsertEnter' || mode() ==# 'i') ?
-        \   (col('.')-1) : col('.')) >= len(getline('.')) ?
+  let mode = mode()
+  if a:event ==# 'InsertEnter'
+    let mode = 'i'
+  endif
+  let input = (mode ==# 'i' ? (col('.')-1) : col('.')) >= len(getline('.')) ?
         \      getline('.') :
         \      matchstr(getline('.'),
-        \         '^.*\%' . (mode() ==# 'i' ? col('.') : col('.') - 1)
-        \         . 'c' . (mode() ==# 'i' ? '' : '.'))
+        \         '^.*\%' . (mode ==# 'i' ? col('.') : col('.') - 1)
+        \         . 'c' . (mode ==# 'i' ? '' : '.'))
 
   if input =~ '^.\{-}\ze\S\+$'
     let complete_str = matchstr(input, '\S\+$')
@@ -123,13 +126,17 @@ function! deoplete#util#uniq(list) abort "{{{
 endfunction"}}}
 
 function! deoplete#util#redir(cmd) abort "{{{
-  let [save_verbose, save_verbosefile] = [&verbose, &verbosefile]
-  set verbose=0 verbosefile=
-  redir => res
-  silent! execute a:cmd
-  redir END
-  let [&verbose, &verbosefile] = [save_verbose, save_verbosefile]
-  return res
+  if exists('*capture')
+    return capture(a:cmd)
+  else
+    let [save_verbose, save_verbosefile] = [&verbose, &verbosefile]
+    set verbose=0 verbosefile=
+    redir => res
+    silent! execute a:cmd
+    redir END
+    let [&verbose, &verbosefile] = [save_verbose, save_verbosefile]
+    return res
+  endif
 endfunction"}}}
 
 function! deoplete#util#get_syn_name() abort "{{{

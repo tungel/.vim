@@ -32,21 +32,6 @@ function! deoplete#init#_initialize() abort "{{{
     return 1
   endif
 
-  if &completeopt !~# 'noinsert\|noselect'
-    let save_completeopt = &completeopt
-    try
-      set completeopt+=noselect
-    catch
-      call deoplete#util#print_error(
-            \ 'deoplete.nvim does not work with this version.')
-      call deoplete#util#print_error(
-            \ 'Please update neovim to latest version.')
-      return 1
-    finally
-      let &completeopt = save_completeopt
-    endtry
-  endif
-
   try
     if !exists('g:loaded_remote_plugins')
       runtime! plugin/rplugin.vim
@@ -60,7 +45,19 @@ function! deoplete#init#_initialize() abort "{{{
     return 1
   endtry
 
-  call deoplete#mappings#_init()
+  " neovim module version check.
+  if g:deoplete#_neovim_python_version < '0.1.8'
+    call deoplete#util#print_error(
+          \ 'Current neovim-python module version: ' .
+          \  g:deoplete#_neovim_python_version)
+    call deoplete#util#print_error(
+          \ 'deoplete.nvim requires neovim-python 0.1.8+.')
+    call deoplete#util#print_error(
+          \ 'Please update neovim-python by "pip3 install --upgrade neovim"')
+    return 1
+  endif
+
+  call deoplete#mapping#_init()
   call deoplete#init#_variables()
 
   let s:is_enabled = g:deoplete#enable_at_startup
@@ -71,7 +68,7 @@ function! deoplete#init#_initialize() abort "{{{
   endif
 endfunction"}}}
 function! deoplete#init#_enable() abort "{{{
-  call deoplete#handlers#_init()
+  call deoplete#handler#_init()
   let s:is_enabled = 1
 endfunction"}}}
 function! deoplete#init#_disable() abort "{{{
@@ -89,6 +86,8 @@ function! deoplete#init#_variables() abort "{{{
   call deoplete#util#set_default(
         \ 'g:deoplete#enable_at_startup', 0)
   call deoplete#util#set_default(
+        \ 'g:deoplete#auto_complete_start_length', 2)
+  call deoplete#util#set_default(
         \ 'g:deoplete#enable_ignore_case', &ignorecase)
   call deoplete#util#set_default(
         \ 'g:deoplete#enable_smart_case', &smartcase)
@@ -97,16 +96,11 @@ function! deoplete#init#_variables() abort "{{{
   call deoplete#util#set_default(
         \ 'g:deoplete#enable_refresh_always', 0)
   call deoplete#util#set_default(
-        \ 'g:deoplete#auto_complete_start_length', 2,
-        \ 'g:deoplete#auto_completion_start_length')
-  call deoplete#util#set_default(
         \ 'g:deoplete#disable_auto_complete', 0)
   call deoplete#util#set_default(
         \ 'g:deoplete#delimiters', ['/', '.', '::', ':', '#'])
   call deoplete#util#set_default(
         \ 'g:deoplete#max_list', 100)
-  call deoplete#util#set_default(
-        \ 'g:deoplete#enable_debug', 0)
   call deoplete#util#set_default(
         \ 'g:deoplete#enable_profile', 0)
   call deoplete#util#set_default(
@@ -128,6 +122,8 @@ function! deoplete#init#_variables() abort "{{{
         \ 'g:deoplete#sources', {})
   call deoplete#util#set_default(
         \ 'g:deoplete#ignore_sources', {})
+  call deoplete#util#set_default(
+        \ 'g:deoplete#_ignore_sources', {})
 
   " Source variables
   call deoplete#util#set_default(
@@ -144,6 +140,8 @@ function! deoplete#init#_variables() abort "{{{
         \ 'g:deoplete#member#_prefix_patterns', {})
   call deoplete#util#set_default(
         \ 'g:deoplete#tag#cache_limit_size', 500000)
+  call deoplete#util#set_default(
+        \ 'g:deoplete#file#enable_buffer_path', 0)
 
   " Initialize default keyword pattern. "{{{
   call deoplete#util#set_pattern(
@@ -160,10 +158,7 @@ function! deoplete#init#_variables() abort "{{{
 
   call deoplete#util#set_pattern(
         \ g:deoplete#omni#_input_patterns,
-        \ 'java', ['[^. \t0-9]\.\w*'])
-  call deoplete#util#set_pattern(
-        \ g:deoplete#omni#_input_patterns,
-        \ 'css,scss,sass', ['\w+', '\w+[):;]?\s+\w*', '[@!]'])
+        \ 'css,less,scss,sass', ['\w+', '\w+[):;]?\s+\w*', '[@!]'])
   call deoplete#util#set_pattern(
         \ g:deoplete#omni#_input_patterns,
         \ 'ruby', ['[^. \t0-9]\.\w*', '[a-zA-Z_]\w*::\w*'])
@@ -226,7 +221,7 @@ function! deoplete#init#_context(event, sources) abort "{{{
   let keyword_patterns = substitute(keyword_patterns,
         \ '\\k', '\=pattern', 'g')
 
-  let event = (deoplete#util#get_prev_event() ==# 'refresh') ?
+  let event = (deoplete#util#get_prev_event() ==# 'Refresh') ?
         \ 'Manual' : a:event
 
   let input = deoplete#util#get_input(a:event)
@@ -250,6 +245,16 @@ function! deoplete#init#_context(event, sources) abort "{{{
         \ 'keyword_patterns': keyword_patterns,
         \ 'max_abbr_width': (width * 2 / 3),
         \ 'max_menu_width': (width * 2 / 3),
+        \ 'runtimepath': &runtimepath,
+        \ 'bufnr': bufnr('%'),
+        \ 'bufname': bufname('%'),
+        \ 'cwd': getcwd(),
+        \ 'start_complete': "\<Plug>(deoplete_start_complete)",
+        \ 'vars': filter(copy(g:), "stridx(v:key, 'deoplete#') == 0"),
+        \ 'bufvars': filter(copy(b:), "stridx(v:key, 'deoplete_') == 0"),
+        \ 'custom': deoplete#custom#get(),
+        \ 'omni__omnifunc': &l:omnifunc,
+        \ 'dict__dictionary': &l:dictionary,
         \ }
 endfunction"}}}
 
