@@ -7,12 +7,13 @@ A Vim wrapper for running tests on different granularities.
 Currently the following testing frameworks are supported:
 
 | Language       | Frameworks                            | Identifiers                                  |
-| :------------: | ------------------------------------- | -------------------------------              |
+| :------------: | ------------------------------------- | -------------------------------------------- |
 | **Ruby**       | RSpec, [Minitest][minitest], Cucumber | `rspec`, `minitest`, `cucumber`              |
-| **JavaScript** | Intern, Mocha, Jasmine                | `intern`, `mocha`, `jasmine`                 |
+| **JavaScript** | Intern, TAP, Mocha, Jasmine, Karma    | `intern`, `tap`, `mocha`, `jasmine`, `karma` |
 | **Python**     | Nose, PyTest, Django                  | `nose`, `pytest`, `djangotest`, `djangonose` |
 | **Elixir**     | ExUnit, ESpec                         | `exunit`, `espec`                            |
 | **Go**         | Go                                    | `gotest`                                     |
+| **Rust**       | Cargo                                 | `cargotest`                                  |
 | **Clojure**    | Fireplace.vim                         | `fireplacetest`                              |
 | **Shell**      | Bats                                  | `bats`                                       |
 | **VimScript**  | VSpec, Vader.vim                      | `vspec`, `vader`                             |
@@ -72,17 +73,28 @@ let test#strategy = "dispatch"
 | Strategy                        | Identifier | Description                                                                      |
 | :-----:                         | :-----:    | :----------                                                                      |
 | **Basic**&nbsp;(default)        | `basic`    | Runs test commands with `:!`, which switches your Vim to the terminal.           |
+| **Make**                        | `make`     | Runs test commands with `:make`.                                                 |
 | **Neovim**                      | `neovim`   | Runs test commands with `:terminal`, which spawns a terminal inside your Neovim. |
-| **[Neoterm]**                   | `neoterm`  | Runs test commands with `:T`, see neoterm docs for display customization.        |
 | **[Dispatch]**                  | `dispatch` | Runs test commands with `:Dispatch`.                                             |
 | **[Vimux]**                     | `vimux`    | Runs test commands in a small tmux pane at the bottom of your terminal.          |
 | **[Tslime]**                    | `tslime`   | Runs test commands in a tmux pane you specify.                                   |
+| **[Neoterm]**                   | `neoterm`  | Runs test commands with `:T`, see neoterm docs for display customization.        |
 | **[VimShell]**                  | `vimshell` | Runs test commands in a shell written in VimScript.                              |
 | **[Vim&nbsp;Tmux&nbsp;Runner]** | `vtr`      | Runs test commands in a small tmux pane.                                         |
 | **Terminal.app**                | `terminal` | Sends test commands to Terminal (useful in MacVim GUI).                          |
 | **iTerm2.app**                  | `iterm`    | Sends test commands to iTerm2 >= 2.9 (useful in MacVim GUI).                     |
 
-In addition to setting a strategy globally, you can also set one per command:
+You can also set up strategies per granularity:
+
+```vim
+let test#strategy = {
+  \ 'nearest': 'neovim',
+  \ 'file':    'dispatch',
+  \ 'suite':   'basic',
+\}
+```
+
+or even per command:
 
 ```
 :TestFile -strategy=neovim
@@ -213,6 +225,18 @@ let test#filename_modifier = ':p' " /User/janko/Code/my_project/test/models/user
 let test#filename_modifier = ':~' " ~/Code/my_project/test/models/user_test.rb
 ```
 
+### Working directory
+
+Test.vim relies on you being `cd`-ed into the project root. However, sometimes
+you may want to execute tests from a different directory than Vim's current
+working directory. You might have a bigger project with many subprojects, or
+you might be using [`autochdir`]. In any case, you can tell test.vim to use a
+different working directory for running tests:
+
+```vim
+let test#project_root = "/path/to/your/project"
+```
+
 ### Language-specific
 
 #### Python
@@ -289,9 +313,8 @@ Or if you're inside of Vim, you can simply run `:VSpec` provided by test.vim.
 ## Credits
 
 This plugin was strongly influenced by Gary Bernhardt's Destroy All Software.
-I also want to thank [rspec.vim](https://github.com/thoughtbot/vim-rspec), from
-which I borrowed GUI support for OS X, and Windows support. And also thanks to
-[vroom.vim](https://github.com/skalnik/vim-vroom).
+I also want to thank [rspec.vim], from which I borrowed GUI support for OS X,
+and Windows support. And also thanks to [vroom.vim].
 
 ## License
 
@@ -302,6 +325,9 @@ Copyright © Janko Marohnić. Distributed under the same terms as Vim itself. Se
 [Neoterm]: https://github.com/kassio/neoterm
 [Dispatch]: https://github.com/tpope/vim-dispatch
 [Vimux]: https://github.com/benmills/vimux
-[Tslime]: https://github.com/kikijump/tslime.vim
+[Tslime]: https://github.com/jgdavey/tslime.vim
 [Vim&nbsp;Tmux&nbsp;Runner]: https://github.com/christoomey/vim-tmux-runner
 [VimShell]: https://github.com/Shougo/vimshell.vim
+[`autochdir`]: http://vimdoc.sourceforge.net/htmldoc/options.html#'autochdir'
+[rspec.vim]: https://github.com/thoughtbot/vim-rspec
+[vroom.vim]: https://github.com/skalnik/vim-vroom

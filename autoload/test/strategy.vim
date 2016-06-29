@@ -10,8 +10,51 @@ function! test#strategy#basic(cmd) abort
   endif
 endfunction
 
+function! test#strategy#make(cmd) abort
+  let compiler = dispatch#compiler_for_program(a:cmd)
+
+  try
+    let default_makeprg = &l:makeprg
+    let default_errorformat = &l:errorformat
+    let default_compiler = get(b:, 'current_compiler', '')
+
+    if !empty(compiler)
+      execute 'compiler ' . compiler
+    endif
+    if s:restorescreen()
+      let &l:makeprg = s:pretty_command(a:cmd)
+    else
+      let &l:makeprg = a:cmd
+    endif
+    make
+  finally
+    let &l:makeprg = default_makeprg
+    let &l:errorformat = default_errorformat
+    if empty(default_compiler)
+      unlet! b:current_compiler
+    else
+      let b:current_compiler = default_compiler
+    endif
+  endtry
+endfunction
+
+function! test#strategy#dispatch(cmd) abort
+  execute 'Dispatch '.a:cmd
+endfunction
+
 function! test#strategy#neovim(cmd) abort
-  botright new | call termopen(a:cmd) | startinsert
+  let opts = {'suffix': ' # vim-test'}
+  function! opts.close_terminal()
+    if bufnr(self.suffix) != -1
+      execute 'bdelete!' bufnr(self.suffix)
+    end
+  endfunction
+  call opts.close_terminal()
+
+  botright new
+  call termopen(a:cmd . opts.suffix, opts)
+  au BufDelete <buffer> wincmd p
+  startinsert
 endfunction
 
 function! test#strategy#neoterm(cmd) abort
@@ -20,10 +63,6 @@ endfunction
 
 function! test#strategy#vtr(cmd) abort
   call VtrSendCommand(s:pretty_command(a:cmd), 1)
-endfunction
-
-function! test#strategy#dispatch(cmd) abort
-  execute 'Dispatch '.a:cmd
 endfunction
 
 function! test#strategy#vimux(cmd) abort

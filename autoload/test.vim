@@ -3,6 +3,10 @@ function! test#run(type, arguments) abort
     silent! wall
   endif
 
+  if exists('g:test#project_root')
+    execute 'cd' g:test#project_root
+  end
+
   if test#test_file()
     let position = s:get_position()
     let g:test#last_position = position
@@ -10,6 +14,11 @@ function! test#run(type, arguments) abort
     let position = g:test#last_position
   else
     call s:echo_failure('Not a test file') | return
+  endif
+
+  if type(get(g:, 'test#strategy')) == type({})
+    let strategy = g:test#strategy[a:type]
+    call add(a:arguments, '-strategy='.strategy)
   endif
 
   call s:detect_command_strategy(a:arguments)
@@ -21,6 +30,10 @@ function! test#run(type, arguments) abort
   let args = test#base#options(runner, a:type) + args
 
   call test#execute(runner, args)
+
+  if exists('g:test#project_root')
+    execute 'cd -'
+  endif
 endfunction
 
 function! test#run_last(arguments) abort
@@ -107,11 +120,11 @@ endfunction
 function! s:detect_command_strategy(arguments) abort
   for idx in range(0, len(a:arguments) - 1)
     if a:arguments[idx] =~# '^-strategy='
-      let option = remove(a:arguments, idx)
-      let s:strategy = substitute(option, '-strategy=', '', '')
+      let s:strategy = substitute(a:arguments[idx], '-strategy=', '', '')
       break
     endif
   endfor
+  call filter(a:arguments, 'v:val !~# "^strategy="')
 endfunction
 
 function! s:echo_failure(message) abort
