@@ -165,15 +165,18 @@ endfunction"}}}
 function! s:make_word(bufnr) abort "{{{
   let filetype = getbufvar(a:bufnr, '&filetype')
   if filetype ==# 'vimfiler'
-    let path = getbufvar(a:bufnr, 'vimfiler').current_dir
-    let path = printf('*vimfiler* [%s]',
-          \ unite#util#substitute_path_separator(simplify(path)))
+    let path = unite#util#substitute_path_separator(
+          \ simplify(getbufvar(a:bufnr, 'vimfiler').current_dir))
+    let path = unite#util#substitute_path_separator(
+          \ simplify(bufname(a:bufnr))) . ' ' . path . '/'
   elseif filetype ==# 'vimshell'
-    let vimshell = getbufvar(a:bufnr, 'vimshell')
-    let path = printf('*vimshell*: [%s]',
-          \ unite#util#substitute_path_separator(simplify(vimshell.current_dir)))
+    let path = unite#util#substitute_path_separator(
+          \ simplify(getbufvar(a:bufnr, 'vimshell').current_dir))
+    let path = unite#util#substitute_path_separator(
+          \ simplify(bufname(a:bufnr))) . ' ' . path . '/'
   else
-    let path = unite#util#substitute_path_separator(simplify(bufname(a:bufnr)))
+    let path = unite#util#substitute_path_separator(
+          \ simplify(bufname(a:bufnr)))
   endif
 
   return path
@@ -225,12 +228,8 @@ function! s:compare(candidate_a, candidate_b) abort "{{{
 endfunction"}}}
 function! s:get_buffer_list(is_bang, is_question, is_plus, is_minus, is_terminal) abort "{{{
   " Get :ls flags.
-  redir => output
-  silent! ls
-  redir END
-
   let flag_dict = {}
-  for out in map(split(output, '\n'), 'split(v:val)')
+  for out in map(split(unite#util#redir('ls'), '\n'), 'split(v:val)')
     let flag_dict[out[0]] = matchstr(join(out), '^.*\ze\s\+"')
   endfor
 
