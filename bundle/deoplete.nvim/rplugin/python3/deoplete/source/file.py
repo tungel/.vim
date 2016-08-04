@@ -9,7 +9,6 @@ import os
 import re
 from os.path import exists, dirname
 from .base import Base
-from deoplete.util import get_simple_buffer_config
 
 
 class Source(Base):
@@ -22,6 +21,10 @@ class Source(Base):
         self.min_pattern_length = 0
         self.rank = 150
         self.__isfname = ''
+
+    def on_init(self, context):
+        self.__buffer_path = context['vars'].get(
+            'deoplete#file#enable_buffer_path', 0)
 
     def on_event(self, context):
         self.__isfname = self.vim.call(
@@ -54,35 +57,22 @@ class Source(Base):
                 ] + [{'word': x} for x in files]
 
     def __longest_path_that_exists(self, context, input_str):
-        data = [input_str]
-        m = re.search(self.__isfname, input_str)
-        if m and m.group(0) != '':
-            data = re.split(self.__isfname, input_str)
-        pos = [" ".join(data[i:]) for i in range(len(data))]
-        existing_paths = list(filter(lambda x: exists(
-            dirname(self.__substitute_path(context, x))), pos))
-        if existing_paths and len(existing_paths) > 0:
-            return sorted(existing_paths)[-1]
-        return None
+        data = re.split(r'(%s+)' % self.__isfname, input_str)
+        data = [''.join(data[i:]) for i in range(len(data))]
+        existing_paths = sorted(filter(lambda x: exists(
+            dirname(self.__substitute_path(context, x))), data))
+        return existing_paths[-1] if existing_paths else None
 
     def __substitute_path(self, context, path):
-        buffer_path = get_simple_buffer_config(
-            context,
-            'deoplete_file_enable_buffer_path',
-            'deoplete#file#enable_buffer_path')
-        m = re.match(r'(\.+)/', path)
+        m = re.match(r'(\.{1,2})/+', path)
         if m:
-            h = self.vim.funcs.repeat(':h', len(m.group(1)))
-            return re.sub(r'^\.+',
-                          self.vim.funcs.fnamemodify(
-                              (context['bufname']
-                               if buffer_path
-                               else context['cwd']), ':p' + h),
-                          path)
-        m = re.match(r'~/', path)
-        if m and os.environ.get('HOME'):
-            return re.sub(r'^~', os.environ.get('HOME'), path)
-        m = re.match(r'\$([A-Z_]+)/', path)
-        if m and os.environ.get(m.group(1)):
-            return re.sub(r'^\$[A-Z_]+', os.environ.get(m.group(1)), path)
-        return path
+            if self.__buffer_path and context['bufname']:
+                base = context['bufname']
+            else:
+                base = os.path.join(context['cwd'], 'x')
+
+            for _ in m.group(1):
+                base = dirname(base)
+            path = os.path.abspath(os.path.join(base, path[len(m.group(0)):]))
+            return path
+        return os.path.expandvars(os.path.expanduser(path))

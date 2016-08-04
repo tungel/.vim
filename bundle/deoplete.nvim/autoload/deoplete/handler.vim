@@ -11,8 +11,8 @@ function! deoplete#handler#_init() abort "{{{
     autocmd CompleteDone * call s:complete_done()
     autocmd InsertCharPre * call s:on_insert_char_pre()
 
-    autocmd TextChangedI * call s:completion_begin("TextChangedI")
-    autocmd InsertEnter * call s:completion_begin("InsertEnter")
+    autocmd TextChangedI * call s:completion_check('TextChangedI')
+    autocmd InsertEnter * call s:completion_check('InsertEnter')
   augroup END
 
   for event in [
@@ -22,6 +22,29 @@ function! deoplete#handler#_init() abort "{{{
   endfor
 
   call s:on_event('')
+endfunction"}}}
+
+function! s:completion_delayed(timer) abort "{{{
+  let timer = s:timer
+  unlet! s:timer
+  call s:completion_begin(timer.event)
+endfunction"}}}
+
+function! s:completion_check(event) abort "{{{
+  if has('timers') && g:deoplete#auto_complete_delay > 0
+    if exists('s:timer')
+      call timer_stop(s:timer.id)
+    endif
+
+    if a:event != 'Manual'
+      let s:timer = { 'event': a:event }
+      let s:timer.id = timer_start(g:deoplete#auto_complete_delay,
+            \ 's:completion_delayed')
+      return
+    endif
+  endif
+
+  return s:completion_begin(a:event)
 endfunction"}}}
 
 function! s:completion_begin(event) abort "{{{
@@ -67,6 +90,7 @@ function! s:is_skip(event, context) abort "{{{
         \   'g:deoplete#disable_auto_complete')
 
   if &paste
+        \ || mode() !=# 'i'
         \ || (a:event !=# 'Manual' && disable_auto_complete)
         \ || (&l:completefunc != '' && &l:buftype =~# 'nofile')
         \ || (a:event ==# 'InsertEnter'
@@ -108,7 +132,8 @@ function! s:is_skip_textwidth(input) abort "{{{
   if &l:formatoptions =~# '[tca]' && &l:textwidth > 0
         \     && displaywidth >= &l:textwidth
     if &l:formatoptions =~# '[ta]'
-          \ || deoplete#util#get_syn_name() ==# 'Comment'
+          \ || !empty(filter(deoplete#util#get_syn_names(),
+          \                  'v:val ==# "Comment"'))
       return 1
     endif
   endif
