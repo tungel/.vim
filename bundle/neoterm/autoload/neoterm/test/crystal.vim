@@ -1,11 +1,6 @@
-function! neoterm#test#rspec#run(scope)
+function! neoterm#test#crystal#run(scope)
+  let command = 'crystal spec'
   let path = g:neoterm_use_relative_path ? expand('%') : expand('%:p')
-
-  if exists('g:neoterm_rspec_lib_cmd')
-    let command = g:neoterm_rspec_lib_cmd
-  else
-    let command = 'bundle exec rspec'
-  end
 
   if a:scope == 'file'
     let command .= ' ' . path
@@ -16,7 +11,7 @@ function! neoterm#test#rspec#run(scope)
   return command
 endfunction
 
-function! neoterm#test#rspec#result_handler(line)
+function! neoterm#test#crystal#result_handler(line)
   let counters = matchlist(
         \ a:line,
         \ '\(\d\+\|no\) failures\?'

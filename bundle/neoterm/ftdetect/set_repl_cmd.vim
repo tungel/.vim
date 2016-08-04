@@ -13,8 +13,11 @@ if has('nvim')
           \ endif
     " Python
     au VimEnter,BufRead,BufNewFile *.py,
-          \ if executable('ipython') |
-          \   call neoterm#repl#set('ipython') |
+          \ let s:argList = split(g:neoterm_repl_python) |
+          \ if len(s:argList) > 0 && executable(s:argList[0]) |
+          \   call neoterm#repl#set(g:neoterm_repl_python) |
+          \ elseif executable('ipython') |
+          \   call neoterm#repl#set('ipython --no-autoindent') |
           \ elseif executable('python') |
           \   call neoterm#repl#set('python') |
           \ end
@@ -34,6 +37,11 @@ if has('nvim')
     au VimEnter,BufRead,BufNewFile *.jl,
           \ if executable('julia') |
           \   call neoterm#repl#set('julia') |
+          \ end
+    " PARI/GP
+    au VimEnter,BufRead,BufNewFile *.gp,
+          \ if executable('gp') |
+          \   call neoterm#repl#set('gp') |
           \ end
     " R
     au VimEnter,BufRead,BufNewFile *.R,*.Rmd

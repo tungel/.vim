@@ -28,6 +28,7 @@ endfunction
 function! neoterm#repl#term(id)
   if has_key(g:neoterm.instances, a:id)
     let g:neoterm.repl.instance_id = a:id
+    let g:neoterm.repl.loaded = 1
   else
     echoe "There is no ".a:id." term."
   end
@@ -59,7 +60,9 @@ endfunction
 " Internal: Open the REPL, if needed, and executes the given command.
 function! g:neoterm.repl.exec(command)
   if !self.loaded
-    call self.instance().do(g:neoterm_repl_command)
+    if !empty(get(g:, 'neoterm_repl_command', ''))
+      call self.instance().do(g:neoterm_repl_command)
+    end
     let self.loaded = 1
   end
 
