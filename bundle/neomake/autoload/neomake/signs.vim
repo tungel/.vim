@@ -65,6 +65,10 @@ endfunction
 
 " type may be either 'file' or 'project'
 function! neomake#signs#PlaceSign(entry, type) abort
+    if !has('signs')
+        return
+    endif
+
     if a:entry.type ==? 'W'
         let sign_type = 'neomake_warn'
     elseif a:entry.type ==? 'I'
@@ -107,6 +111,10 @@ endfunction
 
 " type may be either 'file' or 'project'
 function! neomake#signs#CleanOldSigns(bufnr, type) abort
+    if !has('signs')
+        return
+    endif
+
     if !has_key(s:last_placed_signs[a:type], a:bufnr)
         return
     endif
@@ -139,9 +147,15 @@ function! neomake#signs#PlaceVisibleSigns() abort
     endfor
 endfunction
 
-exe 'sign define neomake_invisible'
+if has('signs')
+    exe 'sign define neomake_invisible'
+endif
 
 function! neomake#signs#RedefineSign(name, opts) abort
+    if !has('signs')
+        return
+    endif
+
     let sign_define = 'sign define '.a:name
     for attr in keys(a:opts)
         let sign_define .= ' '.attr.'='.a:opts[attr]
@@ -193,13 +207,13 @@ function! neomake#signs#RedefineMessageSign(...) abort
     call neomake#signs#RedefineSign('neomake_msg', opts)
 endfunction
 
-function! neomake#signs#RedefineInformationalSign(...) abort
+function! neomake#signs#RedefineInfoSign(...) abort
     let default_opts = {'text': 'ℹ', 'texthl': 'NeomakeInfoSign'}
     let opts = {}
     if a:0
         call extend(opts, a:1)
-    elseif exists('g:neomake_informational_sign')
-        call extend(opts, g:neomake_informational_sign)
+    elseif exists('g:neomake_info_sign')
+        call extend(opts, g:neomake_info_sign)
     endif
     call extend(opts, default_opts, 'keep')
     call neomake#signs#RedefineSign('neomake_info', opts)
@@ -216,6 +230,10 @@ endfunction
 
 
 function! neomake#signs#DefineHighlights() abort
+    if !has('signs')
+        return
+    endif
+
     let ctermbg = neomake#utils#GetHighlight('SignColumn', 'bg')
     let guibg = neomake#utils#GetHighlight('SignColumn', 'bg#')
     let bg = 'ctermbg='.ctermbg.' guibg='.guibg
@@ -245,11 +263,15 @@ endfunction
 
 let s:signs_defined = 0
 function! neomake#signs#DefineSigns() abort
+    if !has('signs')
+        return
+    endif
+
     if !s:signs_defined
         let s:signs_defined = 1
         call neomake#signs#RedefineErrorSign()
         call neomake#signs#RedefineWarningSign()
-        call neomake#signs#RedefineInformationalSign()
+        call neomake#signs#RedefineInfoSign()
         call neomake#signs#RedefineMessageSign()
     endif
 endfunction
