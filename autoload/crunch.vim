@@ -97,8 +97,8 @@ function! crunch#eval(exprs) abort "{{{2
             let orig_expr = expr_list[i]
 
             let expr_list[i] = s:mark_e_notation(expr_list[i])
-            let expr_list[i] = s:replace_captured_variable(expr_list[i])
-            let expr_list[i] = s:replace_variable_with_value(expr_list[i], i)
+            let expr_list[i] = s:replace_captured_variable_with_value(expr_list[i])
+            let expr_list[i] = s:replace_searched_variable_with_value(expr_list[i])
             let expr_list[i] = s:unmark_e_notation(expr_list[i])
             let result  = crunch#core(expr_list[i])
         catch /Crunch error: /
@@ -212,6 +212,7 @@ function! crunch#operator(type) abort "{{{2
     endif
 
     let regtype = type
+
 "    Decho 'regtype = <'.regtype.'>'
     let repl = crunch#eval(@@)
 
@@ -385,6 +386,7 @@ endfunction "}}}2
 " E NOTATION {{{2
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 function! s:mark_e_notation(expr) abort "{{{3
+"    Decho '== Mark E Notation =='
     " e.g
     " 5e3  -> 5#3
     " 5e-3 -> 5#-3
@@ -392,12 +394,14 @@ function! s:mark_e_notation(expr) abort "{{{3
     let expr = a:expr
     let number = '\v(\.\d+|\d+([.]\d+)?)\zs[eE]\ze[+-]?\d+'
     let expr = substitute(expr, number, '#', 'g')
+"    Decho 'expr = <'.expr.'>'
     return expr
 endfunction  "}}}3
 
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 function! s:unmark_e_notation(expr) abort "{{{3
+"    Decho '== Unmark E Notation =='
     " e.g
     " 5#3  -> 5e3
     " 5#-3 -> 5e-3
@@ -435,14 +439,14 @@ function! s:capture_variable(expr) abort "{{{2
 endfunction "}}}2
 
 
-" TODO this is the same as s:replace_variable_with_value
-function! s:replace_captured_variable(expr) abort "{{{2
+function! s:replace_captured_variable_with_value(expr) abort "{{{2
 
 "    Decho '== Replace Captured Variablee =='
 
     let expr = a:expr
 "    Decho '['.expr.']= expression before variable replacement'
 
+    let expr = s:mark_e_notation(expr)
     "strip the variable marker, if any
     let expr = substitute( expr, '\v\C^\s*'.s:valid_variable.'\s*\=\s*', '', '')
 "    Decho '['.expr.']= expression striped of variable'
@@ -451,18 +455,19 @@ function! s:replace_captured_variable(expr) abort "{{{2
     let expr = substitute(
                 \ expr,
                 \ s:variable_regex,
-                \ '\=s:get_stored_variable_value(submatch(1))', 'g')
+                \ '\=s:get_captured_variable_value(submatch(1))', 'g')
+    let expr = s:mark_e_notation(expr)
 
+    let expr = s:unmark_e_notation(expr)
 "    Decho '['.expr.']= expression after variable replacement'
     return expr
 endfunction "}}}2
 
 
-function! s:get_stored_variable_value(variable) abort "{{{2
+function! s:get_captured_variable_value(variable) abort "{{{2
 
     let value = get(s:variables, a:variable, 'not found')
     if value ==# 'not found'
-        "call s:throw('value for '.a:variable.' not found')
         return a:variable
     endif
 
@@ -470,13 +475,14 @@ function! s:get_stored_variable_value(variable) abort "{{{2
 endfunction "}}}2
 
 
-function! s:replace_variable_with_value(expr, num) abort "{{{2
+function! s:replace_searched_variable_with_value(expr) abort "{{{2
 
 "    Decho '== Replace Variable =='
 
     let expr = a:expr
 "    Decho '['.expr.']= expression before variable replacement '
 
+    let expr = s:mark_e_notation(expr)
     "strip the variable marker, if any
     let expr = substitute( expr, '\v\C^\s*'.s:valid_variable.'\s*\=\s*', '', '')
 "    Decho '['.expr.']= expression striped of variable'
@@ -485,16 +491,17 @@ function! s:replace_variable_with_value(expr, num) abort "{{{2
     let expr = substitute(
                 \ expr,
                 \ s:variable_regex,
-                \ '\=s:get_searched_variable_value(submatch(1), a:num)', 'g')
+                \ '\=s:get_searched_variable_value(submatch(1))', 'g')
+    let expr = s:mark_e_notation(expr)
+    let expr = s:unmark_e_notation(expr)
 
 "    Decho '['.expr.']= expression after variable replacement'
     return expr
 endfunction "}}}2
 
 
-function! s:get_searched_variable_value(variable, num) abort "{{{2
+function! s:get_searched_variable_value(variable) abort "{{{2
 
-"    Decho '['.a:num.']= is the num'
 "    Decho '['.a:variable.']= is the variable to be replaced'
     let search_line = search('\v\C^('.b:prefix_regex.')?\V'.a:variable.'\v\s*\=\s*',
                 \'bnW' )
