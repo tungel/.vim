@@ -47,7 +47,7 @@ Note: deoplete requires Neovim(latest is recommended) with Python3 enabled.
 
 1. Extract the files and put them in your Neovim directory
    (usually `$XDG_CONFIG_HOME/nvim/`).
-2. Execute the |:UpdateRemotePlugins| and restart Neovim.
+2. Execute the ":UpdateRemotePlugins" and restart Neovim.
 3. Call |deoplete#enable()| or set "let g:deoplete#enable_at_startup = 1" in
    your `init.vim`
 
@@ -180,10 +180,10 @@ g:deoplete#max_menu_width
 
 					*g:deoplete#auto_complete_delay*
 g:deoplete#auto_complete_delay
-		It is the auto completion delay time after your input.
-		The unit is ms.
+		Delay the completion after input in milliseconds.
+		Requires |+timers| (Neovim 0.1.5)
 
-		Default value: 0
+		Default value: 50
 
 						*g:deoplete#keyword_patterns*
 g:deoplete#keyword_patterns
@@ -266,7 +266,7 @@ g:deoplete#member#prefix_patterns
 		does not complete member candidates.
 		Note: It is Python3 regexp.
 
-		Default value: in g:deoplete#member#_prefix_patterns
+		Default value: defined in member.py
 
 					*b:deoplete_member_prefix_patterns*
 b:deoplete_member_prefix_patterns
@@ -290,7 +290,7 @@ g:deoplete#omni#input_patterns
 		let g:deoplete#omni#input_patterns.php =
 		\ '\w+|[^. \t]->\w*|\w+::\w*'
 <
-		Default value: in g:deoplete#omni#_input_patterns
+		Default value: defined in omni.py.
 
 					*b:deoplete_omni_input_patterns*
 b:deoplete_omni_input_patterns
@@ -316,10 +316,6 @@ g:deoplete#file#enable_buffer_path
 		path instead of the current directory.
 
 		Default value: 0
-
-					*b:deoplete_file_enable_buffer_path*
-b:deoplete_file_enable_buffer_path
-		Buffer local variable of |g:deoplete#file#enable_buffer_path|.
 
 					*g:deoplete#tag#cache_limit_size*
 g:deoplete#tag#cache_limit_size
@@ -433,10 +429,15 @@ deoplete#manual_complete([{sources}])
 		|g:deoplete#disable_auto_complete|, which should be 1 then
 		typically.
 >
-		inoremap <silent><expr> <Tab>
-		\ pumvisible() ? "\<C-n>" : deoplete#manual_complete()
+		inoremap <silent><expr> <TAB>
+		\ pumvisible() ? "\<C-n>" :
+		\ <SID>check_back_space() ? "\<TAB>" :
+		\ deoplete#mappings#manual_complete()
+		function! s:check_back_space() abort "{{{
+		let col = col('.') - 1
+		return !col || getline('.')[col - 1]  =~ '\s'
+		endfunction"}}}
 <
-
 				*deoplete#smart_close_popup()*
 deoplete#smart_close_popup()
 		Insert candidate and re-generate popup menu for deoplete.
@@ -742,9 +743,14 @@ on_post_filter
 
 					*deoplete-source-attribute-on_event*
 on_event	(Function)			(Optional)
-		It is called when |BufEnter|, |BufRead|, |BufNewFile|,
-		|BufNew|, |BufWinEnter|, |BufWritePost|.
+		It is called when |BufRead|, |BufNewFile|, |BufNew|,
+		|BufWritePost|.
 		It is useful to make cache.
+		It takes {self} and {context} as its parameter.
+
+					*deoplete-source-attribute-on_init*
+on_init		(Function)			(Optional)
+		It is called after the source is initialized.
 		It takes {self} and {context} as its parameter.
 
 						*deoplete-source-attribute-__*
@@ -871,10 +877,6 @@ https://github.com/vhakulinen/neovim-intellij-complete-deoplete
 tmux-complete: "tmuxcomplete" source for tmux panes
 https://github.com/wellle/tmux-complete.vim
 
-deoplete-cpp: "cmake" and "cpp" and "identifier" sources for "cmake", "c",
-"cpp", "objc", "objcpp" and "arduino" filetypes
-https://github.com/kiddos/deoplete-cpp
-
 deoplete-github: "github" source for "gitcommit" filetype
 https://github.com/SevereOverfl0w/deoplete-github
 
@@ -884,8 +886,11 @@ https://github.com/steelsojka/deoplete-flow
 deoplete-d: "d" source for D language
 https://github.com/landaire/deoplete-d
 
-deoplete-rtags: "rtags" source for "c", "cpp", "objc" and "objcpp" filetypes.
+deoplete-rtags: "rtags" source for "c", "cpp", "objc" and "objcpp" filetypes
 https://github.com/LuXuryPro/deoplete-rtags
+
+deoplete-ruby: "ruby" source for Ruby language
+https://github.com/fishbullet/deoplete-ruby
 
 ==============================================================================
 EXTERNAL PLUGINS				*deoplete-external-plugins*
@@ -932,7 +937,7 @@ A:
 >
 	$ sudo pip3 install neovim --upgrade
 <
-  3. Please execute |:UpdateRemotePlugins| or |:NeoBundleRemotePlugins| (for
+  3. Please execute ":UpdateRemotePlugins" or ":NeoBundleRemotePlugins" (for
   using NeoBundle) command manually.
 
   4. Please check if Python3 interface works.  You can check it by ":echo
@@ -1155,6 +1160,11 @@ Q: I want to change the UltiSnips source order.
 A: >
 	call deoplete#custom#set('ultisnips', 'rank', 1000)
 <
+
+Q: tag source does not work.
+https://github.com/Shougo/deoplete.nvim/issues/309
+
+A: Please increase |g:deoplete#tag#cache_limit_size| value.
 
 ==============================================================================
 vim:tw=78:ts=8:ft=help:norl:noet:fen:noet:
