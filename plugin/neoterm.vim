@@ -28,7 +28,11 @@ endfunction
 let g:neoterm_statusline = ""
 
 if !exists("g:neoterm_shell")
-  let g:neoterm_shell = &sh
+  if exists('&shellcmdflag')
+    let g:neoterm_shell = &shell . ' ' . substitute(&shellcmdflag, '[-/]c', '', '')
+  else
+    let g:neoterm_shell = &shell
+  end
 end
 
 if !exists("g:neoterm_size")
@@ -93,6 +97,10 @@ end
 
 if !exists("g:neoterm_repl_ruby")
   let g:neoterm_repl_ruby = "irb"
+end
+
+if !exists("g:neoterm_repl_python")
+  let g:neoterm_repl_python = ""
 end
 
 hi! NeotermTestRunning ctermfg=11 ctermbg=0
