@@ -1,4 +1,4 @@
-# VIM Table Mode v4.6.4 [![Build Status](https://travis-ci.org/dhruvasagar/vim-table-mode.png?branch=master)](https://travis-ci.org/dhruvasagar/vim-table-mode)
+# VIM Table Mode v4.6.4.1 [![Build Status](https://travis-ci.org/dhruvasagar/vim-table-mode.png?branch=master)](https://travis-ci.org/dhruvasagar/vim-table-mode)
 
 An awesome automatic table creator & formatter allowing one to create neat
 tables as you type.
@@ -29,6 +29,25 @@ $ git submodule add git@github.com:dhruvasagar/vim-table-mode.git bundle/table-m
 ### Creating table on-the-fly
 
 To start using the plugin in the on-the-fly mode use `:TableModeToggle` mapped to <kbd>\<Leader\>tm</kbd> by default (which means <kbd>\\</kbd> <kbd>t</kbd> <kbd>m</kbd> if you didn't override the <Leader> by `:let mapleader = ","` to have <kbd>,</kbd> <kbd>t</kbd> <kbd>m</kbd>).
+
+> Tip :
+> You can use the following to quickly enable / disable table mode in insert
+> mode by using `||` or `__` :
+> ```vim
+> inoreabbrev <expr> <bar><bar>
+>           \ s:isAtStartOfLine('\|\|') ?
+>           \ '<c-o>:TableModeEnable<cr><bar><space><bar><left><left>' : '<bar><bar>'
+> inoreabbrev <expr> __
+>           \ s:isAtStartOfLine('__') ?
+>           \ '<c-o>:silent! TableModeDisable<cr>' : '__'
+>
+> fun! s:isAtStartOfLine(mapping)
+>   let text_before_cursor = getline('.')[0 : col('.')-1]
+>   let mapping_pattern = '\V' . escape(a:mapping, '\')
+>   let comment_pattern = '\V' . escape(substitute(&l:commentstring, '%s.*$', '', ''), '\')
+>   return (text_before_cursor =~? '^' . ('\v(' . comment_pattern . '\v)?') . '\s*\v' . mapping_pattern . '\v$')
+> endf
+> ```
 
 Enter the first line, delimiting columns by the `|` symbol. The plugin reacts by inserting spaces between the text and the separator if you omit them:
 
