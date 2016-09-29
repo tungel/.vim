@@ -42,6 +42,10 @@ function! test#strategy#dispatch(cmd) abort
   execute 'Dispatch '.a:cmd
 endfunction
 
+function! test#strategy#vimproc(cmd) abort
+  execute 'VimProcBang '.a:cmd
+endfunction
+
 function! test#strategy#neovim(cmd) abort
   let opts = {'suffix': ' # vim-test'}
   function! opts.close_terminal()
@@ -95,11 +99,12 @@ function! s:pretty_command(cmd) abort
   let clear = !s:Windows() ? 'clear' : 'cls'
   let cd = 'cd ' . shellescape(getcwd())
   let echo  = !s:Windows() ? 'echo -e '.shellescape(a:cmd) : 'Echo '.shellescape(a:cmd)
+  let separator = !s:Windows() ? '; ' : ' & '
 
   if !exists('g:test#preserve_screen') || !g:test#preserve_screen
-    return join([l:clear, l:cd, l:echo, a:cmd], '; ')
+    return join([l:clear, l:cd, l:echo, a:cmd], l:separator)
   else
-    return join([l:cd, l:echo, a:cmd], '; ')
+    return join([l:cd, l:echo, a:cmd], l:separator)
   endif
 endfunction
 
