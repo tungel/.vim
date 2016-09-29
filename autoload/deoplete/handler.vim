@@ -31,15 +31,16 @@ function! s:completion_delayed(timer) abort "{{{
 endfunction"}}}
 
 function! s:completion_check(event) abort "{{{
-  if has('timers') && g:deoplete#auto_complete_delay > 0
+  let delay = get(g:deoplete#_context, 'refresh', 0) ?
+        \ g:deoplete#auto_refresh_delay : g:deoplete#auto_complete_delay
+  if has('timers') && delay > 0
     if exists('s:timer')
       call timer_stop(s:timer.id)
     endif
 
     if a:event != 'Manual'
       let s:timer = { 'event': a:event }
-      let s:timer.id = timer_start(g:deoplete#auto_complete_delay,
-            \ 's:completion_delayed')
+      let s:timer.id = timer_start(delay, 's:completion_delayed')
       return
     endif
   endif
@@ -106,22 +107,6 @@ function! s:is_skip(event, context) abort "{{{
     if word == '' || empty(delimiters)
       return 1
     endif
-  endif
-
-  " Detect foldmethod.
-  if a:event !=# 'Manual' && a:event !=# 'InsertEnter'
-        \ && !exists('b:deoplete_detected_foldmethod')
-        \ && (&l:foldmethod ==# 'expr' || &l:foldmethod ==# 'syntax')
-    let b:deoplete_detected_foldmethod = 1
-    call deoplete#util#print_error(
-          \ printf('foldmethod = "%s" is detected.', &foldmethod))
-    let msg = substitute(deoplete#util#redir(
-          \ 'verbose setlocal foldmethod?'), '\t', '', 'g')
-    for msg in split(msg, "\n")
-      call deoplete#util#print_error(msg)
-    endfor
-    call deoplete#util#print_error(
-          \ 'You should disable it or install FastFold plugin.')
   endif
 
   return 0

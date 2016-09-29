@@ -12,7 +12,7 @@ function! deoplete#init#_is_enabled() abort "{{{
   return s:is_enabled
 endfunction"}}}
 function! s:is_initialized() abort "{{{
-  return exists('g:deoplete#_channel_id')
+  return exists('g:deoplete#_context')
 endfunction"}}}
 
 function! deoplete#init#_initialize() abort "{{{
@@ -24,6 +24,21 @@ function! deoplete#init#_initialize() abort "{{{
     autocmd!
   augroup END
 
+  if deoplete#init#_channel()
+    return 1
+  endif
+
+  call deoplete#mapping#_init()
+  call deoplete#init#_variables()
+
+  let s:is_enabled = g:deoplete#enable_at_startup
+  if s:is_enabled
+    call deoplete#init#_enable()
+  else
+    call deoplete#init#_disable()
+  endif
+endfunction"}}}
+function! deoplete#init#_channel() abort "{{{
   if !has('nvim') || !has('python3')
     call deoplete#util#print_error(
           \ 'deoplete.nvim does not work with this version.')
@@ -46,25 +61,16 @@ function! deoplete#init#_initialize() abort "{{{
   endtry
 
   " neovim module version check.
-  if g:deoplete#_neovim_python_version < '0.1.8'
+  if empty(g:deoplete#_neovim_python_version) || deoplete#util#versioncmp(
+        \ sort(g:deoplete#_neovim_python_version)[-1], '0.1.8') < 0
     call deoplete#util#print_error(
           \ 'Current neovim-python module version: ' .
-          \  g:deoplete#_neovim_python_version)
+          \  string(g:deoplete#_neovim_python_version))
     call deoplete#util#print_error(
           \ 'deoplete.nvim requires neovim-python 0.1.8+.')
     call deoplete#util#print_error(
           \ 'Please update neovim-python by "pip3 install --upgrade neovim"')
     return 1
-  endif
-
-  call deoplete#mapping#_init()
-  call deoplete#init#_variables()
-
-  let s:is_enabled = g:deoplete#enable_at_startup
-  if s:is_enabled
-    call deoplete#init#_enable()
-  else
-    call deoplete#init#_disable()
   endif
 endfunction"}}}
 function! deoplete#init#_enable() abort "{{{
@@ -104,7 +110,9 @@ function! deoplete#init#_variables() abort "{{{
   call deoplete#util#set_default(
         \ 'g:deoplete#enable_profile', 0)
   call deoplete#util#set_default(
-        \ 'g:deoplete#auto_complete_delay', 50)
+        \ 'g:deoplete#auto_complete_delay', 100)
+  call deoplete#util#set_default(
+        \ 'g:deoplete#auto_refresh_delay', 50)
   call deoplete#util#set_default(
         \ 'g:deoplete#max_abbr_width', 80)
   call deoplete#util#set_default(
