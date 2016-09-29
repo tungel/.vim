@@ -55,6 +55,7 @@ let s:statusline_in_use = 0
 " 0: not checked yet; 1: checked and found; 2: checked and not found
 let s:checked_ctags       = 0
 let s:checked_ctags_types = 0
+let s:ctags_is_uctags     = 0
 let s:ctags_types         = {}
 
 let s:new_window      = 1
@@ -154,6 +155,34 @@ function! s:InitTypes() abort
         \ {'short' : 'v', 'long' : 'variables',   'fold' : 0, 'stl' : 1}
     \ ]
     let s:known_types.aspvbs = type_aspvbs
+    " Asymptote {{{3
+    " Asymptote gets parsed well using filetype = c
+    let type_asy = s:TypeInfo.New()
+    let type_asy.ctagstype = 'c'
+    let type_asy.kinds     = [
+        \ {'short' : 'd', 'long' : 'macros',      'fold' : 1, 'stl' : 0},
+        \ {'short' : 'p', 'long' : 'prototypes',  'fold' : 1, 'stl' : 0},
+        \ {'short' : 'g', 'long' : 'enums',       'fold' : 0, 'stl' : 1},
+        \ {'short' : 'e', 'long' : 'enumerators', 'fold' : 0, 'stl' : 0},
+        \ {'short' : 't', 'long' : 'typedefs',    'fold' : 0, 'stl' : 0},
+        \ {'short' : 's', 'long' : 'structs',     'fold' : 0, 'stl' : 1},
+        \ {'short' : 'u', 'long' : 'unions',      'fold' : 0, 'stl' : 1},
+        \ {'short' : 'm', 'long' : 'members',     'fold' : 0, 'stl' : 0},
+        \ {'short' : 'v', 'long' : 'variables',   'fold' : 0, 'stl' : 0},
+        \ {'short' : 'f', 'long' : 'functions',   'fold' : 0, 'stl' : 1}
+    \ ]
+    let type_asy.sro        = '::'
+    let type_asy.kind2scope = {
+        \ 'g' : 'enum',
+        \ 's' : 'struct',
+        \ 'u' : 'union'
+    \ }
+    let type_asy.scope2kind = {
+        \ 'enum'   : 'g',
+        \ 'struct' : 's',
+        \ 'union'  : 'u'
+    \ }
+    let s:known_types.asy = type_asy
     " Awk {{{3
     let type_awk = s:TypeInfo.New()
     let type_awk.ctagstype = 'awk'
@@ -565,6 +594,12 @@ function! s:InitTypes() abort
         \ 'class'    : 'c',
         \ 'function' : 'f'
     \ }
+    if s:ctags_is_uctags
+        " Universal Ctags treats member functions differently from normal
+        " functions
+        let type_python.kind2scope.m = 'member'
+        let type_python.scope2kind.member = 'm'
+    endif
     let s:known_types.python = type_python
     let s:known_types.pyrex  = type_python
     let s:known_types.cython = type_python
@@ -964,11 +999,12 @@ function! s:MapKeys() abort
         \ ['nextfold',      'GotoNextFold()'],
         \ ['prevfold',      'GotoPrevFold()'],
         \
-        \ ['togglesort',      'ToggleSort()'],
-        \ ['toggleautoclose', 'ToggleAutoclose()'],
-        \ ['zoomwin',         'ZoomWindow()'],
-        \ ['close',           'CloseWindow()'],
-        \ ['help',            'ToggleHelp()'],
+        \ ['togglesort',            'ToggleSort()'],
+        \ ['togglecaseinsensitive', 'ToggleCaseInsensitive()'],
+        \ ['toggleautoclose',       'ToggleAutoclose()'],
+        \ ['zoomwin',               'ZoomWindow()'],
+        \ ['close',                 'CloseWindow()'],
+        \ ['help',                  'ToggleHelp()'],
     \ ]
 
     for [map, func] in maps
@@ -995,8 +1031,8 @@ function! s:CreateAutocommands() abort
     augroup TagbarAutoCmds
         autocmd!
         autocmd CursorHold __Tagbar__ call s:ShowPrototype(1)
-        autocmd WinEnter   __Tagbar__ call s:SetStatusLine('current')
-        autocmd WinLeave   __Tagbar__ call s:SetStatusLine('noncurrent')
+        autocmd WinEnter   __Tagbar__ call s:SetStatusLine()
+        autocmd WinLeave   __Tagbar__ call s:SetStatusLine()
 
         if g:tagbar_autopreview
             autocmd CursorMoved __Tagbar__ nested call s:ShowInPreviewWin()
@@ -1143,13 +1179,14 @@ endfunction
 function! s:CheckExCtagsVersion(output) abort
     call s:debug('Checking Exuberant Ctags version')
 
-    if a:output =~ 'Exuberant Ctags Development'
-        call s:debug("Found development version, assuming compatibility")
+    if a:output =~ 'Universal Ctags'
+        call s:debug("Found Universal Ctags, assuming compatibility")
+        let s:ctags_is_uctags = 1
         return 1
     endif
 
-    if a:output =~ 'Universal Ctags'
-        call s:debug("Found Universal Ctags, assuming compatibility")
+    if a:output =~ 'Exuberant Ctags Development'
+        call s:debug("Found development version, assuming compatibility")
         return 1
     endif
 
@@ -1224,7 +1261,7 @@ function! s:BaseTag._init(name) abort dict
     let self.name          = a:name
     let self.fields        = {}
     let self.fields.line   = 0
-    let self.fields.column = 1
+    let self.fields.column = 0
     let self.prototype     = ''
     let self.path          = ''
     let self.fullpath      = a:name
@@ -1853,7 +1890,7 @@ function! s:InitWindow(autoclose) abort
 
     let w:autoclose = a:autoclose
 
-    call s:SetStatusLine('current')
+    call s:SetStatusLine()
 
     let s:new_window = 1
 
@@ -2176,6 +2213,7 @@ function! s:ExecuteCtagsOnFile(fname, realfname, typeinfo) abort
                           \ '--excmd=pattern',
                           \ '--fields=nksSaf',
                           \ '--extra=',
+                          \ '--file-scope=yes',
                           \ '--sort=no',
                           \ '--append=no'
                           \ ]
@@ -2579,7 +2617,8 @@ function! s:CompareByKind(tag1, tag2) abort
             let name2 = a:tag2.name
         endif
 
-        if name1 <=# name2
+        let ci = g:tagbar_case_insensitive
+        if (((!ci) && (name1 <=# name2)) || (ci && (name1 <=? name2)))
             return -1
         else
             return 1
@@ -2616,7 +2655,7 @@ function! s:ToggleSort() abort
     call fileinfo.sortTags()
 
     call s:RenderContent()
-    call s:SetStatusLine('current')
+    call s:SetStatusLine()
 
     " If we were on a tag before sorting then jump to it, otherwise restore
     " the cursor to the current line
@@ -2890,6 +2929,7 @@ function! s:PrintHelp() abort
         silent  put ='\"'
         silent  put ='\" ---------- Misc -----------'
         silent  put ='\" ' . s:get_map_str('togglesort') . ': Toggle sort'
+        silent  put ='\" ' . s:get_map_str('togglecaseinsensitive') . ': Toggle case insensitive sort option'
         silent  put ='\" ' . s:get_map_str('toggleautoclose') . ': Toggle autoclose option'
         silent  put ='\" ' . s:get_map_str('zoomwin') . ': Zoom window in/out'
         silent  put ='\" ' . s:get_map_str('close') . ': Close window'
@@ -3058,9 +3098,15 @@ function! s:JumpToTag(stay_in_tagbar) abort
         let taginfo.fileinfo.fline[curline] = taginfo
     endif
 
-    " Center the tag in the window and jump to the correct column if available
+    " Center the tag in the window and jump to the correct column if
+    " available, otherwise try to find it in the line
     normal! z.
-    call cursor(taginfo.fields.line, taginfo.fields.column)
+    if taginfo.fields.column > 0
+        call cursor(taginfo.fields.line, taginfo.fields.column)
+    else
+        call cursor(taginfo.fields.line, 1)
+        call search(taginfo.name, 'c', line('.'))
+    endif
 
     normal! zv
 
@@ -3486,6 +3532,7 @@ function! s:AutoUpdate(fname, force) abort
     endif
 
     call s:HighlightTag(0)
+    call s:SetStatusLine()
     call s:debug('AutoUpdate finished successfully')
 endfunction
 
@@ -3818,15 +3865,63 @@ endfunction
 
 " s:ToggleHideNonPublicTags() {{{2
 function! s:ToggleHideNonPublicTags() abort
+    let fileinfo = s:known_files.getCurrent(0)
+    if empty(fileinfo)
+        return
+    endif
+
+    " Save the tag the cursor is currently on
+    let curline = line('.')
+    let taginfo = s:GetTagInfo(curline, 0)
+
+    match none
+
     let g:tagbar_hide_nonpublic = !g:tagbar_hide_nonpublic
     call s:RenderKeepView()
-    call s:SetStatusLine('current')
+    call s:SetStatusLine()
+
+    " If we were on a tag before sorting then jump to it, otherwise restore
+    " the cursor to the current line
+    if !empty(taginfo)
+        execute taginfo.tline
+    else
+        execute curline
+    endif
+endfunction
+
+" s:ToggleCaseInsensitive() {{{2
+function! s:ToggleCaseInsensitive() abort
+    let fileinfo = s:known_files.getCurrent(0)
+    if empty(fileinfo)
+        return
+    endif
+
+    " Save the tag the cursor is currently on
+    let curline = line('.')
+    let taginfo = s:GetTagInfo(curline, 0)
+
+    match none
+
+    let g:tagbar_case_insensitive = !g:tagbar_case_insensitive
+
+    call fileinfo.sortTags()
+
+    call s:RenderKeepView()
+    call s:SetStatusLine()
+
+    " If we were on a tag before sorting then jump to it, otherwise restore
+    " the cursor to the current line
+    if !empty(taginfo)
+        execute taginfo.tline
+    else
+        execute curline
+    endif
 endfunction
 
 " s:ToggleAutoclose() {{{2
 function! s:ToggleAutoclose() abort
     let g:tagbar_autoclose = !g:tagbar_autoclose
-    call s:SetStatusLine('current')
+    call s:SetStatusLine()
 endfunction
 
 " s:IsValidFile() {{{2
@@ -3868,7 +3963,7 @@ function! s:IsValidFile(fname, ftype) abort
 endfunction
 
 " s:SetStatusLine() {{{2
-function! s:SetStatusLine(current)
+function! s:SetStatusLine()
     " Make sure we're actually in the Tagbar window
     let tagbarwinnr = bufwinnr('__Tagbar__')
     if tagbarwinnr == -1
@@ -3880,7 +3975,6 @@ function! s:SetStatusLine(current)
     else
         let in_tagbar = 1
     endif
-    let current = a:current == 'current'
 
     let sort = g:tagbar_sort ? 'Name' : 'Order'
 
@@ -3893,13 +3987,14 @@ function! s:SetStatusLine(current)
     let flags = []
     let flags += exists('w:autoclose') && w:autoclose ? ['c'] : []
     let flags += g:tagbar_autoclose ? ['C'] : []
+    let flags += (g:tagbar_sort && g:tagbar_case_insensitive) ? ['i'] : []
     let flags += g:tagbar_hide_nonpublic ? ['v'] : []
 
     if exists('g:tagbar_status_func')
-        let args = [current, sort, fname, flags]
+        let args = [in_tagbar, sort, fname, flags]
         let &l:statusline = call(g:tagbar_status_func, args)
     else
-        let colour = current ? '%#StatusLine#' : '%#StatusLineNC#'
+        let colour = in_tagbar ? '%#StatusLine#' : '%#StatusLineNC#'
         let flagstr = join(flags, '')
         if flagstr != ''
             let flagstr = '[' . flagstr . '] '
@@ -3941,8 +4036,15 @@ function! s:QuitIfOnlyWindow() abort
         endif
     endif
 
-    call s:goto_win(prevwinnr, 1)
-    call s:goto_win(curwinnr, 1)
+    " Check that prevwinnr is still a valid window number
+    if prevwinnr != tagbarwinnr && prevwinnr <= winnr('$')
+        call s:goto_win(prevwinnr, 1)
+    endif
+
+    " Check that curwinnr is still a valid window number
+    if curwinnr <= winnr('$')
+        call s:goto_win(curwinnr, 1)
+    endif
 endfunction
 
 " s:NextNormalWindow() {{{2
@@ -3950,8 +4052,8 @@ function! s:NextNormalWindow() abort
     for i in range(1, winnr('$'))
         let buf = winbufnr(i)
 
-        " skip unlisted buffers
-        if !buflisted(buf)
+        " skip unlisted buffers, except for netrw
+        if !buflisted(buf) && getbufvar(buf, '&filetype') != 'netrw'
             continue
         endif
 
