@@ -44,6 +44,12 @@ it's the command: `rspec spec/path/to/file_spec.rb:123`.
     `g:neoterm_cucumber_lib_cmd`
 * minitest
   * Status in statusline supported
+* rake
+  * it's like minitest but it doesn't support minitest status and uses rake
+  commands like the following:
+    * all: `rake test`
+    * file: `rake test TEST=file`
+    * current: `rake test TEST=file TESTOPTS="--name=\"/test name/\""
 * go-lang test ([partially implemented](https://github.com/kassio/neoterm/pull/8))
 * nose ([partially implemented](https://github.com/kassio/neoterm/pull/9))
 * Cargo ([partially implemented](https://github.com/kassio/neoterm/pull/59))
@@ -66,8 +72,31 @@ it's the command: `rspec spec/path/to/file_spec.rb:123`.
 * Elixir: `iex`
 * Julia: `julia`
 * R / R Markdown: `R`
+* Haskell: `ghci`
 * Idris: `idris`
+* GNU Octave: `octave`
+  * For Octave 4.0.0 and later, you can enable Qt widgets (dialogs, plots, etc.) using `g:neoterm_repl_octave_qt = 1`
+* MATLAB: `matlab -nodesktop -nosplash`
 * PARI/GP: `gp`
+* PHP: `psysh` and `php`
+
+### Troubleshooting
+The REPL is set using the filetype plugin so make sure to set
+```viml
+filetype plugin on
+```
+
+Most standard file extensions for the above REPLs are picked up by Neovim's default
+filetype plugins. However, there are two exceptions:
+* Julia `.jl` files, which are detected as `filetipe=lisp`
+* Idris `.idr`, `.lidr` files which are not recognised as any filetype
+To fix this, either install a suitable plugin for the language or add something like
+the following to your `init.vim`:
+```viml
+au VimEnter,BufRead,BufNewFile *.jl set filetype=julia
+au VimEnter,BufRead,BufNewFile *.idr set filetype=idris
+au VimEnter,BufRead,BufNewFile *.lidr set filetype=lidris
+```
 
 ## other useful commands:
 
@@ -137,8 +166,8 @@ let g:neoterm_position = 'horizontal'
 let g:neoterm_automap_keys = ',tt'
 
 nnoremap <silent> <f10> :TREPLSendFile<cr>
-nnoremap <silent> <f9> :TREPLSend<cr>
-vnoremap <silent> <f9> :TREPLSend<cr>
+nnoremap <silent> <f9> :TREPLSendLine<cr>
+vnoremap <silent> <f9> :TREPLSendSelection<cr>
 
 " run set test lib
 nnoremap <silent> ,rt :call neoterm#test#run('all')<cr>
