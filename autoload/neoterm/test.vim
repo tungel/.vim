@@ -2,6 +2,12 @@ let g:neoterm.test = {}
 
 function! g:neoterm.test.instance()
   if !has_key(self, "instance_id")
+    if exists("g:neoterm_test_before_all")
+      let BeforeAll = function(g:neoterm_test_before_all)
+      echom 'neoterm hooked(BeforeAll)'
+      call BeforeAll()
+    end
+
     if !g:neoterm.has_any()
       call neoterm#window#create(neoterm#test#handlers(), 'test')
     end
