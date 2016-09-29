@@ -22,9 +22,11 @@ function! deoplete#toggle() abort "{{{
 endfunction"}}}
 
 function! deoplete#enable_logging(level, logfile) abort "{{{
-  " Enable to allow logging before completions start.
-  if deoplete#initialize()
-    return
+  if !exists('g:deoplete#_channel_id')
+    " Enable to allow logging before completions start.
+    if deoplete#init#_channel()
+      return
+    endif
   endif
 
   call rpcrequest(g:deoplete#_channel_id,
@@ -55,7 +57,7 @@ function! deoplete#cancel_popup() abort "{{{
 endfunction"}}}
 function! deoplete#refresh() abort "{{{
   let g:deoplete#_context.refresh = 1
-  if g:deoplete#_context.event ==# 'Manual'
+  if get(g:deoplete#_context, 'event', '') ==# 'Manual'
     let g:deoplete#_context.event = 'Refresh'
   endif
   return pumvisible() ? "\<C-e>" : ''
@@ -72,7 +74,7 @@ function! deoplete#undo_completion() abort "{{{
     return ''
   endif
 
-  return deoplete#mapping#smart_close_popup() .
+  return deoplete#smart_close_popup() .
         \  repeat("\<C-h>", strchars(v:completed_item.word))
 endfunction"}}}
 
