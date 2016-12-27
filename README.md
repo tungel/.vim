@@ -6,21 +6,21 @@ A Vim wrapper for running tests on different granularities.
 
 Currently the following testing frameworks are supported:
 
-| Language       | Frameworks                                 | Identifiers                                  |
-| :------------: | -------------------------------------      | -------------------------------------------- |
-| **Ruby**       | RSpec, [Minitest][minitest], [M], Cucumber | `rspec`, `minitest`, `m`, `cucumber`         |
-| **JavaScript** | Intern, TAP, Karma, Mocha, Jasmine         | `intern`, `tap`, `karma`, `mocha`, `jasmine` |
-| **Python**     | Nose, PyTest, Django                       | `nose`, `pytest`, `djangotest`, `djangonose` |
-| **Elixir**     | ExUnit, ESpec                              | `exunit`, `espec`                            |
-| **Go**         | Go                                         | `gotest`                                     |
-| **Rust**       | Cargo                                      | `cargotest`                                  |
-| **Clojure**    | Fireplace.vim                              | `fireplacetest`                              |
-| **Shell**      | Bats                                       | `bats`                                       |
-| **VimScript**  | VSpec, Vader.vim                           | `vspec`, `vader`                             |
-| **Lua**        | Busted                                     | `busted`                                     |
-| **PHP**        | PHPUnit, Behat, PHPSpec                    | `phpunit`, `behat`, `phpspec`                |
-| **Perl**       | Prove                                      | `prove`                                      |
-| **Java**       | Maven                                      | `maventest`                                  |
+| Language       | Frameworks                                      | Identifiers                                  |
+| :------------: | -------------------------------------           | -------------------------------------------- |
+| **Ruby**       | RSpec, [Minitest][minitest]/Rails/[M], Cucumber | `rspec`, `minitest`/`rails`/`m`, `cucumber`  |
+| **JavaScript** | Intern, TAP, Karma, Mocha, Jasmine              | `intern`, `tap`, `karma`, `mocha`, `jasmine` |
+| **Python**     | Nose, PyTest, Django                            | `nose`, `pytest`, `djangotest`, `djangonose` |
+| **Elixir**     | ExUnit, ESpec                                   | `exunit`, `espec`                            |
+| **Go**         | Go                                              | `gotest`                                     |
+| **Rust**       | Cargo                                           | `cargotest`                                  |
+| **Clojure**    | Fireplace.vim                                   | `fireplacetest`                              |
+| **Shell**      | Bats                                            | `bats`                                       |
+| **VimScript**  | VSpec, Vader.vim                                | `vspec`, `vader`                             |
+| **Lua**        | Busted                                          | `busted`                                     |
+| **PHP**        | PHPUnit, Behat, PHPSpec, Codeception            | `phpunit`, `behat`, `phpspec`, `codeception` |
+| **Perl**       | Prove                                           | `prove`                                      |
+| **Java**       | Maven                                           | `maventest`                                  |
 
 ## Features
 
@@ -38,7 +38,7 @@ in, so they all work in the same unified way.
 
 ## Setup
 
-Using [vim-plug](https://github.com/junegunn/vim-plug), add 
+Using [vim-plug](https://github.com/junegunn/vim-plug), add
 ```vim
 Plug 'janko-m/vim-test'
 ```
@@ -84,6 +84,7 @@ let test#strategy = "dispatch"
 | **[VimShell]**                  | `vimshell` | Runs test commands in a shell written in VimScript.                              |
 | **[Vim&nbsp;Tmux&nbsp;Runner]** | `vtr`      | Runs test commands in a small tmux pane.                                         |
 | **[VimProc]**                   | `vimproc`  | Runs test commands asynchronously.                                               |
+| **[AsyncRun]**                  | `asyncrun` | Runs test commands asynchronosuly using new APIs in Vim 8 and NeoVim.            |
 | **Terminal.app**                | `terminal` | Sends test commands to Terminal (useful in MacVim GUI).                          |
 | **iTerm2.app**                  | `iterm`    | Sends test commands to iTerm2 >= 2.9 (useful in MacVim GUI).                     |
 
