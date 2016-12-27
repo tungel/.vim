@@ -2,25 +2,29 @@
 
 scriptencoding utf-8
 
-function! s:InitSigns() abort
-    let s:sign_queue = {
-        \ 'project': {},
-        \ 'file': {}
-        \ }
-    let s:last_placed_signs = {
-        \ 'project': {},
-        \ 'file': {}
-        \ }
-    let s:placed_signs = {
-        \ 'project': {},
-        \ 'file': {}
-        \ }
-    let s:neomake_sign_id = {
-        \ 'project': {},
-        \ 'file': {}
-        \ }
-endfunction
-call s:InitSigns()
+if !has('signs')
+    call neomake#utils#ErrorMessage('Trying to load signs.vim, without +signs.')
+    finish
+endif
+
+let s:sign_queue = {
+    \ 'project': {},
+    \ 'file': {}
+    \ }
+let s:last_placed_signs = {
+    \ 'project': {},
+    \ 'file': {}
+    \ }
+let s:placed_signs = {
+    \ 'project': {},
+    \ 'file': {}
+    \ }
+let s:neomake_sign_id = {
+    \ 'project': {},
+    \ 'file': {}
+    \ }
+
+exe 'sign define neomake_invisible'
 
 " Reset signs placed by a :Neomake! call
 " (resetting signs means the current signs will be deleted on the next call to ResetProject)
@@ -61,10 +65,6 @@ endfunction
 
 " type may be either 'file' or 'project'
 function! neomake#signs#PlaceSign(entry, type) abort
-    if !has('signs')
-        return
-    endif
-
     if a:entry.type ==? 'W'
         let sign_type = 'neomake_warn'
     elseif a:entry.type ==? 'I'
@@ -107,10 +107,6 @@ endfunction
 
 " type may be either 'file' or 'project'
 function! neomake#signs#CleanOldSigns(bufnr, type) abort
-    if !has('signs')
-        return
-    endif
-
     if !has_key(s:last_placed_signs[a:type], a:bufnr)
         return
     endif
@@ -143,26 +139,20 @@ function! neomake#signs#PlaceVisibleSigns() abort
     endfor
 endfunction
 
-if has('signs')
-    exe 'sign define neomake_invisible'
-endif
-
 function! neomake#signs#RedefineSign(name, opts) abort
-    if !has('signs')
-        return
-    endif
-
     let sign_define = 'sign define '.a:name
     for attr in keys(a:opts)
         let sign_define .= ' '.attr.'='.a:opts[attr]
     endfor
     exe sign_define
 
-    for buf in keys(s:placed_signs)
-        for ln in keys(s:placed_signs[buf])
-            let sign_id = s:placed_signs[buf][ln]
-            exe 'sign place '.sign_id.' name=neomake_invisible buffer='.buf
-            exe 'sign place '.sign_id.' name='.a:name.' buffer='.buf
+    for type in keys(s:placed_signs)
+        for buf in keys(s:placed_signs[type])
+            for ln in keys(s:placed_signs[type][buf])
+                let sign_id = s:placed_signs[type][buf][ln]
+                exe 'sign place '.sign_id.' name=neomake_invisible buffer='.buf
+                exe 'sign place '.sign_id.' name='.a:name.' buffer='.buf
+            endfor
         endfor
     endfor
 endfunction
@@ -215,7 +205,6 @@ function! neomake#signs#RedefineInfoSign(...) abort
     call neomake#signs#RedefineSign('neomake_info', opts)
 endfunction
 
-
 function! neomake#signs#HlexistsAndIsNotCleared(group) abort
     if !hlexists(a:group)
         return 0
@@ -223,31 +212,27 @@ function! neomake#signs#HlexistsAndIsNotCleared(group) abort
     return neomake#utils#redir('hi '.a:group) !~# 'cleared'
 endfunction
 
-
 function! neomake#signs#DefineHighlights() abort
-    if !has('signs')
-        return
-    endif
-
     let ctermbg = neomake#utils#GetHighlight('SignColumn', 'bg')
     let guibg = neomake#utils#GetHighlight('SignColumn', 'bg#')
     let bg = 'ctermbg='.ctermbg.' guibg='.guibg
 
-    for [group, fgs] in items({
-                \ 'NeomakeErrorSign': [
-                \   neomake#utils#GetHighlight('Error', 'bg'),
-                \   neomake#utils#GetHighlight('Error', 'bg#')],
-                \ 'NeomakeWarningSign': [
-                \   neomake#utils#GetHighlight('Todo', 'fg'),
-                \   neomake#utils#GetHighlight('Todo', 'fg#')],
-                \ 'NeomakeInfoSign': [
-                \   neomake#utils#GetHighlight('Question', 'fg'),
-                \   neomake#utils#GetHighlight('Question', 'fg#')],
-                \ 'NeomakeMessageSign': [
-                \   neomake#utils#GetHighlight('ModeMsg', 'fg'),
-                \   neomake#utils#GetHighlight('ModeMsg', 'fg#')],
+    for [group, fg_from] in items({
+                \ 'NeomakeErrorSign': ['Error', 'bg'],
+                \ 'NeomakeWarningSign': ['Todo', 'fg'],
+                \ 'NeomakeInfoSign': ['Question', 'fg'],
+                \ 'NeomakeMessageSign': ['ModeMsg', 'fg']
                 \ })
-        let [ctermfg, guifg] = fgs
+        let [fg_group, fg_attr] = fg_from
+        let ctermfg = neomake#utils#GetHighlight(fg_group, fg_attr)
+        let guifg = neomake#utils#GetHighlight(fg_group, fg_attr.'#')
+        " Ensure that we're not using SignColumn bg as fg (as with gotham
+        " colorscheme, issue https://github.com/neomake/neomake/pull/659).
+        if ctermfg == ctermbg && guifg == guibg
+            let fg_attr = neomake#utils#ReverseSynIDattr(fg_attr)
+            let ctermfg = neomake#utils#GetHighlight(fg_group, fg_attr)
+            let guifg = neomake#utils#GetHighlight(fg_group, fg_attr.'#')
+        endif
         exe 'hi '.group.'Default ctermfg='.ctermfg.' guifg='.guifg.' '.bg
         if !neomake#signs#HlexistsAndIsNotCleared(group)
             exe 'hi link '.group.' '.group.'Default'
@@ -255,18 +240,13 @@ function! neomake#signs#DefineHighlights() abort
     endfor
 endfunction
 
-
-let s:signs_defined = 0
 function! neomake#signs#DefineSigns() abort
-    if !has('signs')
-        return
-    endif
-
-    if !s:signs_defined
-        let s:signs_defined = 1
-        call neomake#signs#RedefineErrorSign()
-        call neomake#signs#RedefineWarningSign()
-        call neomake#signs#RedefineInfoSign()
-        call neomake#signs#RedefineMessageSign()
-    endif
+    call neomake#signs#RedefineErrorSign()
+    call neomake#signs#RedefineWarningSign()
+    call neomake#signs#RedefineInfoSign()
+    call neomake#signs#RedefineMessageSign()
 endfunction
+
+" Init.
+call neomake#signs#DefineHighlights()
+call neomake#signs#DefineSigns()
