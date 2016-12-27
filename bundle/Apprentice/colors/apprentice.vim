@@ -35,21 +35,12 @@ endif
 let colors_name = "apprentice"
 
 if ($TERM =~ '256' || &t_Co >= 256) || has("gui_running")
-  if ($TERM_PROGRAM == 'iTerm.app')
-    hi Normal         ctermbg=234  ctermfg=250  guibg=#262626 guifg=#bcbcbc cterm=NONE           gui=NONE
-    hi LineNr         ctermbg=233  ctermfg=242  guibg=#1c1c1c guifg=#6c6c6c cterm=NONE           gui=NONE
-    hi FoldColumn     ctermbg=233  ctermfg=242  guibg=#1c1c1c guifg=#6c6c6c cterm=NONE           gui=NONE
-    hi Folded         ctermbg=233  ctermfg=242  guibg=#1c1c1c guifg=#6c6c6c cterm=NONE           gui=NONE
-    hi MatchParen     ctermbg=233  ctermfg=229  guibg=#1c1c1c guifg=#ffffaf cterm=NONE           gui=NONE
-    hi signColumn     ctermbg=233  ctermfg=242  guibg=#1c1c1c guifg=#6c6c6c cterm=NONE           gui=NONE
-  else
-    hi Normal         ctermbg=235  ctermfg=250  guibg=#262626 guifg=#bcbcbc cterm=NONE           gui=NONE
-    hi LineNr         ctermbg=234  ctermfg=242  guibg=#1c1c1c guifg=#6c6c6c cterm=NONE           gui=NONE
-    hi FoldColumn     ctermbg=234  ctermfg=242  guibg=#1c1c1c guifg=#6c6c6c cterm=NONE           gui=NONE
-    hi Folded         ctermbg=234  ctermfg=242  guibg=#1c1c1c guifg=#6c6c6c cterm=NONE           gui=NONE
-    hi MatchParen     ctermbg=234  ctermfg=229  guibg=#1c1c1c guifg=#ffffaf cterm=NONE           gui=NONE
-    hi signColumn     ctermbg=234  ctermfg=242  guibg=#1c1c1c guifg=#6c6c6c cterm=NONE           gui=NONE
-  endif
+  hi Normal         ctermbg=235  ctermfg=250  guibg=#262626 guifg=#bcbcbc cterm=NONE           gui=NONE
+  hi LineNr         ctermbg=234  ctermfg=242  guibg=#1c1c1c guifg=#6c6c6c cterm=NONE           gui=NONE
+  hi FoldColumn     ctermbg=234  ctermfg=242  guibg=#1c1c1c guifg=#6c6c6c cterm=NONE           gui=NONE
+  hi Folded         ctermbg=234  ctermfg=242  guibg=#1c1c1c guifg=#6c6c6c cterm=NONE           gui=NONE
+  hi MatchParen     ctermbg=234  ctermfg=229  guibg=#1c1c1c guifg=#ffffaf cterm=NONE           gui=NONE
+  hi signColumn     ctermbg=234  ctermfg=242  guibg=#1c1c1c guifg=#6c6c6c cterm=NONE           gui=NONE
 
   set background=dark
 
@@ -259,22 +250,3 @@ hi link diffNoEOL                WarningMsg
 hi link diffOnly                 WarningMsg
 hi link diffRemoved              WarningMsg
 hi link diffAdded                String
-
-if has("nvim") && exists("&termguicolors") && &termguicolors
-  let g:terminal_color_0    = "#1C1C1C"
-  let g:terminal_color_8    = "#444444"
-  let g:terminal_color_1    = "#AF5F5F"
-  let g:terminal_color_9    = "#FF8700"
-  let g:terminal_color_2    = "#5F875F"
-  let g:terminal_color_10   = "#87AF87"
-  let g:terminal_color_3    = "#87875F"
-  let g:terminal_color_11   = "#FFFFAF"
-  let g:terminal_color_4    = "#5F87AF"
-  let g:terminal_color_12   = "#8FAFD7"
-  let g:terminal_color_5    = "#5F5F87"
-  let g:terminal_color_13   = "#8787AF"
-  let g:terminal_color_6    = "#5F8787"
-  let g:terminal_color_14   = "#5FAFAF"
-  let g:terminal_color_7    = "#6C6C6C"
-  let g:terminal_color_15   = "#FFFFFF"
-endif

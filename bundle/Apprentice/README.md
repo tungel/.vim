@@ -134,7 +134,13 @@ To test Apprentice, just type this command from *normal* mode and hit `Enter`:
 
 If you like what you see and want to make Apprentice your default colorscheme, add this line to your `~/.vimrc`, preferably near the end:
 
-    colorscheme apprentice
+## Lightline and Airline themes
+
+I removed them from `master` but you can still find them in the "fancylines-and-neovim" branch.
+
+## Neovim terminal theme
+
+I removed it from `master` but you can still find it in the "fancylines-and-neovim" branch.colorscheme apprentice
 
 ## What they say about Apprentice.
 
@@ -161,5 +167,7 @@ On the same note, [Lightning](https://github.com/wimstefan/Lightning) is a light
 A port of Apprentice is available for the IDEA platform. Check it out [over there.](https://github.com/jpeddicord/apprentice-idea)
 
 [Elysian](https://github.com/nhooyr/elysian.vim) is a new very nice colorscheme for 256color terminal emulators inspired by Apprentice.
+
+[apprentice-theme](https://github.com/sjas/apprentice-theme) is a port to spacemacs.
 
 Go team!
