@@ -5,8 +5,12 @@ if filereadable('/rtp.vim')
   " Dockerized tests.
   source /rtp.vim
 else
-  set runtimepath+=tests/vim/plugins/vader
-  set runtimepath+=.
+  if exists('$TESTS_VADER_DIR')
+    exe 'set runtimepath+='.$TESTS_VADER_DIR
+  else
+    let &runtimepath .= ','.expand('<sfile>:p:h').'/plugins/vader'
+  endif
+  let &runtimepath .= ','.expand('<sfile>:p:h').'/../..'
 endif
 
 filetype plugin indent on
@@ -16,7 +20,9 @@ augroup ssshhhhhh
   autocmd GUIEnter * set visualbell t_vb=
 augroup END
 
+" Required for Vim.
 set nocompatible
+set noswapfile
 syntax on
 set number
 set background=dark
