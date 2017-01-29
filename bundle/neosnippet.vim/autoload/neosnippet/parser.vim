@@ -359,11 +359,8 @@ function! neosnippet#parser#_get_completed_snippet(completed_item, cur_text, nex
     for arg in split(substitute(
           \ neosnippet#parser#_get_in_paren('<', '>', abbr),
           \ '<\zs.\{-}\ze>', '', 'g'), '[^[]\zs\s*,\s*')
-      if args != '' && arg !=# '...'
-        let args .= ', '
-      endif
       let args .= printf('${%d:#:%s%s}',
-            \ cnt, ((args != '' && arg ==# '...') ? ', ' : ''),
+            \ cnt, ((args != '') ? ', ' : ''),
             \ escape(arg, '{}'))
       let cnt += 1
     endfor
@@ -385,11 +382,8 @@ function! neosnippet#parser#_get_completed_snippet(completed_item, cur_text, nex
       continue
     endif
 
-    if args != '' && arg !=# '...'
-      let args .= ', '
-    endif
     let args .= printf('${%d:#:%s%s}',
-          \ cnt, ((args != '' && arg ==# '...') ? ', ' : ''),
+          \ cnt, ((args != '') ? ', ' : ''),
           \ escape(arg, '{}'))
     let cnt += 1
   endfor
@@ -417,7 +411,7 @@ function! neosnippet#parser#_get_in_paren(key, pair, str) abort "{{{
         continue
       endif
     elseif c ==# a:pair
-      if level == 1 && s != ''
+      if level == 1 && (s != '' || a:str =~ '()\s*(.\{-})')
         return s
       else
         let level -= 1
