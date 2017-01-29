@@ -1,6 +1,6 @@
 *deoplete.txt*	Dark powered asynchronous completion framework for neovim.
 
-Version: 2.0
+Version: 3.0
 Author: Shougo <Shougo.Matsu at gmail.com>
 License: MIT license
 
@@ -68,9 +68,7 @@ If you want to read for Neovim-python/python3 interface install documentation,
 you should read |provider-python| and the Wiki.
 https://github.com/zchee/deoplete-jedi/wiki/Setting-up-Python-for-Neovim
 
-You can check the Python3 installation by nvim-python-doctor or |:CheckHealth|
-command.
-https://github.com/tweekmonster/nvim-python-doctor
+You can check the Python3 installation by |:CheckHealth| command.
 
 ==============================================================================
 INTERFACE						*deoplete-interface*
@@ -155,7 +153,7 @@ g:deoplete#enable_profile
 g:deoplete#delimiters
 		Delimiters list.
 
-		Default value: ['/', '.', '::', ':', '#']
+		Default value: ['/']
 
 							*g:deoplete#max_list*
 g:deoplete#max_list
@@ -533,8 +531,9 @@ EXAMPLES						*deoplete-examples*
 SOURCES							*deoplete-sources*
 
 buffer						*deoplete-source-buffer*
-		It collects keywords from current buffer and the opened
-		buffers which have same 'filetype'.
+		It collects keywords from current buffer and the current
+		tabpage windows buffers and the opened buffers which have same
+		'filetype'.
 
 		Note: It does not collect keywords from not loaded buffer.
 		For example, if you open file by "nvim A B".  A is already
@@ -1010,6 +1009,19 @@ https://github.com/hkupty/acid.nvim
 deoplete-omnisharp: "cs" source for C#
 https://github.com/Robzz/deoplete-omnisharp/
 
+deoplete-hack: "hack" source for Hack and PHP
+https://github.com/zefei/deoplete-hack
+
+deoplete-laravel-plugin: "laravel-plugin" source for "php" and "blade"
+filetypes
+https://github.com/rafaelndev/deoplete-laravel-plugin
+
+deoplete-rct: "rct" source for Ruby
+https://github.com/Shougo/deoplete-rct
+
+deoplete-zsh: "zsh" source for Zsh
+https://github.com/zchee/deoplete-zsh
+
 ==============================================================================
 EXTERNAL PLUGINS				*deoplete-external-plugins*
 
@@ -1086,6 +1098,14 @@ implemented by needed person.
 
 ==============================================================================
 FAQ							*deoplete-faq*
+
+Q: What is the "dark powered"?
+
+A: I think text editor is everything in the world.
+I want to do everything in Vim(neovim) like Emacs.
+It is not allowed by |design-not| in Vim.  It is not the light way to use Vim.
+So I have defined it is the dark way.  I am the dark Vimmer.  My plugins are
+dark powered.
 
 Q: deoplete can support Vim8?
 
@@ -1328,6 +1348,17 @@ A: Please enable logging feature like this.
 		call deoplete#enable_logging('DEBUG', 'deoplete.log')
 		call deoplete#custom#set('jedi', 'debug_enabled', 1)
 <
+
+Q: Is deoplete better than completer.vim?
+
+A: Please see
+https://www.reddit.com/r/vim/comments/573e3d/completorvim_async_completion_framework_made_ease/
+
+Q: The popup is delayed.
+https://github.com/Shougo/deoplete.nvim/issues/413
+
+A: Please change |g:deoplete#auto_complete_delay| value.
+
 ==============================================================================
 COMPATIBILITY					*deoplete-compatibility*
 

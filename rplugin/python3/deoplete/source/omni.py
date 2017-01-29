@@ -6,8 +6,9 @@
 
 import re
 from .base import Base
-from deoplete.util import \
-    get_buffer_config, error, error_vim, convert2list, set_pattern
+from deoplete.util import (
+    get_buffer_config, error, error_vim, convert2list,
+    set_pattern, convert2candidates)
 
 
 class Source(Base):
@@ -28,7 +29,7 @@ class Source(Base):
 
         self.__input_patterns = {}
         set_pattern(self.__input_patterns, 'css,less,scss,sass',
-                    ['\w+', r'\w+[):;]?\s+\w*', r'[@!]'])
+                    [r'\w+', r'\w+[):;]?\s+\w*', r'[@!]'])
         set_pattern(self.__input_patterns, 'ruby',
                     [r'[^. \t0-9]\.\w*', r'[a-zA-Z_]\w*::\w*'])
         set_pattern(self.__input_patterns, 'lua',
@@ -102,6 +103,11 @@ class Source(Base):
                       'Error occurred calling omnifunction: ' +
                       self.__omnifunc)
             candidates = []
+
+        candidates = convert2candidates(candidates)
+
+        for candidate in candidates:
+            candidate['dup'] = 1
 
         self.__prev_linenr = context['position'][1]
         self.__prev_pos = context['complete_position']
