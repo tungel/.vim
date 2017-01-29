@@ -99,7 +99,7 @@ function! deoplete#init#_variables() abort
   call deoplete#util#set_default(
         \ 'g:deoplete#disable_auto_complete', 0)
   call deoplete#util#set_default(
-        \ 'g:deoplete#delimiters', ['/', '.', '::', ':', '#'])
+        \ 'g:deoplete#delimiters', ['/'])
   call deoplete#util#set_default(
         \ 'g:deoplete#max_list', 100)
   call deoplete#util#set_default(
@@ -192,6 +192,12 @@ function! deoplete#init#_context(event, sources) abort
 
   let width = winwidth(0) - col('.') + len(matchstr(input, '\w*$'))
 
+  let bufname = bufname('%')
+  let bufpath = fnamemodify(bufname, ':p')
+  if &l:buftype =~# 'nofile' || !filereadable(bufpath)
+    let bufpath = ''
+  endif
+
   return {
         \ 'changedtick': b:changedtick,
         \ 'event': event,
@@ -213,7 +219,8 @@ function! deoplete#init#_context(event, sources) abort
         \ 'max_menu_width': (width * 2 / 3),
         \ 'runtimepath': &runtimepath,
         \ 'bufnr': bufnr('%'),
-        \ 'bufname': bufname('%'),
+        \ 'bufname': bufname,
+        \ 'bufpath': bufpath,
         \ 'cwd': getcwd(),
         \ 'start_complete': "\<Plug>_",
         \ 'vars': filter(copy(g:), "stridx(v:key, 'deoplete#') == 0"),
