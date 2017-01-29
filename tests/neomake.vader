@@ -3,24 +3,26 @@
 " include/setup.vader).
 Include: include/setup.vader
 
-" XXX: needs to come first / early for now.
-Include (Integration tests): integration.vader
-
 ~ Features
+Include (Error handling): errors.vader
 Include (Hooks): hooks.vader
+Include (Integration tests): integration.vader
 Include (Lists): lists.vader
-Include (Makers): makers.vader
 Include (Maker args): args.vader
+Include (Makers): makers.vader
 Include (Mapexpr): mapexpr.vader
+Include (Processing): processing.vader
+Include (Serialize): serialize.vader
 Include (Signs): signs.vader
 Include (Statusline): statusline.vader
-Include (Processing): processing.vader
 Include (Utils): utils.vader
 
 ~ Filetype specific
 Include (Haskell): ft_haskell.vader
+Include (Perl): ft_perl.vader
+Include (Python): ft_python.vader
 Include (Shell): ft_sh.vader
-
+Include (Text): ft_text.vader
 
 * Old/unorganized tests
 Execute (neomake#GetMakers):
@@ -34,22 +36,43 @@ Execute (neomake#GetMaker with non-existent maker prints errors):
   AssertEqual neomake#GetMaker('nonexistent'), {}
   AssertEqual g:neomake_test_messages[-1], [0, 'Maker not found: nonexistent', {}]
 
+Execute (Neomake! reports error on execution failure):
+  AssertEqual neomake#GetMaker('non-existent'), {}
+  AssertEqual g:neomake_test_messages[-1], [0, 'Invalid maker name: non-existent', {}]
+  AssertEqual neomake#GetMaker('nonexistent'), {}
+  AssertEqual g:neomake_test_messages[-1], [0, 'Maker not found: nonexistent', {}]
+
+Execute (Neomake with unknown maker):
+  Neomake doesnotexist
+  AssertEqual g:neomake_test_messages[-1], [0, 'Maker not found: doesnotexist', {}]
+
 Execute (neomake#GetMaker uses defined errorformat with makeprg):
   Save &errorformat
   let &errorformat = '%Gcustom'
-  AssertEqual neomake#GetMaker('makeprg', ''), {
-    \ 'name': 'makeprg', 'ft': '', 'args': ['-c', 'make'],
-    \ 'errorformat': '%Gcustom',
-    \ 'exe': &shell, 'remove_invalid_entries': 0, 'buffer_output': 1}
+  AssertEqual neomake#GetMaker('makeprg', '').errorformat, '%Gcustom'
 
 Execute (neomake#GetMaker uses defaults from b:/g:):
   Save g:neomake_test_remove_invalid_entries
+  Save b:neomake_test_remove_invalid_entries
 
   let maker = {'name': 'test'}
 
   " Default.
-  AssertEqual neomake#GetMaker(maker).remove_invalid_entries, 0
+  AssertEqual neomake#GetMaker(maker).remove_invalid_entries, 0,
+  \ "default is ok"
 
+  let maker.remove_invalid_entries = 1
+  AssertEqual neomake#GetMaker(maker).remove_invalid_entries, 1
+  let g:neomake_test_remove_invalid_entries = 2
+  AssertEqual neomake#GetMaker(maker).remove_invalid_entries, 2
+  let b:neomake_test_remove_invalid_entries = 3
+  AssertEqual neomake#GetMaker(maker).remove_invalid_entries, 3
+
+Execute (neomake#GetMaker uses defaults from b:/g: based on maker):
+  Save g:neomake_test_remove_invalid_entries
+
+  let maker = {'name': 'test'}
+  AssertEqual neomake#GetMaker(maker).remove_invalid_entries, 0
   let maker.remove_invalid_entries = 1
   AssertEqual neomake#GetMaker(maker).remove_invalid_entries, 1
   let g:neomake_test_remove_invalid_entries = 2
@@ -102,7 +125,7 @@ Execute (neomake#CancelJob):
 
   " The job is still in the table, therefore 'E900: Invalid job id'.
   AssertThrows neomake#CancelJob(job_id)
-  AssertNeomakeMessage 'Stopping job: '.job_id, 3
+  AssertNeomakeMessage 'Stopping job', 3, neomake#GetJob(job_id)
 
   NeomakeTestsWaitForFinishedJobs
   AssertEqual neomake#CancelJob(job_id), 0
@@ -111,36 +134,58 @@ Execute (neomake#CancelJob):
 Execute (neomake#CancelJob with invalid job):
   if !NeomakeAsyncTestsSetup() | finish | endif
 
-  let job_id = neomake#Sh("sh -c 'while true; do sleep 0.1; done'")
+  let job_id = neomake#Sh("sh -c 'sleep 1'")
   let jobinfo = neomake#GetJob(job_id)
   if has('nvim')
     call jobstop(job_id)
   else
     let vim_job = jobinfo.vim_job
     call job_stop(vim_job)
+    " Wait for the job to be stopped really, but without sleep to not trigger
+    " the exit handler yet (which would remove the job).
+    let c = 1000
+    while c > 0 && job_status(vim_job) ==# 'run'
+      let c -= 1
+    endwhile
   endif
-  AssertEqual neomake#CancelJob(job_id), 0
-  AssertNeomakeMessage 'Stopping job: '.job_id, 3
+  let ret = neomake#CancelJob(job_id)
+  Assert len(neomake#GetJobs()), 'There are jobs (1)'
+  if has('nvim')
+    " Vim returns 1 via job_stop usually.
+    AssertEqual ret, 0, "CancelJob (1) returned ".ret
+  else
+    AssertNeomakeMessageAbsent 'exit: job not found: '.job_id
+  endif
+  AssertNeomakeMessage 'Stopping job', 3, jobinfo
   if has('nvim')
     AssertNeomakeMessage 'jobstop failed: Vim(call):E900: Invalid job id', 2, jobinfo
   else
-    AssertNeomakeMessage 'job_stop: job was not running anymore', 2, jobinfo
+    try
+      AssertNeomakeMessage 'job_stop: job was not running anymore', 2, jobinfo
+    catch
+      throw v:exception.' (might be a flaky test)'
+    endtry
   endif
   Assert len(neomake#GetJobs()), 'There are jobs'
 
-  AssertEqual neomake#CancelJob(job_id), 0
-  AssertNeomakeMessage 'Stopping job: '.job_id, 3
+  let ret = neomake#CancelJob(job_id)
+  if has('nvim')
+    " Vim returns 1 via job_stop usually.
+    AssertEqual ret, 0, "CancelJob (2) returned ".ret
+  endif
+  AssertNeomakeMessage 'Stopping job', 3, jobinfo
 
-  AssertNeomakeMessageAbsent 'neomake#MakeHandler: exit: job was canceled.', 3
+  AssertNeomakeMessageAbsent 'exit: job was canceled.', 3
   NeomakeTestsWaitForNextMessage
-  AssertNeomakeMessage 'neomake#MakeHandler: exit: job was canceled.', 3
-  AssertEqual neomake#CancelJob(job_id), 0
+  AssertNeomakeMessage 'exit: job was canceled.', 3
+  let ret = neomake#CancelJob(job_id)
+  AssertEqual ret, 0, "CancelJob (3) returned ".ret
   AssertNeomakeMessage 'CancelJob: job not found: '.job_id, 0
 
 Execute (neomake#CancelJob! with invalid job):
   if !NeomakeAsyncTestsSetup() | finish | endif
 
-  let job_id = neomake#Sh("sh -c 'while true; do sleep 0.1; done'")
+  let job_id = neomake#Sh("sh -c 'sleep 1'")
   let jobinfo = neomake#GetJob(job_id)
   if has('nvim')
     call jobstop(job_id)
@@ -148,24 +193,27 @@ Execute (neomake#CancelJob! with invalid job):
     let vim_job = jobinfo.vim_job
     call job_stop(vim_job)
   endif
-  AssertEqual neomake#CancelJob(job_id, 1), 0
-  AssertEqual neomake#GetJobs(), []
-  AssertNeomakeMessage 'Stopping job: '.job_id, 3
+  let ret = neomake#CancelJob(job_id, 1)
+  Assert !len(neomake#GetJobs()), 'There are no jobs'
+  if has('nvim')
+    " Vim returns 1 via job_stop usually.
+    AssertEqual ret, 0, "CancelJob (1) returned ".ret
+  endif
+  AssertNeomakeMessageAbsent 'exit: job not found: '.job_id
+  AssertNeomakeMessage 'Stopping job', 3, jobinfo
   if has('nvim')
     AssertNeomakeMessage 'jobstop failed: Vim(call):E900: Invalid job id', 2, jobinfo
-  else
-    AssertNeomakeMessage 'job_stop: job was not running anymore', 2, jobinfo
   endif
   AssertEqual neomake#GetJobs(), []
 
   AssertEqual neomake#CancelJob(job_id), 0
-  AssertNeomakeMessageAbsent 'Stopping job: '.job_id, 3
+  AssertNeomakeMessageAbsent 'Stopping job', 3, jobinfo
 
   NeomakeTestsWaitForFinishedJobs
-  AssertNeomakeMessageAbsent 'neomake#MakeHandler: exit: job not found: '.job_id
-
+  AssertNeomakeMessageAbsent 'exit: job not found: '.job_id
   NeomakeTestsWaitForNextMessage
-  AssertNeomakeMessage 'neomake#MakeHandler: exit: job not found: '.job_id, 1
+
+  AssertNeomakeMessage 'exit: job not found: '.job_id, 1
   AssertEqual neomake#CancelJob(job_id, 1), 0
   AssertNeomakeMessage 'CancelJob: job not found: '.job_id, 0
 
@@ -203,9 +251,9 @@ Execute (neomake#CompleteJobs):
     AssertEqual neomake#CompleteJobs(), printf(
       \ "%d: sh: sleep 1\n%d: sh: sleep 2", job_ids[0], job_ids[1])
     NeomakeCancelJobs
+    NeomakeTestsWaitForFinishedJobs
   endif
 
-" NOTE: try/catch test, causing problems on vim8000.
 Execute (neomake#Make handles invalid cwd):
   let maker = {
       \ 'name': 'custom_maker',
@@ -214,3 +262,23 @@ Execute (neomake#Make handles invalid cwd):
   call neomake#Make(1, [maker])
   NeomakeTestsWaitForFinishedJobs
   AssertNeomakeMessage "custom_maker: could not change to maker's cwd (/doesnotexist): Vim(cd):E344: Can't find directory \"/doesnotexist\" in cdpath", 0
+
+Execute (Neomake picks up custom maker correctly):
+  let g:neomake_c_lint_maker = {
+    \ 'exe': 'echo',
+    \ 'args': ['%:p', '--foo', 'bar'],
+    \ 'append_file': 0,
+    \ 'errorformat': '%f:%l:%c: %m',
+    \ }
+  file file1
+  let fname = expand('%:p')
+  Save &filetype
+  set filetype=c
+
+  Neomake lint
+  if neomake#has_async_support()
+    AssertNeomakeMessage "Starting async job: ['echo', '".fname."', '--foo', 'bar']"
+    NeomakeTestsWaitForFinishedJobs
+  else
+    AssertNeomakeMessage "Starting: echo '".fname."' '--foo' 'bar'"
+  endif
