@@ -2,6 +2,8 @@ Include: include/setup.vader
 
 Execute (Postprocessing should update list):
   e! tests/fixtures/errors.sh
+  Save &filetype
+  set ft=sh
   RunNeomake sh
   let list = getloclist(0)
   AssertNotEqual list, [], 'loclist is not empty'
@@ -25,9 +27,14 @@ Execute (AddExprCallback with changed windows inbetween):
     let g:neomake_tests_postprocess_count += 1
   endfunction
 
+  Save g:neomake_verbose
+  " For the 'Modified list entry' debug message.
+  let g:neomake_verbose = 3
+
   let options = {
     \ 'postprocess': function('g:Postprocess'),
     \ 'buffer_output': 0,
+    \ 'append_file': 0,
     \ }
   let maker_1 = neomake#utils#MakerFromCommand('echo 1a; sleep .1; echo 1b')
   call extend(maker_1, extend(copy(options), {'name': 'maker1'}))
