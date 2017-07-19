@@ -143,6 +143,11 @@ function! airline#extensions#load()
     call add(loaded_ext, 'unite')
   endif
 
+  if get(g:, 'loaded_denite', 0)
+    call airline#extensions#denite#init(s:ext)
+    call add(loaded_ext, 'denite')
+  endif
+
   if exists(':NetrwSettings')
     call airline#extensions#netrw#init(s:ext)
     call add(loaded_ext, 'netrw')
@@ -235,7 +240,7 @@ function! airline#extensions#load()
     call add(loaded_ext, 'syntastic')
   endif
 
-  if (get(g:, 'airline#extensions#ale#enabled', 1) && exists('g:loaded_ale'))
+  if (get(g:, 'airline#extensions#ale#enabled', 1) && exists(':ALELint'))
     call airline#extensions#ale#init(s:ext)
     call add(loaded_ext, 'ale')
   endif
@@ -303,6 +308,12 @@ function! airline#extensions#load()
   if (get(g:, 'airline#extensions#obsession#enabled', 1) && exists('*ObsessionStatus'))
     call airline#extensions#obsession#init(s:ext)
     call add(loaded_ext, 'obsession')
+  endif
+
+  runtime autoload/vimtex.vim
+  if (get(g:, 'airline#extensions#vimtex#enabled', 1)) && exists('*vimtex#init')
+   call airline#extensions#vimtex#init(s:ext)
+   call add(loaded_ext, 'vimtex')
   endif
 
   if !get(g:, 'airline#extensions#disable_rtp_load', 0)
