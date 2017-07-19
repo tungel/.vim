@@ -14,18 +14,22 @@ endfunction
 let g:test#runners = get(g:, 'test#runners', {})
 call s:extend(g:test#runners, {
   \ 'Ruby':       ['Rails', 'M', 'Minitest', 'RSpec', 'Cucumber'],
-  \ 'JavaScript': ['Intern', 'TAP', 'Karma', 'Mocha', 'Jasmine'],
-  \ 'Python':     ['DjangoTest', 'PyTest', 'Nose'],
+  \ 'JavaScript': ['Intern', 'TAP', 'Karma', 'Lab', 'Mocha', 'Jasmine', 'Jest'],
+  \ 'Python':     ['DjangoTest', 'PyTest', 'PyUnit', 'Nose', 'Nose2'],
   \ 'Elixir':     ['ExUnit', 'ESpec'],
-  \ 'Go':         ['GoTest'],
+  \ 'Erlang':     ['CommonTest'],
+  \ 'Go':         ['GoTest', 'Ginkgo'],
   \ 'Rust':       ['CargoTest'],
   \ 'Clojure':    ['FireplaceTest'],
+  \ 'CSharp':     ['DotnetTest'],
   \ 'Shell':      ['Bats'],
   \ 'VimL':       ['VSpec', 'Vader'],
   \ 'Lua':        ['Busted'],
-  \ 'PHP':        ['Codeception', 'PHPUnit', 'Behat', 'PHPSpec'],
+  \ 'PHP':        ['Codeception', 'PHPUnit', 'Behat', 'PHPSpec', 'Kahlan', 'Peridot'],
   \ 'Perl':       ['Prove'],
+  \ 'Racket':     ['RackUnit'],
   \ 'Java':       ['MavenTest'],
+  \ 'Crystal':    ['CrystalSpec'],
 \})
 
 let g:test#custom_strategies = get(g:, 'test#custom_strategies', {})

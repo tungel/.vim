@@ -86,6 +86,9 @@ In all commands [args] are forwarded to the underlying test runner.
                                                 *test-:TAP*
 :TAP [args]                  Uses the `tap` or `tape` command.
 
+                                                *test-:Lab*
+:Lab [args]                  Uses the `lab` command.
+
                                                 *test-:Mocha*
 :Mocha [args]                Uses the `mocha` command.
 
@@ -98,11 +101,17 @@ In all commands [args] are forwarded to the underlying test runner.
                                                 *test-:Nose*
 :Nose [args]                 Uses the `nosetests` command.
 
+                                                *test-:Nose2*
+:Nose2 [args]                Uses the `nose2` command.
+
                                                 *test-:PyTest*
 :PyTest [args]               Uses the `py.test` command.
 
                                                 *test-:DjangoTest*
 :DjangoTest [args]           Uses the `django` `test` command.
+
+                                                *test-:PyUnit*
+:PyUnit [args]               Uses the `unittest` `test` command.
 
                                                 *test-:ExUnit*
 :ExUnit [args]               Uses the `mix` `test` command.
@@ -110,10 +119,14 @@ In all commands [args] are forwarded to the underlying test runner.
                                                 *test-:ESpec*
 :ESpec [args]                Uses the `mix` `espec` command.
 
+                                                *test-:CommonTest*
+:CommonTest [args]           Uses the `rebar3` `ct` command.
+
                                                 *test-:GoTest*
 :GoTest [args]               Uses the `go` `test` command.
 
                                                 *test-:CargoTest*
+:Ginkgo [args]               Uses the `ginkgo` command.
 :CargoTest [args]            Uses the `cargo` `test` command.
 
                                                 *test-:FireplaceTest*
@@ -147,11 +160,20 @@ In all commands [args] are forwarded to the underlying test runner.
                                                 *test-:Codeception*
 :Codeception [args]          Uses the `codecept` command.
 
+                                                *test-:Peridot*
+:Peridot [args]              Uses the `peridot` command.
+
+                                                *test-:Kahlan*
+:Kahlan [args]               Uses the `kahlan` command.
+
                                                 *test-:Prove*
 :Prove [args]                Uses the `prove` command.
 
                                                 *test-:MavenTest*
 :MavenTest [args]            Uses the `mvn` `test` command.
+
+                                                *test-:CrystalSpec*
+:CrystalSpec [args]          Uses the `crystal` `spec` command.
 
 STRATEGIES                                      *test-strategies*
 
@@ -172,7 +194,8 @@ Runs test commands with `:!`, which switches your Vim to the Terminal.
 <
 Make ~
 
-Runs test commands with `:make`. Requires the Dispatch.vim plugin.
+Runs test commands with `:make`. If Dispatch.vim plugin is available, it will
+be used to automatically find the correct compiler for the command.
 >
   let test#strategy = 'make'
 <
@@ -199,6 +222,22 @@ Neoterm ~
 Runs test commands with `:T`. Requires the Neoterm plugin.
 >
   let test#strategy = 'neoterm'
+<
+Neomake ~
+
+Runs test commands with `:NeomakeProject`. Requires the Neomake plugin. If
+Dispatch.vim plugin is available, it will be used to automatically find the
+correct compiler for the command.
+>
+  let test#strategy = 'neomake'
+<
+MakeGreen ~
+
+Runs test commands with `:MakeGreen`. Requires the MakeGreen.vim plugin. If
+Dispatch.vim plugin is available, it will be used to automatically find the
+correct compiler for the command.
+>
+  let test#strategy = 'makegreen'
 <
 Vimux ~
 
