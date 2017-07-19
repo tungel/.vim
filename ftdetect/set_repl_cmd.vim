@@ -84,5 +84,34 @@ if has('nvim')
           \ elseif executable('php') |
           \   call neoterm#repl#set('php -a') |
           \ end
+    " Clojure
+    au FileType clojure
+          \ if executable('lein') |
+          \   call neoterm#repl#set('lein repl') |
+          \ end
+    " Lua
+    au FileType lua
+          \ if executable('luap') |
+          \   let s:lua_repl='luap' |
+          \ elseif executable('lua') |
+          \   let s:lua_repl='lua' |
+          \ endif |
+          \ if executable('luarocks') && exists('s:lua_repl') |
+          \   call neoterm#repl#set(s:lua_repl . ' -l"luarocks.require"') |
+          \ endif
+    " TCL
+    au FileType tcl
+          \ if executable('tclsh') |
+          \   call neoterm#repl#set('tclsh') |
+          \ endif
+    " Standard ML (SML)
+    au FileType sml
+          \ if executable('sml') |
+          \   if executable('rlwrap') |
+          \     call neoterm#repl#set('rlwrap sml') |
+          \   else |
+          \     call neoterm#repl#set('sml') |
+          \   endif |
+          \ endif
   aug END
 end
