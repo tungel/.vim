@@ -1,30 +1,8 @@
 "=============================================================================
 " FILE: view.vim
-" AUTHOR:  Shougo Matsushita <Shougo.Matsu@gmail.com>
-" License: MIT license  {{{
-"     Permission is hereby granted, free of charge, to any person obtaining
-"     a copy of this software and associated documentation files (the
-"     "Software"), to deal in the Software without restriction, including
-"     without limitation the rights to use, copy, modify, merge, publish,
-"     distribute, sublicense, and/or sell copies of the Software, and to
-"     permit persons to whom the Software is furnished to do so, subject to
-"     the following conditions:
-"
-"     The above copyright notice and this permission notice shall be included
-"     in all copies or substantial portions of the Software.
-"
-"     THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-"     OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-"     MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-"     IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-"     CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-"     TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-"     SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-" }}}
+" AUTHOR:  Shougo Matsushita <Shougo.Matsu at gmail.com>
+" License: MIT license
 "=============================================================================
-
-let s:save_cpo = &cpo
-set cpo&vim
 
 function! neosnippet#view#_expand(cur_text, col, trigger_name) abort "{{{
   let snippets = neosnippet#helpers#get_snippets()
@@ -58,20 +36,16 @@ function! neosnippet#view#_insert(snippet, options, cur_text, col) abort "{{{
     let snip_word = s:eval_snippet(snip_word)
   endif
 
-  " Substitute escaped `.
-  let snip_word = substitute(snip_word, '\\`', '`', 'g')
-
   " Substitute markers.
   let snip_word = substitute(snip_word,
-        \ '\\\@<!'.neosnippet#get_placeholder_marker_substitute_pattern(),
+        \ neosnippet#get_placeholder_marker_substitute_pattern(),
         \ '<`\1`>', 'g')
   let snip_word = substitute(snip_word,
-        \ '\\\@<!'.neosnippet#get_mirror_placeholder_marker_substitute_pattern(),
+        \ neosnippet#get_mirror_placeholder_marker_substitute_pattern(),
         \ '<|\1|>', 'g')
-  let snip_word = substitute(snip_word,
-        \ '\\'.neosnippet#get_mirror_placeholder_marker_substitute_pattern().'\|'.
-        \ '\\'.neosnippet#get_placeholder_marker_substitute_pattern(),
-        \ '\=submatch(0)[1:]', 'g')
+
+  " Substitute escaped characters.
+  let snip_word = substitute(snip_word, '\\\(\\\|`\|\$\)', '\1', 'g')
 
   " Insert snippets.
   let next_line = getline('.')[a:col-1 :]
@@ -200,7 +174,7 @@ function! s:indent_snippet(begin, end) abort "{{{
         if &l:expandtab && current_line =~ '^\t\+'
           " Expand tab.
           cal setline('.', substitute(current_line,
-                \ '^\t\+', base_indent . repeat(' ', &shiftwidth *
+                \ '^\t\+', base_indent . repeat(' ', shiftwidth() *
                 \    len(matchstr(current_line, '^\t\+'))), ''))
         elseif line_nr != a:begin
           call setline('.', base_indent . current_line)
@@ -579,8 +553,5 @@ function! s:skip_next_auto_completion() abort "{{{
     doautocmd deoplete CompleteDone
   endif
 endfunction"}}}
-
-let &cpo = s:save_cpo
-unlet s:save_cpo
 
 " vim: foldmethod=marker
