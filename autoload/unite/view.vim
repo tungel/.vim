@@ -226,14 +226,6 @@ function! unite#view#_redraw(is_force, winnr, is_gather_all) abort "{{{
     endif
   endtry
 
-  if context.immediately && len(unite.current_candidates) == 1
-    " Immediately action.
-    call unite#action#do(
-          \ context.default_action, [unite.current_candidates[0]])
-
-    " Note: It is workaround
-    stopinsert
-  endif
   if context.auto_preview
     call unite#view#_do_auto_preview()
   endif
@@ -409,12 +401,12 @@ function! unite#view#_resize_window() abort "{{{
     let context.unite__is_resize = winheight != winheight(0)
   elseif context.vertical
         \ && context.unite__old_winwidth == 0
-    execute 'vertical resize' context.winwidth
+    silent! execute 'vertical resize' context.winwidth
 
     let context.unite__is_resize = 1
   elseif !context.vertical
         \ && (context.unite__old_winheight == 0 || context.auto_preview)
-    execute 'resize' context.winheight
+    silent! execute 'resize' context.winheight
 
     let context.unite__is_resize = 1
   else
@@ -465,24 +457,24 @@ function! unite#view#_switch_unite_buffer(buffer_name, context) abort "{{{
 
   if a:context.split && !a:context.unite__direct_switch
     " Split window.
-    noautocmd execute s:get_buffer_direction(a:context) ((bufnr > 0) ?
+    silent doautocmd WinLeave
+    execute s:get_buffer_direction(a:context) ((bufnr > 0) ?
           \ ((a:context.vertical) ? 'vsplit' : 'split') :
           \ ((a:context.vertical) ? 'vnew' : 'new'))
   endif
 
   if bufnr > 0
-    silent noautocmd execute bufnr 'buffer'
+    silent execute bufnr 'buffer'
   else
     if bufname('%') == ''
       noautocmd silent enew
     endif
-    silent! execute 'noautocmd edit'
-          \ fnameescape(a:context.real_buffer_name)
+    silent! execute 'edit' fnameescape(a:context.real_buffer_name)
   endif
 
   call unite#handlers#_on_bufwin_enter(bufnr('%'))
-  doautocmd WinEnter
-  doautocmd BufWinEnter
+  silent doautocmd WinEnter
+  silent doautocmd BufWinEnter
 endfunction"}}}
 
 function! unite#view#_close(buffer_name) abort  "{{{
@@ -701,11 +693,8 @@ function! unite#view#_set_cursor_line() abort "{{{
 
   let prompt_linenr = unite.prompt_linenr
 
-  call unite#view#_clear_match()
-
   if line('.') != prompt_linenr
-    call unite#view#_match_line(context.cursor_line_highlight,
-          \ line('.'), unite.match_id)
+    call unite#view#_match_line(context.cursor_line_highlight, line('.'))
   endif
   let unite.cursor_line_time = reltime()
 endfunction"}}}
@@ -836,19 +825,26 @@ function! unite#view#_redraw_echo(expr) abort "{{{
   endtry
 endfunction"}}}
 
-function! unite#view#_match_line(highlight, line, id) abort "{{{
+function! unite#view#_match_line(highlight, line) abort "{{{
+  call unite#view#_clear_match()
+
   if &filetype ==# 'unite'
     setlocal cursorline
     return
   endif
 
+  call unite#view#_clear_match_highlight()
+
   " For compatibility
-  return exists('*matchaddpos') ?
-        \ matchaddpos(a:highlight, [a:line], 10, a:id) :
-        \ matchadd(a:highlight, '^\%'.a:line.'l.*', 10, a:id)
+  let w:unite_match_id = exists('*matchaddpos') ?
+        \ matchaddpos(a:highlight, [a:line], 10) :
+        \ matchadd(a:highlight, '^\%'.a:line.'l.*', 10)
 endfunction"}}}
 function! unite#view#_clear_match_highlight() abort "{{{
-  silent! call matchdelete(10)
+  if exists('w:unite_match_id')
+    call matchdelete(w:unite_match_id)
+    unlet w:unite_match_id
+  endif
 endfunction"}}}
 
 function! unite#view#_get_status_plane_string() abort "{{{
