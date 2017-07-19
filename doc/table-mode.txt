@@ -1,7 +1,7 @@
 *table-mode.txt*			Table Mode for easy table formatting
 ===============================================================================
 	Table Mode, THE AWESOME AUTOMATIC TABLE CREATOR & FORMATTER
-                               VERSION 4.6.4.4
+                               VERSION 4.6.7
 
 		Author: Dhruva Sagar <http://dhruvasagar.com/>
 		License: MIT <http://opensource.org/licenses/MIT/>
@@ -170,6 +170,8 @@ Overview:
         |table-mode-echo-cell-map| ...... Set the echo cell mapping
         |table-mode-sort-map| ........... Set the table sort mapping
         |table-mode-syntax| ............. Control table mode syntax
+        |table-mode-auto-align| ......... Set if the table mode should auto
+                                        align as you type
 
 g:loaded_table_mode					*table-mode-loaded*
 	Use this option to disable the plugin: >
@@ -302,6 +304,17 @@ g:table_mode_syntax                                          *table-mode-syntax*
         not. >
                 let g:table_mode_syntax = 1
 <
+g:table_mode_auto_align                                *table-mode-auto-align*
+        Set if the table mode should auto align as you type when table mode is
+        active. >
+                let g:table_mode_auto_align = 1
+<
+
+g:table_mode_update_time                              *table-mode-update-time*
+        Set the value of updatetime to be used when table mode is active,
+        used in combination with |table-mode-auto-align|. >
+                let g:table_mode_update_time = 500
+<
 
 ===============================================================================
 MAPPINGS						*table-mode-mappings*
@@ -366,7 +379,7 @@ MAPPINGS						*table-mode-mappings*
 
 ||              Expands to a header border. You can change this by changing
                 |table-mode-separator| option. You can change the character to
-                be used for te extreme corners of the border by changing
+                be used for the extreme corners of the border by changing
                 |table-mode-corner-corner| option.
 
 ===============================================================================
