@@ -71,6 +71,7 @@ def find_rplugins(context, source):
         os.path.join('rplugin/python3/deoplete', source, 'base.py'),
         os.path.join('rplugin/python3/deoplete', source, '*.py'),
         os.path.join('rplugin/python3/deoplete', source + 's', '*.py'),
+        os.path.join('rplugin/python3/deoplete', source, '*', '*.py'),
     )
 
     for src in sources:
@@ -134,11 +135,12 @@ def escape(expr):
 
 
 def charpos2bytepos(encoding, input, pos):
-    return len(bytes(input[: pos], encoding))
+    return len(bytes(input[: pos], encoding, errors='replace'))
 
 
 def bytepos2charpos(encoding, input, pos):
-    return len(bytes(input, encoding)[: pos].decode(encoding))
+    return len(bytes(input, encoding, errors='replace')[: pos].decode(
+        encoding, errors='replace'))
 
 
 def get_custom(custom, source_name, key, default):

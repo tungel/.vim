@@ -36,59 +36,78 @@ class Deoplete(logger.LoggingMixin):
         self.name = 'core'
         self._ignored_sources = set()
         self._ignored_filters = set()
+        self._loaded_paths = set()
+        self._prev_results = {}
+
+        # on_init() call
+        context = self._vim.call('deoplete#init#_context', 'Init', [])
+        context['rpc'] = 'deoplete_on_event'
+        self.on_event(context)
 
     def completion_begin(self, context):
-        try:
-            complete_position, candidates = self.gather_candidates(context)
-        except Exception:
-            error_tb(self._vim, 'Error while gathering completions')
-            candidates = []
-
-        if not candidates or self.position_has_changed(
-                context['changedtick']) or self._vim.funcs.mode() != 'i':
-            if 'deoplete#_saved_completeopt' in context['vars']:
-                self._vim.call('deoplete#mapping#_restore_completeopt')
-            return
-
-        self._vim.vars['deoplete#_context'] = {
-            'complete_position': complete_position,
-            'changedtick': context['changedtick'],
-            'candidates': candidates,
-            'event': context['event'],
-        }
-
-        if context['event'] != 'Manual' and (
-                'deoplete#_saved_completeopt' not in context['vars']):
-            self._vim.call('deoplete#mapping#_set_completeopt')
-
-        self._vim.feedkeys(context['start_complete'])
-        if self._vim.call(
-                'has', 'patch-7.4.1758') and context['event'] != 'Manual':
-            self._vim.feedkeys('', 'x!')
-
-    def gather_candidates(self, context):
         self.check_recache(context)
 
-        # self.debug(context)
+        try:
+            is_async, complete_position, candidates = self.merge_results(
+                self.gather_results(context), context['input'])
 
-        results = self.gather_results(context)
-        return self.merge_results(results)
+        except Exception:
+            error_tb(self._vim, 'Error while gathering completions')
+
+            is_async = False
+            complete_position = -1
+            candidates = []
+
+        if is_async:
+            self._vim.call('deoplete#handler#_async_timer_start')
+        else:
+            self._vim.call('deoplete#handler#_async_timer_stop')
+
+        if not candidates and ('deoplete#_saved_completeopt'
+                               in context['vars']):
+            self._vim.call('deoplete#mapping#_restore_completeopt')
+
+        # error(self._vim, context['input'])
+        # error(self._vim, candidates)
+        self._vim.vars['deoplete#_context'] = {
+            'complete_position': complete_position,
+            'candidates': candidates,
+            'event': context['event'],
+            'input': context['input'],
+        }
 
     def gather_results(self, context):
         results = []
 
-        for source_name, source in self.itersource(context):
+        for source in [x[1] for x in self.itersource(context)]:
             try:
                 if source.disabled_syntaxes and 'syntax_names' not in context:
                     context['syntax_names'] = get_syn_names(self._vim)
                 ctx = copy.deepcopy(context)
+                ctx['is_async'] = False
+
                 charpos = source.get_complete_position(ctx)
                 if charpos >= 0 and source.is_bytepos:
                     charpos = bytepos2charpos(
                         ctx['encoding'], ctx['input'], charpos)
-                ctx['complete_str'] = ctx['input'][charpos:]
+
+                ctx['char_position'] = charpos
                 ctx['complete_position'] = charpos2bytepos(
                     ctx['encoding'], ctx['input'], charpos)
+                ctx['complete_str'] = ctx['input'][ctx['char_position']:]
+
+                if charpos < 0 or self.is_skip(ctx, source):
+                    if source.name in self._prev_results:
+                        self._prev_results.pop(source.name)
+                    # Skip
+                    continue
+
+                if (source.name in self._prev_results and
+                        self.use_previous_result(
+                            context, self._prev_results[source.name])):
+                    results.append(self._prev_results[source.name])
+                    continue
+
                 ctx['max_abbr_width'] = min(source.max_abbr_width,
                                             ctx['max_abbr_width'])
                 ctx['max_menu_width'] = min(source.max_menu_width,
@@ -98,84 +117,138 @@ class Deoplete(logger.LoggingMixin):
                 if ctx['max_menu_width'] > 0:
                     ctx['max_menu_width'] = max(10, ctx['max_menu_width'])
 
-                if charpos < 0 or self.is_skip(ctx, source.disabled_syntaxes,
-                                               source.min_pattern_length,
-                                               source.max_pattern_length,
-                                               source.input_pattern):
-                    # Skip
-                    continue
-
                 # Gathering
                 self.profile_start(ctx, source.name)
                 ctx['candidates'] = source.gather_candidates(ctx)
                 self.profile_end(source.name)
 
-                if 'candidates' not in ctx or not ctx['candidates']:
+                if ctx['candidates'] is None:
                     continue
 
                 ctx['candidates'] = convert2candidates(ctx['candidates'])
 
-                # Filtering
-                ignorecase = ctx['ignorecase']
-                smartcase = ctx['smartcase']
-                camelcase = ctx['camelcase']
-
-                # Set ignorecase
-                if (smartcase or camelcase) and re.search(
-                        r'[A-Z]', ctx['complete_str']):
-                    ctx['ignorecase'] = 0
-
-                filters = source.matchers + source.sorters + source.converters
-                for f in [self._filters[x] for x
-                          in filters if x in self._filters]:
-                    try:
-                        self.profile_start(ctx, f.name)
-                        ctx['candidates'] = f.filter(ctx)
-                        self.profile_end(f.name)
-                    except Exception:
-                        self._filter_errors[f.name] += 1
-                        if self._source_errors[f.name] > 2:
-                            error(self._vim, 'Too many errors from "%s". '
-                                  'This filter is disabled until Neovim '
-                                  'is restarted.' % f.name)
-                            self._ignored_filters.add(f.path)
-                            self._filters.pop(f.name)
-                            continue
-                        error_tb(self._vim, 'Could not filter using: %s' % f)
-
-                ctx['ignorecase'] = ignorecase
-
-                # On post filter
-                if hasattr(source, 'on_post_filter'):
-                    ctx['candidates'] = source.on_post_filter(ctx)
-
-                # Set default menu and icase
-                mark = source.mark + ' '
-                for candidate in ctx['candidates']:
-                    candidate['icase'] = 1
-                    if (source.mark != '' and
-                            candidate.get('menu', '').find(mark) != 0):
-                        candidate['menu'] = mark + candidate.get('menu', '')
-                    if source.filetypes:
-                        candidate['dup'] = 1
-
-                results.append({
-                    'name': source_name,
+                result = {
+                    'name': source.name,
                     'source': source,
                     'context': ctx,
-                })
+                    'is_async': ctx['is_async'],
+                    'prev_linenr': ctx['position'][1],
+                    'prev_input': ctx['input'],
+                }
+                self._prev_results[source.name] = result
+                results.append(result)
             except Exception:
-                self._source_errors[source_name] += 1
-                if self._source_errors[source_name] > 2:
+                self._source_errors[source.name] += 1
+                if self._source_errors[source.name] > 2:
                     error(self._vim, 'Too many errors from "%s". '
                           'This source is disabled until Neovim '
-                          'is restarted.' % source_name)
+                          'is restarted.' % source.name)
                     self._ignored_sources.add(source.path)
-                    self._sources.pop(source_name)
+                    self._sources.pop(source.name)
                     continue
                 error_tb(self._vim,
-                         'Could not get completions from: %s' % source_name)
+                         'Could not get completions from: %s' % source.name)
+
         return results
+
+    def merge_results(self, results, context_input):
+        merged_results = []
+        all_candidates = []
+        for result in [x for x in results
+                       if not self.is_skip(x['context'], x['source'])]:
+            source = result['source']
+
+            # Gather async results
+            if result['is_async']:
+                async_candidates = source.gather_candidates(
+                    result['context'])
+                result['is_async'] = result['context']['is_async']
+                if async_candidates is None:
+                    continue
+                result['context']['candidates'] += convert2candidates(
+                    async_candidates)
+
+            if not result['context']['candidates']:
+                continue
+
+            context = copy.deepcopy(result['context'])
+
+            context['input'] = context_input
+            context['complete_str'] = context['input'][
+                context['char_position']:]
+
+            # Filtering
+            ignorecase = context['ignorecase']
+            smartcase = context['smartcase']
+            camelcase = context['camelcase']
+
+            # Set ignorecase
+            if (smartcase or camelcase) and re.search(
+                    r'[A-Z]', context['complete_str']):
+                context['ignorecase'] = 0
+
+            for f in [self._filters[x] for x
+                      in source.matchers + source.sorters + source.converters
+                      if x in self._filters]:
+                try:
+                    self.profile_start(context, f.name)
+                    context['candidates'] = f.filter(context)
+                    self.profile_end(f.name)
+                except Exception:
+                    self._filter_errors[f.name] += 1
+                    if self._source_errors[f.name] > 2:
+                        error(self._vim, 'Too many errors from "%s". '
+                              'This filter is disabled until Neovim '
+                              'is restarted.' % f.name)
+                        self._ignored_filters.add(f.path)
+                        self._filters.pop(f.name)
+                        continue
+                    error_tb(self._vim, 'Could not filter using: %s' % f)
+
+            context['ignorecase'] = ignorecase
+
+            # On post filter
+            if hasattr(source, 'on_post_filter'):
+                context['candidates'] = source.on_post_filter(context)
+
+            if context['candidates']:
+                merged_results.append([context['candidates'], result])
+
+        is_async = len([x for x in results if x['context']['is_async']]) > 0
+
+        if not merged_results:
+            return (is_async, -1, [])
+
+        complete_position = min([x[1]['context']['complete_position']
+                                 for x in merged_results])
+
+        for [candidates, result] in merged_results:
+            context = result['context']
+            source = result['source']
+            prefix = context['input'][
+                complete_position:context['complete_position']]
+
+            mark = source.mark + ' '
+            for candidate in candidates:
+                # Add prefix
+                candidate['word'] = prefix + candidate['word']
+
+                # Set default menu and icase
+                candidate['icase'] = 1
+                if (source.mark != '' and
+                        candidate.get('menu', '').find(mark) != 0):
+                    candidate['menu'] = mark + candidate.get('menu', '')
+                if source.filetypes:
+                    candidate['dup'] = 1
+
+            all_candidates += candidates
+
+        # self.debug(candidates)
+        if context['vars']['deoplete#max_list'] > 0:
+            all_candidates = all_candidates[
+                : context['vars']['deoplete#max_list']]
+
+        return (is_async, complete_position, all_candidates)
 
     def itersource(self, context):
         sources = sorted(self._sources.items(),
@@ -193,6 +266,8 @@ class Deoplete(logger.LoggingMixin):
                                   {}))
 
         for source_name, source in sources:
+            if source.limit > 0 and context['bufsize'] > source.limit:
+                continue
             if source.filetypes is None or source_name in ignore_sources:
                 continue
             if context['sources'] and source_name not in context['sources']:
@@ -218,38 +293,7 @@ class Deoplete(logger.LoggingMixin):
                     continue
                 else:
                     source.is_initialized = True
-
             yield source_name, source
-
-    def merge_results(self, results):
-        results = [x for x in results if x['context']['candidates']]
-        if not results:
-            return (-1, [])
-
-        complete_position = min(
-            [x['context']['complete_position'] for x in results])
-
-        candidates = []
-        for result in results:
-            context = result['context']
-            if context['complete_position'] <= complete_position:
-                candidates += context['candidates']
-                continue
-            prefix = context['input'][
-                complete_position:context['complete_position']]
-
-            context['complete_position'] = complete_position
-            context['complete_str'] = prefix
-
-            # Add prefix
-            for candidate in context['candidates']:
-                candidate['word'] = prefix + candidate['word']
-            candidates += context['candidates']
-        # self.debug(candidates)
-        if context['vars']['deoplete#max_list'] > 0:
-            candidates = candidates[: context['vars']['deoplete#max_list']]
-
-        return (complete_position, candidates)
 
     def profile_start(self, context, name):
         if self._profile_flag is 0 or not self.debug_enabled:
@@ -270,12 +314,11 @@ class Deoplete(logger.LoggingMixin):
 
     def load_sources(self, context):
         # Load sources from runtimepath
-        loaded_paths = [source.path for source in self._sources.values()]
         for path in find_rplugins(context, 'source'):
-            if path in self._ignored_sources:
+            if path in self._ignored_sources or path in self._loaded_paths:
                 continue
-            if path in loaded_paths:
-                continue
+            self._loaded_paths.add(path)
+
             name = os.path.splitext(os.path.basename(path))[0]
 
             source = None
@@ -308,12 +351,11 @@ class Deoplete(logger.LoggingMixin):
 
     def load_filters(self, context):
         # Load filters from runtimepath
-        loaded_paths = [filter.path for filter in self._filters.values()]
         for path in find_rplugins(context, 'filter'):
-            if path in self._ignored_filters:
+            if path in self._ignored_filters or path in self._loaded_paths:
                 continue
-            if path in loaded_paths:
-                continue
+            self._loaded_paths.add(path)
+
             name = os.path.splitext(os.path.basename(path))[0]
 
             f = None
@@ -366,27 +408,35 @@ class Deoplete(logger.LoggingMixin):
                 setattr(source, attr, get_custom(context['custom'], name,
                                                  attr, source_attr))
 
-    def is_skip(self, context, disabled_syntaxes,
-                min_pattern_length, max_pattern_length, input_pattern):
-        if 'syntax_names' in context and disabled_syntaxes:
-            p = re.compile('(' + '|'.join(disabled_syntaxes) + ')$')
+    def use_previous_result(self, context, result):
+        return (context['position'][1] == result['prev_linenr'] and
+                re.sub(r'\w*$', '', context['input']) ==
+                re.sub(r'\w*$', '', result['prev_input']) and
+                (not result['source'].is_volatile or
+                 context['input'].find(result['prev_input']) == 0))
+
+    def is_skip(self, context, source):
+        if 'syntax_names' in context and source.disabled_syntaxes:
+            p = re.compile('(' + '|'.join(source.disabled_syntaxes) + ')$')
             if next(filter(p.search, context['syntax_names']), None):
                 return True
-        if (input_pattern != '' and
-                re.search('(' + input_pattern + ')$', context['input'])):
+        if (source.input_pattern != '' and
+                re.search('(' + source.input_pattern + ')$',
+                          context['input'])):
             return False
-        return (context['event'] != 'Manual' and
-                not (min_pattern_length <=
-                     len(context['complete_str']) <= max_pattern_length))
+        if context['event'] == 'Manual':
+            return False
+        return not (source.min_pattern_length <=
+                    len(context['complete_str']) <= source.max_pattern_length)
 
     def position_has_changed(self, tick):
         return tick != self._vim.eval('b:changedtick')
 
     def check_recache(self, context):
         if context['runtimepath'] != self._runtimepath:
+            self._runtimepath = context['runtimepath']
             self.load_sources(context)
             self.load_filters(context)
-            self._runtimepath = context['runtimepath']
 
             if context['rpc'] != 'deoplete_on_event':
                 self.on_event(context)

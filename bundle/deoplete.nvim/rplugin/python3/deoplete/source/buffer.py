@@ -17,6 +17,7 @@ class Source(Base):
 
         self.name = 'buffer'
         self.mark = '[B]'
+        self.limit = 1000000
         self.__buffers = {}
         self.__max_lines = 5000
 
@@ -28,8 +29,7 @@ class Source(Base):
 
     def gather_candidates(self, context):
         self.on_event(context)
-        tab_bufnrs = [x.buffer.number for x
-                      in self.vim.current.tabpage.windows]
+        tab_bufnrs = self.vim.call('tabpagebuflist')
         same_filetype = context['vars'].get(
             'deoplete#buffer#require_same_filetype', True)
         candidates = (x['candidates'] for x in self.__buffers.values()
@@ -43,7 +43,7 @@ class Source(Base):
         try:
             self.__buffers[bufnr] = {
                 'bufnr': bufnr,
-                'filetype': context['filetype'],
+                'filetype': self.vim.current.buffer.options['filetype'],
                 'candidates': parse_buffer_pattern(
                     getlines(self.vim),
                     context['keyword_patterns'],
