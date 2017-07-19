@@ -1,7 +1,7 @@
 "============================================================================
-"File:        govet.vim
-"Description: Perform static analysis of Go code with the vet tool
-"Maintainer:  Kamil Kisiel <kamil@kamilkisiel.net>
+"File:        coffee_jshint.vim
+"Description: Syntax checking plugin for syntastic
+"Maintainer:  John Krauss <john@johnkrauss.com>
 "License:     This program is free software. It comes without any warranty,
 "             to the extent permitted by applicable law. You can redistribute
 "             it and/or modify it under the terms of the Do What The Fuck You
@@ -10,40 +10,35 @@
 "
 "============================================================================
 
-if exists('g:loaded_syntastic_go_govet_checker')
+if exists('g:loaded_syntastic_coffee_coffee_jshint_checker')
     finish
 endif
-let g:loaded_syntastic_go_govet_checker = 1
+let g:loaded_syntastic_coffee_coffee_jshint_checker = 1
 
 let s:save_cpo = &cpo
 set cpo&vim
 
-function! SyntaxCheckers_go_govet_GetLocList() dict
-    let buf = bufnr('')
-    let makeprg = self.getExecEscaped() . ' vet'
+function! SyntaxCheckers_coffee_coffee_jshint_GetLocList() dict
+    let makeprg = self.makeprgBuild({})
 
     let errorformat =
-        \ '%Evet: %.%\+: %f:%l:%c: %m,' .
-        \ '%W%f:%l: %m,' .
-        \ '%-G%.%#'
-
-    " The go compiler needs to either be run with an import path as an
-    " argument or directly from the package directory. Since figuring out
-    " the proper import path is fickle, just cwd to the package.
+        \ '%Q-%\{32\,},' .
+        \ '%E%l:%c: %m,' .
+        \ '%P%f'
 
     return SyntasticMake({
         \ 'makeprg': makeprg,
         \ 'errorformat': errorformat,
-        \ 'cwd': fnamemodify(bufname(buf), ':p:h'),
-        \ 'defaults': {'type': 'w'} })
+        \ 'returns': [0, 1] })
 endfunction
 
 call g:SyntasticRegistry.CreateAndRegisterChecker({
-    \ 'filetype': 'go',
-    \ 'name': 'govet',
-    \ 'exec': 'go' })
+    \ 'filetype': 'coffee',
+    \ 'exec': 'coffee-jshint',
+    \ 'name': 'coffee_jshint' })
 
 let &cpo = s:save_cpo
 unlet s:save_cpo
 
 " vim: set sw=4 sts=4 et fdm=marker:
+
