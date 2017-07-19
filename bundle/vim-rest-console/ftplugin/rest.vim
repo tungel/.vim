@@ -1,553 +1,789 @@
 setlocal commentstring=#%s
 
 let s:vrc_auto_format_response_patterns = {
-\   'json': 'python -m json.tool',
-\   'xml': 'xmllint --format -',
+  \ 'json': 'python -m json.tool',
+  \ 'xml': 'xmllint --format -',
 \}
 
 let s:vrc_glob_delim      = '\v^--\s*$'
 let s:vrc_comment_delim   = '\c\v^\s*(#|//)'
-let s:vrc_block_delimiter = '\c\v^\s*HTTPS?://|^--'
+let s:vrc_block_delimiter = '\c\v^\s*HTTPS?://|^--\s*$'
 
+let s:deprecatedMessages = []
+let s:deprecatedCurlOpts = {
+  \ 'vrc_connect_timeout': '--connect-timeout',
+  \ 'vrc_cookie_jar': '-b and -c',
+  \ 'vrc_follow_redirects': '-L',
+  \ 'vrc_include_response_header': '-i',
+  \ 'vrc_max_time': '--max-time',
+  \ 'vrc_resolve_to_ipv4': '--ipv4',
+  \ 'vrc_ssl_secure': '-k',
+\}
+
+
+"""
+" Trim both ends of a string.
+"
+" @param  string txt
+" @return string
+"
 function! s:StrTrim(txt)
-    return substitute(a:txt, '\v^\s*([^[:space:]].*[^[:space:]])\s*$', '\1', 'g')
-endfunction
-
-function! s:GetOptValue(opt, defVal)
-    if exists('b:' . a:opt)
-        return eval('b:' . a:opt)
-    endif
-    if exists('g:' . a:opt)
-        return eval('g:' . a:opt)
-    endif
-    return a:defVal
-endfunction
-
-function! s:GetDictValue(dictName, key, defVal)
-    for prefix in ['b', 'g', 's']
-        let varName = prefix . ':' . a:dictName
-        if exists(varName) && has_key(eval(varName), a:key)
-            return get(eval(varName), a:key)
-        endif
-    endfor
-    return a:defVal
+  return substitute(a:txt, '\v^\s*([^[:space:]].*[^[:space:]])\s*$', '\1', 'g')
 endfunction
 
 """
-" @return [int, int] First and last line of the enclosing request block.
+" Get a VRC option. Use the given default value if option not found.
+"
+" @param  string a:opt
+" @param  mixed  a:defVal
+" @return mixed
+"
+function! s:GetOpt(opt, defVal)
+  " Warn if a:opt is deprecated.
+  let curlOpt = get(s:deprecatedCurlOpts, a:opt, '')
+
+  if exists('b:' . a:opt)
+    if !empty(curlOpt)
+      call s:DeprecateOpt(a:opt, curlOpt)
+    endif
+    return eval('b:' . a:opt)
+  endif
+  if exists('g:' . a:opt)
+    if !empty(curlOpt)
+      call s:DeprecateOpt(a:opt, curlOpt)
+    endif
+    return eval('g:' . a:opt)
+  endif
+  return a:defVal
+endfunction
+
+"""
+" Handle a deprecated option.
+"
+" @param string a:opt
+" @param string a:forOpt
+"
+function! s:DeprecateOpt(opt, forOpt)
+  let msg = 'Option `' . a:opt . '` is deprecated and will be removed. '
+        \ . 'Use the cUrl option(s) ' . a:forOpt . ' instead.'
+
+  echohl WarningMsg | echom msg | echohl None
+  call add(s:deprecatedMessages, msg)
+endfunction
+
+"""
+" Get a value from a VRC dictionary option.
+"
+" @param  dict   a:dictName
+" @param  string a:key
+" @param  mixed  a:defVal
+" @return mixed
+"
+function! s:GetDict(dictName, key, defVal)
+  for prefix in ['b', 'g', 's']
+    let varName = prefix . ':' . a:dictName
+    if exists(varName) && has_key(eval(varName), a:key)
+      return get(eval(varName), a:key)
+    endif
+  endfor
+  return a:defVal
+endfunction
+
+
+"""
+" Get the first and last line numbers of the
+" request block enclosing the cursor.
+"
+" @return list [int, int]
 "
 function! s:LineNumsRequestBlock()
-    let curPos = getpos('.')
+  let curPos = getpos('.')
 
-    let blockStart = 0
-    let blockEnd   = 0
-    let lineNumGlobDelim = s:LineNumGlobSectionDelim()
+  let blockStart = 0
+  let blockEnd   = 0
+  let lineNumGlobDelim = s:LineNumGlobSectionDelim()
 
-    """ Find the start of the enclosing request block.
-    normal! $
-    let blockStart = search(s:vrc_block_delimiter, 'bn')
-    if !blockStart || blockStart > curPos[1] || blockStart <= lineNumGlobDelim
-        call cursor(curPos[1:])
-        return [0, 0]
-    endif
-
-    """ Find the start of the next request block.
-    let blockEnd = search(s:vrc_block_delimiter, 'n') - 1
-    if blockEnd <= blockStart
-        let blockEnd = line('$')
-    endif
+  """ Find the start of the enclosing request block.
+  normal! $
+  let blockStart = search(s:vrc_block_delimiter, 'bn')
+  if !blockStart || blockStart > curPos[1] || blockStart <= lineNumGlobDelim
     call cursor(curPos[1:])
-    return [blockStart, blockEnd]
+    return [0, 0]
+  endif
+
+  """ Find the start of the next request block.
+  let blockEnd = search(s:vrc_block_delimiter, 'n') - 1
+  if blockEnd <= blockStart
+    let blockEnd = line('$')
+  endif
+  call cursor(curPos[1:])
+  return [blockStart, blockEnd]
 endfunction
 
 """
 " @return int The line number of the global section delimiter.
 "
 function! s:LineNumGlobSectionDelim()
-    let curPos = getpos('.')
-    normal! gg
-    let lineNum = search(s:vrc_glob_delim, 'cn')
-    call cursor(curPos[1:])
-    return lineNum
+  let curPos = getpos('.')
+  normal! gg
+  let lineNum = search(s:vrc_glob_delim, 'cn')
+  call cursor(curPos[1:])
+  return lineNum
 endfunction
 
 """
 " Parse host between the given line numbers (inclusive end).
 "
-" @return [line num or 0, string]
+" @param  int  a:start
+" @param  int  a:end
+" @return list [line num or 0, string]
 "
 function! s:ParseHost(start, end)
-    if a:end < a:start
-        return [0, '']
-    endif
-    let curPos = getpos('.')
-    call cursor(a:start, 1)
-    let lineNum = search('\v\c^\s*HTTPS?://', 'cn', a:end)
-    call cursor(curPos[1:])
-    if !lineNum
-        return [lineNum, '']
-    endif
-    return [lineNum, s:StrTrim(getline(lineNum))]
+  if a:end < a:start
+    return [0, '']
+  endif
+  let curPos = getpos('.')
+  call cursor(a:start, 1)
+  let lineNum = search('\v\c^\s*HTTPS?://', 'cn', a:end)
+  call cursor(curPos[1:])
+  if !lineNum
+    return [lineNum, '']
+  endif
+  return [lineNum, s:StrTrim(getline(lineNum))]
 endfunction
 
 """
-" @return [int, string]
+" Parse the query.
+"
+" @return list [line num or 0, string]
 "
 function! s:ParseVerbQuery(start, end)
-    let curPos = getpos('.')
-    call cursor(a:start, 1)
-    let lineNum = search(
-    \   '\c\v^(GET|POST|PUT|DELETE|HEAD|PATCH|OPTIONS|TRACE)\s+',
-    \   'cn',
-    \   a:end
-    \)
-    call cursor(curPos[1:])
-    if !lineNum
-        return [lineNum, '']
-    endif
-    return [lineNum, s:StrTrim(getline(lineNum))]
+  let curPos = getpos('.')
+  call cursor(a:start, 1)
+  let lineNum = search(
+    \ '\c\v^(GET|POST|PUT|DELETE|HEAD|PATCH|OPTIONS|TRACE)\s+',
+    \ 'cn',
+    \ a:end
+  \)
+  call cursor(curPos[1:])
+  if !lineNum
+    return [lineNum, '']
+  endif
+  return [lineNum, s:StrTrim(getline(lineNum))]
 endfunction
 
 """
 " Parse header options between the given line numbers (inclusive end).
 "
-" @return dict
+" @param  int  a:start
+" @param  int  a:end
+" @return dict {'header1': 'value1', 'header2': 'value2'}
 "
 function! s:ParseHeaders(start, end)
-    let contentTypeOpt = s:GetOptValue('vrc_header_content_type', 'application/json')
-    let headers = {'Content-Type': contentTypeOpt}
-    if (a:end < a:start)
-        return headers
-    endif
-
-    let lineBuf = getline(a:start, a:end)
-    let hasContentType = 0
-    for line in lineBuf
-        let line = s:StrTrim(line)
-        if line ==? '' || line =~? s:vrc_comment_delim
-            continue
-        endif
-        let sepIdx = stridx(line, ':')
-        if sepIdx > -1
-            let key = s:StrTrim(line[0:sepIdx - 1])
-            let headers[key] = s:StrTrim(line[sepIdx + 1:])
-        endif
-    endfor
+  let contentTypeOpt = s:GetOpt('vrc_header_content_type', 'application/json')
+  let headers = {'Content-Type': contentTypeOpt}
+  if (a:end < a:start)
     return headers
+  endif
+
+  let lineBuf = getline(a:start, a:end)
+  let hasContentType = 0
+  for line in lineBuf
+    let line = s:StrTrim(line)
+    if line ==? '' || line =~? s:vrc_comment_delim
+      continue
+    endif
+    let sepIdx = stridx(line, ':')
+    if sepIdx > -1
+      let key = s:StrTrim(line[0:sepIdx - 1])
+      let headers[key] = s:StrTrim(line[sepIdx + 1:])
+    endif
+  endfor
+  return headers
 endfunction
 
 """
-" Parse values in global section
+" Parse values in global section.
 "
-" @return dict
+" @param  int  a:start
+" @param  int  a:end
+" @return dict {'var1': 'value1', 'var2': 'value2'}
 "
 function! s:ParseVals(start, end)
-    let vals = {}
-    if (a:end < a:start)
-        return vals
-    endif
-
-    let lineBuf = getline(a:start, a:end)
-
-    for line in lineBuf
-        let line = s:StrTrim(line)
-        if line ==? '' || line =~? s:vrc_comment_delim
-            continue
-        endif
-        let sepIdx = stridx(line, '=')
-        if sepIdx > -1
-            let key = s:StrTrim(line[0:sepIdx - 1])
-            let vals[key] = s:StrTrim(line[sepIdx + 1:])
-        endif
-    endfor
+  let vals = {}
+  if (a:end < a:start)
     return vals
+  endif
+
+  let lineBuf = getline(a:start, a:end)
+
+  for line in lineBuf
+    let line = s:StrTrim(line)
+    if line ==? '' || line =~? s:vrc_comment_delim
+      continue
+    endif
+    let sepIdx = stridx(line, '=')
+    if sepIdx > -1
+      let key = s:StrTrim(line[0:sepIdx - 1])
+      let vals[key] = s:StrTrim(line[sepIdx + 1:])
+    endif
+  endfor
+  return vals
 endfunction
 
 """
-" @return dict { 'host': String, 'headers': {}, 'vals': {} }
+" Parse the global section.
+"
+" @return dict { 'host': string, 'headers': {}, 'curlOpts': {}, vals': {} }
 "
 function! s:ParseGlobSection()
-    let globSection = {
-    \   'host': '',
-    \   'headers': {},
-    \   'vals': {},
-    \}
+  let globSection = {
+    \ 'host': '',
+    \ 'headers': {},
+    \ 'curlOpts': {},
+    \ 'vals': {},
+  \}
 
-    """ Search for the line of the global section delimiter.
-    let lastLine = s:LineNumGlobSectionDelim()
-    if !lastLine
-        return globSection
-    endif
-
-    """ Parse global host.
-    let [hostLine, host] = s:ParseHost(1, lastLine - 1)
-
-    """ Parse global headers.
-    let headers = s:ParseHeaders(hostLine + 1, lastLine - 1)
-
-    """ Parse global vals.
-    let vals = s:ParseVals(hostLine + 1, lastLine - 1)
-
-    let globSection = {
-    \   'host': host,
-    \   'headers': headers,
-    \   'vals': vals,
-    \}
+  """ Search for the line of the global section delimiter.
+  let lastLine = s:LineNumGlobSectionDelim()
+  if !lastLine
     return globSection
+  endif
+
+  """ Parse global host.
+  let [hostLine, host] = s:ParseHost(1, lastLine - 1)
+
+  """ Parse global headers.
+  let headers = s:ParseHeaders(hostLine + 1, lastLine - 1)
+
+  """ Parse curl options.
+  let curlOpts = s:ParseCurlOpts(hostLine + 1, lastLine - 1)
+
+  """ Parse global vals.
+  let vals = s:ParseVals(hostLine + 1, lastLine - 1)
+
+  let globSection = {
+    \ 'host': host,
+    \ 'headers': headers,
+    \ 'curlOpts': curlOpts,
+    \ 'vals': vals,
+  \}
+  return globSection
 endfunction
 
 """
-" @param  int start
-" @param  int resumeFrom (inclusive)
-" @param  int end (inclusive)
-" @param  dict globSection
-" @return dict
+" Parse the specified cUrl options.
+"
+" @param  int  a:fromLine
+" @param  int  a:toLine
+" @return dict Dict of lists {'-a': [x, y], '-b': [z], '--opt': []}
+"
+function! s:ParseCurlOpts(fromLine, toLine)
+  let curlOpts = {}
+  for line in getline(a:fromLine, a:toLine)
+    let line = s:StrTrim(line)
+    if line !~? '\v^--?\w+'
+      continue
+    endif
+    let [copt; vals] = split(line, '\v\s', 0)
+    if !has_key(curlOpts, copt)
+      let curlOpts[copt] = []
+    endif
+    if !empty(vals)
+      call add(curlOpts[copt], join(vals, ' '))
+    endif
+  endfor
+  return curlOpts
+endfunction
+
+"""
+" Parse the request block.
+"
+" @param  int  a:start
+" @param  int  a:resumeFrom (inclusive)
+" @param  int  a:end (inclusive)
+" @param  dict a:globSection
+" @return dict {
+"                'success':     boolean,
+"                'resumeFrom':  int,
+"                'msg':         string,
+"                'host':        string,
+"                'headers':     dict,
+"                'curlOpts':    dict,
+"                'httpVerb':    string,
+"                'requestPath': string,
+"                'dataBody':    string,
+"              }
 "
 function! s:ParseRequest(start, resumeFrom, end, globSection)
-    """ Parse host.
-    let [lineNumHost, host] = s:ParseHost(a:start, a:end)
-    if !lineNumHost
-        let host = get(a:globSection, 'host', '')
-        let lineNumHost = a:start
-    endif
-    if empty(host)
-        return {
-        \   'success': 0,
-        \   'msg': 'Missing host',
-        \}
-    endif
-
-    """ Parse the HTTP verb query.
-    let [lineNumVerb, restQuery] = s:ParseVerbQuery(a:resumeFrom, a:end)
-    if !lineNumVerb
-        return {
-        \   'success': 0,
-        \   'msg': 'Missing query',
-        \}
-    endif
-
-    """ Parse the next HTTP verb query.
-    let resumeFrom = lineNumVerb + 1
-    let [lineNumNextVerb, nextRestQuery] = s:ParseVerbQuery(lineNumVerb + 1, a:end)
-    if !lineNumNextVerb
-        let resumeFrom = a:end + 1
-        let lineNumNextVerb = a:end + 1
-    endif
-
-    """ Parse headers if any and merge with global headers.
-    let localHeaders = s:ParseHeaders(lineNumHost + 1, lineNumVerb - 1)
-    let headers = get(a:globSection, 'headers', {})
-    call extend(headers, localHeaders)
-
-    let vals = get(a:globSection, 'vals', {})
-
-    """ Parse http verb, query path, and data body.
-    let [httpVerb; queryPathList] = split(restQuery)
-    let dataBody = getline(lineNumVerb + 1, lineNumNextVerb - 1)
-
-    """ Search and replace values in queryPath
-    let queryPath = join(queryPathList, '')
-    for key in keys(vals)
-        let queryPath = substitute(queryPath, ":" . key, vals[key], "")
-    endfor
-
-    """ Filter out comment and blank lines.
-    call filter(dataBody, 'v:val !~ ''\v^\s*(#|//).*$|\v^\s*$''')
-
-    """ Some might need leading/trailing spaces in body rows.
-    "call map(dataBody, 's:StrTrim(v:val)')
+  """ Parse host.
+  let [lineNumHost, host] = s:ParseHost(a:start, a:end)
+  if !lineNumHost
+    let host = get(a:globSection, 'host', '')
+    let lineNumHost = a:start
+  endif
+  if empty(host)
     return {
-    \   'success': 1,
-    \   'resumeFrom': resumeFrom,
-    \   'msg': '',
-    \   'host': host,
-    \   'headers': headers,
-    \   'httpVerb': httpVerb,
-    \   'requestPath': queryPath,
-    \   'dataBody': dataBody
+      \ 'success': 0,
+      \ 'msg': 'Missing host',
     \}
+  endif
+
+  """ Parse the HTTP verb query.
+  let [lineNumVerb, restQuery] = s:ParseVerbQuery(a:resumeFrom, a:end)
+  if !lineNumVerb
+    return {
+      \ 'success': 0,
+      \ 'msg': 'Missing query',
+    \}
+  endif
+
+  """ Parse the next HTTP verb query.
+  let resumeFrom = lineNumVerb + 1
+  let [lineNumNextVerb, nextRestQuery] = s:ParseVerbQuery(lineNumVerb + 1, a:end)
+  if !lineNumNextVerb
+    let resumeFrom = a:end + 1
+    let lineNumNextVerb = a:end + 1
+  endif
+
+  """ Parse headers if any and merge with global headers.
+  let localHeaders = s:ParseHeaders(lineNumHost + 1, lineNumVerb - 1)
+  let headers = get(a:globSection, 'headers', {})
+  call extend(headers, localHeaders)
+
+  """ Parse curl options; local opts overwrite global opts when merged.
+  let localCurlOpts = s:ParseCurlOpts(lineNumHost + 1, lineNumVerb - 1)
+  let curlOpts = get(a:globSection, 'curlOpts', {})
+  call extend(curlOpts, localCurlOpts)
+
+  let vals = get(a:globSection, 'vals', {})
+
+  """ Parse http verb, query path, and data body.
+  let [httpVerb; queryPathList] = split(restQuery)
+  let dataBody = getline(lineNumVerb + 1, lineNumNextVerb - 1)
+
+  """ Search and replace values in queryPath
+  let queryPath = join(queryPathList, '')
+  for key in keys(vals)
+    let queryPath = substitute(queryPath, ":" . key, vals[key], "")
+  endfor
+
+  """ Filter out comment and blank lines.
+  call filter(dataBody, 'v:val !~ ''\v^\s*(#|//).*$|\v^\s*$''')
+
+  """ Some might need leading/trailing spaces in body rows.
+  "call map(dataBody, 's:StrTrim(v:val)')
+  return {
+    \ 'success': 1,
+    \ 'resumeFrom': resumeFrom,
+    \ 'msg': '',
+    \ 'host': host,
+    \ 'headers': headers,
+    \ 'curlOpts': curlOpts,
+    \ 'httpVerb': httpVerb,
+    \ 'requestPath': queryPath,
+    \ 'dataBody': dataBody
+  \}
 endfunction
 
 """
 " Construct the cUrl command given the request.
 "
+" @see s:ParseRequest() For a:request.
+"
+" @param  dict a:request
+" @return list [command, dict of curl options]
+"
 function! s:GetCurlCommand(request)
-    """ Construct curl args.
-    let curlArgs = ['-sS']
+  """ Construct curl args.
+  let curlOpts = vrc#opt#GetDefaultCurlOpts()
+  call extend(curlOpts, get(a:request, 'curlOpts', {}))
 
-    let vrcIncludeHeader = s:GetOptValue('vrc_include_response_header', 1)
-    if vrcIncludeHeader
-        call add(curlArgs, '-i')
+  let vrcIncludeHeader = s:GetOpt('vrc_include_response_header', 0)
+  if vrcIncludeHeader && !vrc#opt#DictHasKeys(curlOpts, ['-i', '--include'])
+    let curlOpts['-i'] = ''
+  endif
+
+  let vrcDebug = s:GetOpt('vrc_debug', 0)
+  if vrcDebug && !has_key(curlOpts, '-v')
+    let curlOpts['-v'] = ''
+  endif
+
+  " Consider to add -k only if vrc_ssl_secure is configured (secureSsl > -1).
+  let secureSsl = s:GetOpt('vrc_ssl_secure', -1)
+  if a:request.host =~? '\v^\s*HTTPS://' && secureSsl == 0 && !has_key(curlOpts, '-k')
+    let curlOpts['-k'] = ''
+  endif
+
+  """ Add --ipv4
+  let resolveToIpv4 = s:GetOpt('vrc_resolve_to_ipv4', 0)
+  if resolveToIpv4 && !has_key(curlOpts, '--ipv4')
+    let curlOpts['--ipv4'] = ''
+  endif
+
+  """ Add --cookie-jar
+  let cookieJar = s:GetOpt('vrc_cookie_jar', '')
+  if !empty(cookieJar)
+    if !has_key(curlOpts, '-b')
+      let curlOpts['-b'] = cookieJar
     endif
-
-    let vrcDebug = s:GetOptValue('vrc_debug', 0)
-    if vrcDebug
-        call add(curlArgs, '-v')
+    if !has_key(curlOpts, '-c')
+      let curlOpts['-c'] = cookieJar
     endif
+  endif
 
-    let secureSsl = s:GetOptValue('vrc_ssl_secure', 0)
-    if a:request.host =~? '\v^\s*HTTPS://' && !secureSsl
-        call add(curlArgs, '-k')
-    endif
+  """ Add -L option to enable redirects
+  let locationEnabled = s:GetOpt('vrc_follow_redirects', 0)
+  if locationEnabled && !has_key(curlOpts, '-L')
+    let curlOpts['-L'] = ''
+  endif
 
-    """ Add --ipv4
-    let resolveToIpv4 = s:GetOptValue('vrc_resolve_to_ipv4', 0)
-    if resolveToIpv4
-        call add(curlArgs, '--ipv4')
-    endif
+  """ Add headers.
+  let headerOpt = get(curlOpts, '-H', '')
+  if empty(headerOpt)
+    let curlOpts['-H'] = []
+  elseif type(headerOpt) != type([])
+    let curlOpts['-H'] = [headerOpt]
+  endif
+  for key in keys(a:request.headers)
+    call add(curlOpts['-H'], key . ': ' . a:request.headers[key])
+  endfor
 
-    """ Add --cookie-jar
-    let cookieJar = s:GetOptValue('vrc_cookie_jar', 0)
-    if !empty(cookieJar)
-        call add(curlArgs, '-b ' . shellescape(cookieJar))
-        call add(curlArgs, '-c ' . shellescape(cookieJar))
-    endif
+  """ Timeout options.
+  let vrcConnectTimeout = s:GetOpt('vrc_connect_timeout', 0)
+  if vrcConnectTimeout && !has_key(curlOpts, '--connect-timeout')
+    let curlOpts['--connect-timeout'] = vrcConnectTimeout
+  endif
 
-    """ Add -L option to enable redirects
-    let locationEnabled = s:GetOptValue('vrc_follow_redirects', 0)
-    if locationEnabled
-      call add(curlArgs, '-L')
-    endif
+  let vrcMaxTime = s:GetOpt('vrc_max_time', 0)
+  if vrcMaxTime && !has_key(curlOpts, '--max-time')
+    let curlOpts['--max-time'] = vrcMaxTime
+  endif
 
-    """ Add headers.
-    for key in keys(a:request.headers)
-        call add(curlArgs, '-H ' . shellescape(key . ': ' . a:request.headers[key]))
-    endfor
+  """ Convert cUrl options to command line arguments.
+  let curlArgs = vrc#opt#DictToCurlArgs(curlOpts)
+  call map(curlArgs, 's:EscapeCurlOpt(v:val)')
 
-    """ Timeout options.
-    call add(curlArgs, '--connect-timeout ' . s:GetOptValue('vrc_connect_timeout', 10))
-    call add(curlArgs, '--max-time ' . s:GetOptValue('vrc_max_time', 60))
+  """ Add http verb.
+  let httpVerb = a:request.httpVerb
+  call add(curlArgs, s:GetCurlRequestOpt(httpVerb))
 
-    """ Add http verb.
-    let httpVerb = a:request.httpVerb
-    call add(curlArgs, s:GetCurlRequestOpt(httpVerb))
+  """ Add data body.
+  if !empty(a:request.dataBody)
+    call add(curlArgs, s:GetCurlDataArgs(a:request))
+  endif
+  return [
+    \ 'curl ' . join(curlArgs) . ' ' . shellescape(a:request.host . a:request.requestPath),
+    \ curlOpts
+  \]
+endfunction
 
-    """ Add data body.
-    let dataBody = a:request.dataBody
-    if !empty(dataBody)
-        call add(
-        \   curlArgs,
-        \   s:GetCurlDataArgs(httpVerb, dataBody)
-        \)
-    endif
-    return 'curl ' . join(curlArgs) . ' ' . shellescape(a:request.host . a:request.requestPath)
+"""
+" Helper function to shell-escape cUrl options.
+"
+" @param string a:val
+"
+function! s:EscapeCurlOpt(val)
+  return a:val !~ '\v^-' ? shellescape(a:val) : a:val
 endfunction
 
 """
 " Get the cUrl option for request method (--get, --head, -X <verb>...)
 "
+" @param  string a:httpVerb
+" @return string
+"
 function! s:GetCurlRequestOpt(httpVerb)
-    if a:httpVerb ==? 'GET'
-        if s:GetOptValue('vrc_allow_get_request_body', 0)
-            return '-X GET'
-        endif
-        return '--get'
-    elseif a:httpVerb ==? 'HEAD'
-        return '--head'
+  if a:httpVerb ==? 'GET'
+    if s:GetOpt('vrc_allow_get_request_body', 0)
+      return '-X GET'
     endif
-    return '-X ' . a:httpVerb
+    return '--get'
+  elseif a:httpVerb ==? 'HEAD'
+    return '--head'
+  endif
+  return '-X ' . a:httpVerb
 endfunction
 
 """
 " Get the cUrl option to include data body (--data, --data-urlencode...)
 "
-" @param  dict httpVerb
-" @param  list dataLines
+" @see s:ParseRequest() For a:request.
+"
+" @param  dict a:request
 " @return string
 "
-function! s:GetCurlDataArgs(httpVerb, dataLines)
-    """ These verbs should have request body passed as POST params.
-    if a:httpVerb ==? 'POST'
-    \  || a:httpVerb ==? 'PUT'
-    \  || a:httpVerb ==? 'PATCH'
-    \  || a:httpVerb ==? 'OPTIONS'
-        """ If data is loaded from file.
-        if stridx(get(a:dataLines, 0, ''), '@') == 0
-            return '--data-binary ' . shellescape(a:dataLines[0])
-        endif
+function! s:GetCurlDataArgs(request)
+  let httpVerb = a:request.httpVerb
+  let dataLines = a:request.dataBody
 
-        """ If request body is split line by line.
-        if s:GetOptValue('vrc_split_request_body', 0)
-            call map(a:dataLines, '"--data " . shellescape(v:val)')
-            return join(a:dataLines)
-        endif
-
-        """ Otherwise, send the request body as a whole.
-        return '--data ' . shellescape(join(a:dataLines, ''))
+  """ These verbs should have request body passed as POST params.
+  if httpVerb ==? 'POST'
+    \ || httpVerb ==? 'PUT'
+    \ || httpVerb ==? 'PATCH'
+    \ || httpVerb ==? 'OPTIONS'
+    """ If data is loaded from file.
+    if stridx(get(dataLines, 0, ''), '@') == 0
+      return '--data-binary ' . shellescape(dataLines[0])
     endif
 
-    """ If verb is GET and GET request body is allowed.
-    if a:httpVerb ==? 'GET' && s:GetOptValue('vrc_allow_get_request_body', 0)
-        return '--data ' . shellescape(join(a:dataLines, ''))
+    """ If request body is split line by line.
+    if s:GetOpt('vrc_split_request_body', 0)
+      call map(dataLines, '"--data " . shellescape(v:val)')
+      return join(dataLines)
     endif
 
-    """ For other cases, request body is passed as GET params.
-    if s:GetOptValue('vrc_split_request_body', 0)
-        """ If request body is split, url-encode each line.
-        call map(a:dataLines, '"--data-urlencode " . shellescape(v:val)')
-        return join(a:dataLines)
+    """ If ElasticSearch support is on and it's a _bulk request.
+    let elasticSupport = s:GetOpt('vrc_elasticsearch_support', 0)
+    if elasticSupport && match(a:request.requestPath, '/_bulk') > -1
+      " shellescape also escapes \n (<NL>) to \\n, need to replace back.
+      return '--data ' .
+           \ substitute(
+             \ shellescape(join(dataLines, "\n") . "\n"),
+             \ '\\\n',
+             \ "\n",
+             \ 'g'
+             \)
     endif
-    """ Otherwise, url-encode and send the request body as a whole.
-    return '--data-urlencode ' . shellescape(join(a:dataLines, ''))
+
+    """ Otherwise, just join data using empty space.
+    return '--data ' . shellescape(join(dataLines, ''))
+  endif
+
+  """ If verb is GET and GET request body is allowed.
+  if httpVerb ==? 'GET' && s:GetOpt('vrc_allow_get_request_body', 0)
+    return '--data ' . shellescape(join(dataLines, ''))
+  endif
+
+  """ For other cases, request body is passed as GET params.
+  if s:GetOpt('vrc_split_request_body', 0)
+    """ If request body is split, url-encode each line.
+    call map(dataLines, '"--data-urlencode " . shellescape(v:val)')
+    return join(dataLines)
+  endif
+  """ Otherwise, url-encode and send the request body as a whole.
+  return '--data-urlencode ' . shellescape(join(dataLines, ''))
 endfunction
 
-function! s:DisplayOutput(tmpBufName, output)
-    """ Get view options before working in the view buffer.
-    let autoFormatResponse = s:GetOptValue('vrc_auto_format_response_enabled', 1)
-    let syntaxHighlightResponse = s:GetOptValue('vrc_syntax_highlight_response', 1)
+"""
+" Display output in the given buffer name.
+"
+" @see s:RunQuery() For a:outputInfo.
+"
+" @param string a:tmpBufName
+" @param dict   a:outputInfo {'outputChunks': list[string], 'commands': list[string]}
+" @param dict   a:config     {'hasResponseHeader': boolean}
+"
+function! s:DisplayOutput(tmpBufName, outputInfo, config)
+  """ Get view options before working in the view buffer.
+  let autoFormatResponse = s:GetOpt('vrc_auto_format_response_enabled', 1)
+  let syntaxHighlightResponse = s:GetOpt('vrc_syntax_highlight_response', 1)
+  let includeResponseHeader = get(a:config, 'hasResponseHeader', 0)
+  let contentType = s:GetOpt('vrc_response_default_content_type', '')
 
-    """ Setup view.
-    let origWin = winnr()
-    let outputWin = bufwinnr(bufnr(a:tmpBufName))
-    if outputWin == -1
-        let cmdSplit = 'vsplit'
-        if s:GetOptValue('vrc_horizontal_split', 0)
-            let cmdSplit = 'split'
-        endif
-
-        """ Create view if not loadded or hidden.
-        execute 'rightbelow ' . cmdSplit . ' ' . a:tmpBufName
-        setlocal buftype=nofile
-    else
-        """ View already shown, switch to it.
-        execute outputWin . 'wincmd w'
+  """ Setup view.
+  let origWin = winnr()
+  let outputWin = bufwinnr(bufnr(a:tmpBufName))
+  if outputWin == -1
+    let cmdSplit = 'vsplit'
+    if s:GetOpt('vrc_horizontal_split', 0)
+      let cmdSplit = 'split'
     endif
 
-    """ Display output in view.
-    setlocal modifiable
-    silent! normal! ggdG
-    call setline('.', split(substitute(a:output, '[[:return:]]', '', 'g'), '\v\n'))
+    """ Create view if not loadded or hidden.
+    execute 'rightbelow ' . cmdSplit . ' ' . a:tmpBufName
+    setlocal buftype=nofile
+  else
+    """ View already shown, switch to it.
+    execute outputWin . 'wincmd w'
+  endif
 
+  """ Display output in view.
+  setlocal modifiable
+  silent! normal! ggdG
+  let output = join(a:outputInfo['outputChunks'], "\n\n")
+  call setline('.', split(substitute(output, '[[:return:]]', '', 'g'), '\v\n'))
+
+  """ Display commands in quickfix window if any.
+  if (!empty(a:outputInfo['commands']))
+    execute 'cgetexpr' string(a:outputInfo['commands'])
+    copen
+    execute outputWin 'wincmd w'
+  endif
+
+  """ Detect content-type based on the returned header.
+  let emptyLineNum = 0
+  if includeResponseHeader
     call cursor(1, 0)
     let emptyLineNum = search('\v^\s*$', 'n')
     let contentTypeLineNum = search('\v\c^Content-Type:', 'n', emptyLineNum)
 
     if contentTypeLineNum > 0
-        let contentType = substitute(
-              \   getline(contentTypeLineNum),
-              \   '\v\c^Content-Type:\s*([^;[:blank:]]*).*$',
-              \   '\1',
-              \   'g'
-              \)
-        let fileType = substitute(contentType, '\v^.*/(.*\+)?(.*)$', '\2', 'g')
+      let contentType = substitute(
+        \ getline(contentTypeLineNum),
+        \ '\v\c^Content-Type:\s*([^;[:blank:]]*).*$',
+        \ '\1',
+        \ 'g'
+      \)
+    endif
+  endif
 
-        """ Auto-format the response.
-        if autoFormatResponse
-            let formatCmd = s:GetDictValue('vrc_auto_format_response_patterns', fileType, '')
+  """ Continue with options depending content-type.
+  if !empty(contentType)
+    let fileType = substitute(contentType, '\v^.*/(.*\+)?(.*)$', '\2', 'g')
 
-            if !empty(formatCmd)
-                """ Auto-format response body
-                let formattedBody = system(
-                \   formatCmd,
-                \   join(getline(emptyLineNum + 0, '$'), "\n")
-                \)
-                if v:shell_error == 0
-                    execute (emptyLineNum + 1) . ',$delete _'
-                    if s:GetOptValue('vrc_auto_format_uhex', 0)
-                        let formattedBody = substitute(formattedBody, '\v\\u(\x{4})', '\=nr2char("0x" . submatch(1), 1)', 'g')
-                    endif
-                    call append('$', split(formattedBody, '\v\n'))
-                elseif s:GetOptValue('vrc_debug', 0)
-                    echom "VRC: auto-format error: " . v:shell_error
-                    echom formattedBody
-                endif
-            endif
+    """ Auto-format the response.
+    if autoFormatResponse
+      let formatCmd = s:GetDict('vrc_auto_format_response_patterns', fileType, '')
+      if !empty(formatCmd)
+        """ Auto-format response body
+        let formattedBody = system(
+          \ formatCmd,
+          \ getline(emptyLineNum, '$')
+        \)
+        if v:shell_error == 0
+          silent! execute (emptyLineNum + 1) . ',$delete _'
+          if s:GetOpt('vrc_auto_format_uhex', 0)
+            let formattedBody = substitute(
+              \ formattedBody,
+              \ '\v\\u(\x{4})',
+              \ '\=nr2char("0x" . submatch(1), 1)',
+              \ 'g'
+            \)
+          endif
+          call append('$', split(formattedBody, '\v\n'))
+        elseif s:GetOpt('vrc_debug', 0)
+          echom "VRC: auto-format error: " . v:shell_error
+          echom formattedBody
         endif
-
-        """ Syntax-highlight response.
-        if syntaxHighlightResponse
-            syntax clear
-            try
-                execute "syntax include @vrc_" . fileType . " syntax/" . fileType . ".vim"
-                execute "syntax region body start=/^$/ end=/\%$/ contains=@vrc_" . fileType
-            catch
-            endtry
-        endif
+      endif
     endif
 
-    setlocal nomodifiable
-    execute origWin . 'wincmd w'
+    """ Syntax-highlight response.
+    if syntaxHighlightResponse
+      syntax clear
+      try
+        execute "syntax include @vrc_" . fileType . " syntax/" . fileType . ".vim"
+        execute "syntax region body start=/^$/ end=/\%$/ contains=@vrc_" . fileType
+      catch
+      endtry
+    endif
+  endif
+
+  """ Finalize view.
+  setlocal nomodifiable
+  execute origWin . 'wincmd w'
 endfunction
 
+"""
+" Run a REST request between the given lines.
+"
+" @param int a:start
+" @param int a:end
+"
 function! s:RunQuery(start, end)
-    let globSection = s:ParseGlobSection()
-    let output = ""
-    let resumeFrom = a:start
-    while resumeFrom < a:end
-        let request = s:ParseRequest(a:start, resumeFrom, a:end, globSection)
-        if !request.success
-            echom request.msg
-            return
-        endif
+  let globSection = s:ParseGlobSection()
+  let outputInfo = {
+    \ 'outputChunks': [],
+    \ 'commands': [],
+  \}
 
-        let curlCmd = s:GetCurlCommand(request)
-        if s:GetOptValue('vrc_debug', 0)
-            echom curlCmd
-        endif
-        silent !clear
-        redraw!
+  " The `while loop` is to support multiple
+  " requests using consecutive verbs.
+  let resumeFrom = a:start
+  let shouldShowCommand = s:GetOpt('vrc_show_command', 0)
+  let shouldDebug = s:GetOpt('vrc_debug', 0)
+  while resumeFrom < a:end
+    let request = s:ParseRequest(a:start, resumeFrom, a:end, globSection)
+    if !request.success
+      echom request.msg
+      return
+    endif
 
-        let currentOutput = system(curlCmd)
-        if s:GetOptValue('vrc_show_command', 0)
-            let currentOutput = curlCmd . "\n\n" . currentOutput
-        endif
+    let [curlCmd, curlOpts] = s:GetCurlCommand(request)
+    if shouldDebug
+      echom '[Debug] Command: ' . curlCmd
+      echom '[Debug] cUrl options: ' . string(curlOpts)
+    endif
+    silent !clear
+    redraw!
 
-        let output = output . "\n\n\n\n" . currentOutput
+    call add(outputInfo['outputChunks'], system(curlCmd))
+    if shouldShowCommand
+      call add(outputInfo['commands'], curlCmd)
+    endif
+    let resumeFrom = request.resumeFrom
+  endwhile
 
-        let resumeFrom = request.resumeFrom
-    endwhile
-
-    call s:DisplayOutput(
-    \   s:GetOptValue('vrc_output_buffer_name', '__REST_response__'),
-    \   output
-    \)
+  call s:DisplayOutput(
+    \ s:GetOpt('vrc_output_buffer_name', '__REST_response__'),
+    \ outputInfo,
+    \ {
+      \ 'hasResponseHeader': vrc#opt#DictHasKeys(curlOpts, ['-i', '--include'])
+    \ }
+  \)
 endfunction
 
 """
 " Restore the win line to the given previous line.
 "
+" @param int a:prevLine
+"
 function! s:RestoreWinLine(prevLine)
-    let offset = winline() - a:prevLine
-    if !offset
-        return
-    elseif offset > 0
-        exec "normal! " . offset . "\<C-e>"
-    else
-        exec "normal! " . -offset . "\<C-y>"
-    endif
+  let offset = winline() - a:prevLine
+  if !offset
+    return
+  elseif offset > 0
+    exec "normal! " . offset . "\<C-e>"
+  else
+    exec "normal! " . -offset . "\<C-y>"
+  endif
 endfunction
 
+"""
+" Run a request block that encloses the cursor.
+"
 function! VrcQuery()
-    """ We'll jump pretty much. Save the current win line to set the view as before.
-    let curWinLine = winline()
+  """ We'll jump pretty much. Save the current win line to set the view as before.
+  let curWinLine = winline()
 
-    let curPos = getpos('.')
-    if curPos[1] <= s:LineNumGlobSectionDelim()
-        echom 'Cannot execute global section'
-        return
-    endif
+  let curPos = getpos('.')
+  if curPos[1] <= s:LineNumGlobSectionDelim()
+    echom 'Cannot execute global section'
+    return
+  endif
 
-    """ Determine the REST request block to process.
-    let [blockStart, blockEnd] = s:LineNumsRequestBlock()
-    if !blockStart
-        call s:RestoreWinLine(curWinLine)
-        echom 'Missing host/block start'
-        return
-    endif
-
-    """ Parse and execute the query
-    call s:RunQuery(blockStart, blockEnd)
+  """ Determine the REST request block to process.
+  let [blockStart, blockEnd] = s:LineNumsRequestBlock()
+  if !blockStart
     call s:RestoreWinLine(curWinLine)
+    echom 'Missing host/block start'
+    return
+  endif
+
+  """ Parse and execute the query
+  call s:RunQuery(blockStart, blockEnd)
+  call s:RestoreWinLine(curWinLine)
+
+  """ Display deprecated message if any.
+  if !empty(s:deprecatedMessages)
+    for msg in s:deprecatedMessages
+      echohl WarningMsg | echo msg | echohl None
+    endfor
+    let s:deprecatedMessages = []
+  endif
 endfunction
 
+"""
+" Do the key map.
+"
 function! VrcMap()
-    let triggerKey = s:GetOptValue('vrc_trigger', '<C-j>')
-    execute 'vnoremap <buffer> ' . triggerKey . ' :call VrcQuery()<CR>'
-    execute 'nnoremap <buffer> ' . triggerKey . ' :call VrcQuery()<CR>'
-    execute 'inoremap <buffer> ' . triggerKey . ' <Esc>:call VrcQuery()<CR>'
+  let triggerKey = s:GetOpt('vrc_trigger', '<C-j>')
+  execute 'vnoremap <buffer> ' . triggerKey . ' :call VrcQuery()<CR>'
+  execute 'nnoremap <buffer> ' . triggerKey . ' :call VrcQuery()<CR>'
+  execute 'inoremap <buffer> ' . triggerKey . ' <Esc>:call VrcQuery()<CR>'
 endfunction
 
-if s:GetOptValue('vrc_set_default_mapping', 1)
-    call VrcMap()
+if s:GetOpt('vrc_set_default_mapping', 1)
+  call VrcMap()
 endif
-
