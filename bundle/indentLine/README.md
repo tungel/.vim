@@ -57,7 +57,7 @@ let g:indentLine_conceallevel = 2
 
 You can customize these settings, but the plugin will not function if `conceallevel` is not set to 1 or 2.
 
-If you want to keep your conceal settting, put this line to your vim dotfile:
+If you want to keep your conceal setting, put this line to your vim dotfile:
 ```
 let g:indentLine_setConceal = 0
 ```
@@ -111,4 +111,5 @@ If you think this script is helpful, follow the [GitHub repository][repository],
 ![Screenshot](http://i.imgur.com/07Atrrs.png)
 
 ## License
-MIT
+- MIT
+- 知道vim normal模式下使用`gg`命令**后果**的人禁止使用。
