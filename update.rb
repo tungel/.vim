@@ -50,7 +50,8 @@ package_list = {
   'vim-follow-my-lead' => 'https://github.com/ktonga/vim-follow-my-lead.git',
   'vim-gitgutter' => 'https://github.com/airblade/vim-gitgutter.git',
   'vim-rest-console' => 'https://github.com/diepm/vim-rest-console.git',
-  'neomake' => 'https://github.com/benekastah/neomake.git'
+  'neomake' => 'https://github.com/benekastah/neomake.git',
+  'rust.vim' => 'https://github.com/rust-lang/rust.vim.git'
 }
 
 package_list.each do |name, link|
