@@ -7,8 +7,7 @@
 import re
 from .base import Base
 from deoplete.util import (
-    get_buffer_config, error, error_vim, convert2list,
-    set_pattern, convert2candidates)
+    get_buffer_config, convert2list, set_pattern, convert2candidates)
 
 
 class Source(Base):
@@ -20,7 +19,6 @@ class Source(Base):
         self.mark = '[O]'
         self.rank = 500
         self.is_bytepos = True
-        self.is_volatile = True
         self.min_pattern_length = 0
 
         self._input_patterns = {}
@@ -31,7 +29,15 @@ class Source(Base):
 
     def get_complete_position(self, context):
         current_ft = self.vim.eval('&filetype')
-        filetype = context['filetype']
+
+        for filetype in list(set([context['filetype']] +
+                                 context['filetype'].split('.'))):
+            pos = self._get_complete_position(context, current_ft, filetype)
+            if pos >= 0:
+                return pos
+        return -1
+
+    def _get_complete_position(self, context, current_ft, filetype):
         for omnifunc in convert2list(
                 get_buffer_config(context, filetype,
                                   'deoplete_omni_functions',
@@ -40,8 +46,7 @@ class Source(Base):
             if omnifunc == '' and (filetype == current_ft or
                                    filetype in ['css', 'javascript']):
                 omnifunc = context['omni__omnifunc']
-            if omnifunc == '' or not self.vim.call(
-                    'deoplete#util#exists_omnifunc', omnifunc):
+            if omnifunc == '':
                 continue
             self.__omnifunc = omnifunc
             for input_pattern in convert2list(
@@ -60,21 +65,15 @@ class Source(Base):
                 if filetype == current_ft and self.__omnifunc in [
                         'ccomplete#Complete',
                         'htmlcomplete#CompleteTags',
+                        'LanguageClient#complete',
                         'phpcomplete#CompletePHP']:
                     # In the blacklist
-                    error(self.vim,
-                          'omni source does not support: ' +
-                          self.__omnifunc)
-                    error(self.vim,
-                          'You must use g:deoplete#omni_patterns' +
-                          ' instead.')
                     return -1
                 try:
                     complete_pos = self.vim.call(self.__omnifunc, 1, '')
-                except:
-                    error_vim(self.vim,
-                              'Error occurred calling omnifunction: ' +
-                              self.__omnifunc)
+                except Exception as e:
+                    self.print_error('Error occurred calling omnifunction: ' +
+                                     self.__omnifunc)
                     return -1
                 return complete_pos
         return -1
@@ -82,14 +81,13 @@ class Source(Base):
     def gather_candidates(self, context):
         try:
             candidates = self.vim.call(self.__omnifunc, 0, '')
-            if candidates is dict:
+            if isinstance(candidates, dict):
                 candidates = candidates['words']
-            elif candidates is int:
+            elif isinstance(candidates, int):
                 candidates = []
-        except:
-            error_vim(self.vim,
-                      'Error occurred calling omnifunction: ' +
-                      self.__omnifunc)
+        except Exception as e:
+            self.print_error('Error occurred calling omnifunction: ' +
+                             self.__omnifunc)
             candidates = []
 
         candidates = convert2candidates(candidates)

@@ -13,50 +13,80 @@ function! deoplete#init#_is_enabled() abort
 endfunction
 
 function! deoplete#init#_initialize() abort
+  if has('vim_starting')
+    augroup deoplete
+      autocmd!
+      autocmd VimEnter * call deoplete#enable()
+    augroup END
+    return 1
+  endif
+
   if !deoplete#init#_check_channel()
-    return
+    return 1
   endif
 
   augroup deoplete
     autocmd!
   augroup END
 
+  call deoplete#init#_variables()
+
   if deoplete#init#_channel()
     return 1
   endif
 
   call deoplete#mapping#_init()
-  call deoplete#init#_variables()
 endfunction
 function! deoplete#init#_channel() abort
   if !has('timers')
     call deoplete#util#print_error(
-          \ 'deoplete requires Neovim with timers support("+timers").')
+          \ 'deoplete requires timers support("+timers").')
     return 1
   endif
 
   try
-    if !exists('g:loaded_remote_plugins')
-      runtime! plugin/rplugin.vim
+    if deoplete#util#has_yarp()
+      let g:deoplete#_yarp = yarp#py3('deoplete')
+      call g:deoplete#_yarp.notify('deoplete_init')
+    else
+      " rplugin.vim may not be loaded on VimEnter
+      if !exists('g:loaded_remote_plugins')
+        runtime! plugin/rplugin.vim
+      endif
+
+      call _deoplete_init()
     endif
-    call _deoplete()
   catch
-    if !has('nvim') || !has('python3')
+    call deoplete#util#print_error(v:exception)
+    call deoplete#util#print_error(v:throwpoint)
+
+    if !has('python3')
       call deoplete#util#print_error(
-            \ 'deoplete requires Neovim with Python3 support("+python3").')
-      return 1
+            \ 'deoplete requires Python3 support("+python3").')
     endif
 
-    call deoplete#util#print_error(printf(
-          \ 'deoplete failed to load: %s. '
+    if deoplete#util#has_yarp()
+      if !has('nvim') && !exists('*neovim_rpc#serveraddr')
+        call deoplete#util#print_error(
+              \ 'deoplete requires vim-hug-neovim-rpc plugin in Vim.')
+      endif
+
+      if !exists('*yarp#py3')
+        call deoplete#util#print_error(
+              \ 'deoplete requires nvim-yarp plugin.')
+      endif
+    else
+      call deoplete#util#print_error(
+          \ 'deoplete failed to load. '
           \ .'Try the :UpdateRemotePlugins command and restart Neovim. '
-          \ .'See also :CheckHealth.',
-          \ v:exception))
+          \ .'See also :CheckHealth.')
+    endif
+
     return 1
   endtry
 endfunction
 function! deoplete#init#_check_channel() abort
-  return !exists('g:deoplete#_channel_id')
+  return !exists('g:deoplete#_initialized')
 endfunction
 function! deoplete#init#_enable() abort
   call deoplete#handler#_init()
@@ -72,11 +102,16 @@ endfunction
 function! deoplete#init#_variables() abort
   let g:deoplete#_context = {}
   let g:deoplete#_rank = {}
-  let g:deoplete#_logging = {}
+  if !exists('g:deoplete#_logging')
+    let g:deoplete#_logging = {}
+  endif
+  unlet! g:deoplete#_initialized
 
   " User vairables
   call deoplete#util#set_default(
         \ 'g:deoplete#enable_at_startup', 0)
+  call deoplete#util#set_default(
+        \ 'g:deoplete#enable_yarp', 0)
   call deoplete#util#set_default(
         \ 'g:deoplete#auto_complete_start_length', 2)
   call deoplete#util#set_default(
@@ -87,6 +122,8 @@ function! deoplete#init#_variables() abort
         \ 'g:deoplete#enable_camel_case', 0)
   call deoplete#util#set_default(
         \ 'g:deoplete#enable_refresh_always', 0)
+  call deoplete#util#set_default(
+        \ 'g:deoplete#enable_on_insert_enter', 1)
   call deoplete#util#set_default(
         \ 'g:deoplete#disable_auto_complete', 0)
   call deoplete#util#set_default(
@@ -140,14 +177,14 @@ function! deoplete#init#_variables() abort
   " Note: HTML omni func use search().
   call deoplete#util#set_pattern(
         \ g:deoplete#_omni_patterns,
-        \ 'html,xhtml,xml', ['<', '<[^>]*\s[[:alnum:]-]*'])
+        \ 'html,xhtml,xml', ['<', '</', '<[^>]*\s[[:alnum:]-]*'])
 endfunction
 
 function! deoplete#init#_context(event, sources) abort
   let input = deoplete#util#get_input(a:event)
 
   let [filetype, filetypes, same_filetypes] =
-        \ deoplete#util#get_context_filetype(input)
+        \ deoplete#util#get_context_filetype(input, a:event)
 
   let sources = deoplete#util#convert2list(a:sources)
   if a:event !=# 'Manual' && empty(sources)
@@ -186,6 +223,7 @@ function! deoplete#init#_context(event, sources) abort
         \ 'changedtick': b:changedtick,
         \ 'event': event,
         \ 'input': input,
+        \ 'is_windows': ((has('win32') || has('win64')) ? v:true : v:false),
         \ 'next_input': deoplete#util#get_next_input(a:event),
         \ 'complete_str': '',
         \ 'encoding': &encoding,
@@ -200,6 +238,7 @@ function! deoplete#init#_context(event, sources) abort
         \ 'sources': sources,
         \ 'keyword_patterns': keyword_patterns,
         \ 'max_abbr_width': (width * 2 / 3),
+        \ 'max_kind_width': (width * 2 / 3),
         \ 'max_menu_width': (width * 2 / 3),
         \ 'runtimepath': &runtimepath,
         \ 'bufnr': bufnr('%'),
@@ -207,7 +246,9 @@ function! deoplete#init#_context(event, sources) abort
         \ 'bufpath': bufpath,
         \ 'bufsize': wordcount().bytes,
         \ 'cwd': getcwd(),
-        \ 'vars': filter(copy(g:), "stridx(v:key, 'deoplete#') == 0"),
+        \ 'vars': filter(copy(g:),
+        \       "stridx(v:key, 'deoplete#') == 0
+        \        && v:key !=# 'deoplete#_yarp'"),
         \ 'bufvars': filter(copy(b:), "stridx(v:key, 'deoplete_') == 0"),
         \ 'custom': deoplete#custom#get(),
         \ 'omni__omnifunc': &l:omnifunc,

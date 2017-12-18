@@ -145,12 +145,13 @@ def bytepos2charpos(encoding, input, pos):
 
 
 def get_custom(custom, source_name, key, default):
-    if source_name not in custom:
+    custom_source = custom['source']
+    if source_name not in custom_source:
         return get_custom(custom, '_', key, default)
-    elif key in custom[source_name]:
-        return custom[source_name][key]
-    elif key in custom['_']:
-        return custom['_'][key]
+    elif key in custom_source[source_name]:
+        return custom_source[source_name][key]
+    elif key in custom_source['_']:
+        return custom_source['_'][key]
     else:
         return default
 
@@ -189,6 +190,8 @@ def load_external_module(file, module):
 
 
 def truncate_skipping(string, max_width, footer, footer_len):
+    if not string:
+        return ''
     if len(string) <= max_width/2:
         return string
     if strwidth(string) <= max_width:
@@ -248,18 +251,20 @@ def binary_search_begin(l, prefix):
     if not l:
         return -1
     if len(l) == 1:
-        return 0 if l[0]['word'].startswith(prefix) else -1
+        return 0 if l[0]['word'].lower().startswith(prefix) else -1
 
     s = 0
     e = len(l)
     prefix = prefix.lower()
     while s < e:
         index = int((s + e) / 2)
-        if (l[index]['word'].lower().startswith(prefix) and
-                (index - 1 < 0 or not
-                 l[index-1]['word'].lower().startswith(prefix))):
+        word = l[index]['word'].lower()
+        if word.startswith(prefix):
+            if (index - 1 < 0 or not
+                    l[index-1]['word'].lower().startswith(prefix)):
                 return index
-        elif prefix < l[index]['word'].lower():
+            e = index
+        elif prefix < word:
             e = index
         else:
             s = index + 1
@@ -270,19 +275,20 @@ def binary_search_end(l, prefix):
     if not l:
         return -1
     if len(l) == 1:
-        return 0 if l[0]['word'].startswith(prefix) else -1
+        return 0 if l[0]['word'].lower().startswith(prefix) else -1
 
     s = 0
     e = len(l)
     prefix = prefix.lower()
     while s < e:
         index = int((s + e) / 2)
-        if l[index]['word'].lower().startswith(prefix):
+        word = l[index]['word'].lower()
+        if word.startswith(prefix):
             if ((index + 1) >= len(l) or not
                     l[index+1]['word'].lower().startswith(prefix)):
                 return index
             s = index + 1
-        elif prefix < l[index]['word'].lower():
+        elif prefix < word:
             e = index
         else:
             s = index + 1

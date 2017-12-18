@@ -1,6 +1,6 @@
-*deoplete.txt*	Dark powered asynchronous completion framework for neovim.
+*deoplete.txt*	Dark powered asynchronous completion framework for neovim/Vim8.
 
-Version: 3.0
+Version: 4.0
 Author: Shougo <Shougo.Matsu at gmail.com>
 License: MIT license
 
@@ -44,14 +44,20 @@ Improvements in deoplete in comparison to |neocomplete|:
 ==============================================================================
 INSTALL							*deoplete-install*
 
-Note: deoplete requires Neovim(latest is recommended) with Python3 and
+Note: deoplete requires Neovim or Vim8(latest is recommended) with Python3 and
 |+timers| enabled.
 
-1. Extract the files and put them in your Neovim directory
+Please install nvim-yarp plugin for Vim8.
+https://github.com/roxma/nvim-yarp
+
+Please install vim-hug-neovim-rpc plugin for Vim8.
+https://github.com/roxma/vim-hug-neovim-rpc
+
+1. Extract the files and put them in your Neovim or .vim directory
    (usually `$XDG_CONFIG_HOME/nvim/`).
-2. Execute the ":UpdateRemotePlugins" and restart Neovim.
-3. Call |deoplete#enable()| or set "let g:deoplete#enable_at_startup = 1" in
+2. Call |deoplete#enable()| or set "let g:deoplete#enable_at_startup = 1" in
    your `init.vim`
+3. Execute the ":UpdateRemotePlugins" if Neovim.
 
 If ":echo has('python3')" returns `1`, then you're done; otherwise, see below.
 
@@ -83,6 +89,14 @@ g:deoplete#enable_at_startup
 
 		With the default value 0, you cannot use deoplete
 		unless you start it manually.
+
+						*g:deoplete#enable_yarp*
+g:deoplete#enable_yarp
+		Use nvim-yarp library instead of neovim remote plugin feature.
+		Note: nvim-yarp plugin is needed.
+		https://github.com/roxma/nvim-yarp
+
+		Default value: 0
 
 						*g:deoplete#complete_method*
 g:deoplete#complete_method
@@ -130,6 +144,13 @@ g:deoplete#enable_refresh_always
 
 		Default value: 0
 
+					*g:deoplete#enable_on_insert_enter*
+g:deoplete#enable_on_insert_enter
+		Deoplete enables the auto completion on |InsertEnter| autocmd
+		if this value is 1.
+
+		Default value: 1
+
 				*g:deoplete#auto_complete_start_length*
 g:deoplete#auto_complete_start_length
 		This variable controls the number of the input completion
@@ -163,7 +184,8 @@ g:deoplete#enable_profile
 
 						*g:deoplete#delimiters*
 g:deoplete#delimiters
-		Delimiters list.
+		Delimiters list.  It is used in
+		|deoplete-filter-converter_auto_delimiter|.
 
 		Default value: ['/']
 
@@ -458,7 +480,7 @@ deoplete#custom#source({source-name}, {option-name}, {value})
 		" Enable jedi source debug messages
 		" let g:deoplete#enable_profile = 1
 		" call deoplete#enable_logging('DEBUG', 'deoplete.log')
-		" call deoplete#custom#source('jedi', 'debug_enabled', 1)
+		" call deoplete#custom#source('jedi', 'is_debug_enabled', 1)
 <
 						*deoplete#enable_logging()*
 deoplete#enable_logging({level}, {logfile})
@@ -469,7 +491,7 @@ deoplete#enable_logging({level}, {logfile})
 		Messages are appended to this file.  Each log session will
 		start with "--- Deoplete Log Start ---".
 		Note: You must enable
-		|deoplete-source-attribute-debug_enabled| to debug the
+		|deoplete-source-attribute-is_debug_enabled| to debug the
 		sources.
 
 
@@ -571,26 +593,38 @@ buffer						*deoplete-source-buffer*
 		Note: It takes time to get the candidates in the first time if
 		you want to edit the large files(like Vim 22000 lines eval.c).
 
+		rank: 100
+
 member						*deoplete-source-member*
 		It collects members from current buffer.
+
+		rank: 100
 
 tag							*deoplete-source-tag*
 		It collects keywords from |ctags| files.
 		Note: It only supports UTF-8 encoding tag file.
+
+		rank: 100
 
 file							*deoplete-source-file*
 		This source collects keywords from local files. Specifically,
 		it completes file and directory names and paths, e.g.
 		/usr/lib/share.
 
+		rank: 150
+
 omni							*deoplete-source-omni*
 		This source collects keywords from 'omnifunc'.
 		Note: It is not asynchronous.
+
+		rank: 500
 
 dictionary					*deoplete-source-dictionary*
 		This source collects |g:deoplete#keyword_patterns| keywords
 		from 'dictionary'. Note: it uses buffer-local 'dictionary'
 		set up.
+
+		rank: 100
 >
 		" Examples:
 		" Sample configuration for dictionary source with multiple
@@ -619,6 +653,8 @@ around						    *deoplete-source-around*
 		    A - above the cursor
 		    B - below the cursor
 		    C - in changes
+
+		rank: 800
 
 ==============================================================================
 FILTERS							*deoplete-filters*
@@ -655,6 +691,21 @@ matcher_length
 		Length matching matcher.
 		It removes candidates shorter than or equal to the user input.
 
+					*deoplete-filter-matcher_cpsm*
+matcher_cpsm
+		A matcher which filters the candidates using cpsm.
+		It is like |deoplete-filter-matcher_full_fuzzy| but faster.
+		It also sorts the candidates using cpsm.
+		Note: cpsm plugin build/install is needed in 'runtimepath'.
+		https://github.com/nixprime/cpsm
+		Note: You must use Python3 support enabled cpsm. >
+			$ PY3=ON ./install.sh
+<
+		Configuration example: >
+>
+		call deoplete#custom#source('_', 'matchers', ['matcher_cpsm'])
+		call deoplete#custom#source('_', 'sorters', [])
+<
 						*deoplete-filter-sorter_rank*
 sorter_rank	Matched rank order sorter.  The higher the head matched word
 		or already selected.
@@ -668,7 +719,8 @@ converter_remove_overlap
 
 				*deoplete-filter-converter_auto_delimiter*
 converter_auto_delimiter
-		It adds delimiter characters in a candidate's word.
+		It adds |g:deoplete#delimiters| characters in a candidate's
+		word.
 
 				*deoplete-filter-converter_auto_paren*
 converter_auto_paren
@@ -715,6 +767,14 @@ __init__	(Function)
 name		(String)			(Required)
 		The name of a source.
 
+					*deoplete-source-attribute-mark*
+mark		(String)			(Optional)
+		The mark of a source.
+
+					*deoplete-source-attribute-description*
+description	(String)			(Optional)
+		The description of a source.
+
 					*deoplete-source-attribute-filetypes*
 filetypes	(List[str])			(Optional)
 		Available filetype list.
@@ -759,6 +819,15 @@ max_abbr_width
 
 		If you omit it, it is set |g:deoplete#max_abbr_width| value.
 
+				*deoplete-source-attribute-max_kind_width*
+max_kind_width
+		(Integer)			(Optional)
+		If the candidate kind length exceeds the length it will be cut
+		down.
+		It it is less than or equal 0, it will be disabled.
+
+		If you omit it, it is set |g:deoplete#max_menu_width| value.
+
 				*deoplete-source-attribute-max_menu_width*
 max_menu_width
 		(Integer)			(Optional)
@@ -791,13 +860,24 @@ is_bytepos
 		Because Vim script string uses byte position.  Python string
 		uses character position.
 
+					*deoplete-source-attribute-is_silent*
+is_silent
+		(Bool)				(Optional)
+		If it is True, the source messages are disabled.
+
 					*deoplete-source-attribute-is_volatile*
 is_volatile
 		(Bool)				(Optional)
-		If it is True, the source depends on the user input.
+		If it is True, the source depends on the user input. It means
+		that if this flag is set to False, deoplete will cache
+		gather_candidates results and will not call gather_candidates
+		on each input change. Only on_post_filter method will be
+		called on each input change (if implemented).
 
-				*deoplete-source-attribute-debug_enabled*
-debug_enabled
+		Default value: False
+
+				*deoplete-source-attribute-is_debug_enabled*
+is_debug_enabled
 		(Bool)				(Optional)
 		If it is True, the debug log feature is enabled in the source.
 
@@ -925,16 +1005,26 @@ __{name}	(Unspecified)			(Optional)
 			It contains current 'filetype' and same
 			filetypes and composite filetypes.
 
+		is_refresh		(Bool)
+			If the input is changed, it will be "True".
+
 		is_async		(Bool)
 			If the gather is asynchronous, the source must set
-			it "True".
+			it to "True". A typical strategy for an asynchronous
+			gather_candidates method to use this flag is to
+			set is_async flag to True while results are being
+			produced in the background (optionally, returning them
+			as they become ready). Once background processing
+			has completed, is_async flag should be set to False
+			indicating that this is the last portion of the
+			candidates.
 
 	The below is the example of async deoplete source.
 	If "context['is_async']" is True, the gather_candidates is called
 	repeatedly.
 >
 	from .base import Base
-	
+
 	class Source(Base):
 	    def __init__(self, vim):
 	        super().__init__(vim)
@@ -942,7 +1032,7 @@ __{name}	(Unspecified)			(Optional)
 	        self.mark = '[async]'
 	        self.rank = 1000
 	        self._count = 0
-	
+
 	    def gather_candidates(self, context):
 	        self._count += 1
 	        context['is_async'] = self._count < 10
@@ -1061,8 +1151,8 @@ https://github.com/zchee/deoplete-jedi
 perlomni.vim: "PerlOmni" source for Perl
 https://github.com/c9s/perlomni.vim
 
-deoplete-typescript: "typescript" source for typescript
-https://github.com/mhartington/deoplete-typescript
+nvim-typescript: "typescript" source for typescript
+https://github.com/mhartington/nvim-typescript
 
 deoplete-clang: "clang" source for C/C++/ObjC
 https://github.com/zchee/deoplete-clang
@@ -1119,6 +1209,9 @@ https://github.com/Robzz/deoplete-omnisharp/
 deoplete-omnisharp: Improved version of deoplete-omnisharp
 https://github.com/dimixar/deoplete-omnisharp/
 
+deoplete-omnisharp: Embeded omnisharp server version of deoplete-omnisharp
+https://github.com/cyansprite/deoplete-omnisharp
+
 deoplete-hack: "hack" source for Hack and PHP
 https://github.com/zefei/deoplete-hack
 
@@ -1149,6 +1242,9 @@ https://github.com/fszymanski/deoplete-abook
 
 deoplete-emoji: "emoji" source for emoji codes
 https://github.com/fszymanski/deoplete-emoji
+
+LanguageClient-neovim: use Language Server Protocol(LSP) for sources
+https://github.com/autozimu/LanguageClient-neovim
 
 ==============================================================================
 EXTERNAL PLUGINS				*deoplete-external-plugins*
@@ -1186,349 +1282,346 @@ phpcd.vim: another PHP omnifunc. Faster.
 https://github.com/php-vim/phpcd.vim
 
 ==============================================================================
-VIM8 ASYNC API SUPPORT					*deoplete-vim8*
+FREQUENTLY ASKED QUESTIONS (FAQ)                                *deoplete-faq*
 
-Current deoplete does not support Vim8 asynchronous API.
-To support Vim8, neovim-python compatible API is needed.
-I have not plan to create it.
-But if it is created, I will support it.
+                                                        *deoplete-faq-trouble*
+1. Troubleshooting~
 
-Q: Why neovim-python compatible API is needed?  Vim8 already implements
-asynchronous API.  It optimize your plugins, doesn't it?
-Q: Why neocomplete/unite.vim does not support Vim8 asynchronous API?
+Q: Does deoplete support Vim8?
 
-A: Vim8 asynchronous API (or neovim job API) does replace vimproc plugin.
-No more vimproc dependency.  But it does not optimize my plugins.
-To optimize my plugins, I must rewrite the plugins and most functions must be
-executed in the separated process.  It is hard way though, it is already done.
-Yes, it is deoplete!
-
-Q: Why does not use the external interfaces?
-
-A: Current all external interfaces block your Vim.  The neovim remote plugin
-feature is not.
-
-Q: Why neovim remote plugin is better?
-
-A: It is the separated process and easy to communicate with Vim like the
-external interfaces.  I think it is the killer feature in neovim.  It is not
-well known though.
-
-Q: neovim-python compatible API can be implemented by Vim8 async API?
-
-A: Yes.  Vim8 implements JSON RPC.  I think you can create Python-Vim
-input/output interface using JSON RPC.  It is like MessagePack-RPC in neovim.
-
-Q: Why don't you implement neovim-python compatibility API using Vim8 JSON
-RPC?
-
-A: I have not much time.  You can implement it.  Why do I need to implement
-the feature?  neovim remote plugin feature already works!  It should be
-implemented by needed person.
-
-==============================================================================
-FAQ							*deoplete-faq*
-
-Q: What is the "dark powered"?
-
-A: I think text editor is everything in the world.
-I want to do everything in Vim(neovim) like Emacs.
-It is not allowed by |design-not| in Vim.  It is not the light way to use Vim.
-So I have defined it is the dark way.  I am the dark Vimmer.  My plugins are
-dark powered.
-
-Q: deoplete can support Vim8?
-
-A: |deoplete-vim8|
-
-Q: deoplete is slow.
-
-A: Please change |g:deoplete#auto_complete_delay| value.
-It is huge delay value intentionally.
-And some sources slow.  You should check what is the slow.
+A: see |deoplete-vim8|
 
 Q: deoplete does not work.
 
-A:
-  1. Please update neovim to latest version.
+A: 1. Please update neovim to the latest version.
 
-  2. Please update neovim python3 module to latest version.
->
-	$ sudo pip3 install neovim --upgrade
+   2. Please update neovim python3 module to the latest version. >
+
+       $ sudo pip3 install neovim --upgrade
 <
-  3. Please execute ":UpdateRemotePlugins" or ":NeoBundleRemotePlugins" (for
-  using NeoBundle) command manually.
+   3. Please execute ":UpdateRemotePlugins" command manually if Neovim.
 
-  4. Please check if Python3 interface works.  You can check it by ":echo
-  has('python3')" command.
+   4. Please install nvim-yarp plugin for Vim8.
+   https://github.com/roxma/nvim-yarp
 
-https://github.com/neovim/neovim/wiki/Troubleshooting#python-support-isnt-working
+   5. Please install vim-hug-neovim-rpc plugin for Vim8.
+   https://github.com/roxma/vim-hug-neovim-rpc
 
-  5. Please enable debug mode from command line and upload the log file. >
+   6. Please check if Python3 interface works. You can check it by the command
+       `:echo has('python3')` .
 
-	$ export NVIM_PYTHON_LOG_FILE=/tmp/log
-	$ export NVIM_PYTHON_LOG_LEVEL=DEBUG
-	$ neovim
-	... Use deoplete
-	$ cat /tmp/log_{PID}
+   https://github.com/neovim/neovim/wiki/Troubleshooting#python-support-isnt-working
 
-Q: I want to get quiet messages in auto completion.
+   7. You can test |g:deoplete#enable_yarp| option for neovim.
 
-A: You can disable the messages through the 'shortmess' option.
->
-	if has("patch-7.4.314")
-	  set shortmess+=c
-	endif
+   8. Please enable debug mode from command line and upload the log file. >
+
+       $ export NVIM_PYTHON_LOG_FILE=/tmp/log
+       $ export NVIM_PYTHON_LOG_LEVEL=DEBUG
+       $ neovim
+       ... Use deoplete
+       $ cat /tmp/log_{PID}
+
+Q: deoplete is slow.
+
+A: Please change |g:deoplete#auto_complete_delay| value. It is a huge delay
+   value intentionally. And some sources are slow. You should check which one
+   is slow and consider disabling them.
+
+Q: Deoplete popup is not displayed immediately.
+
+A: Deoplete is initialized asynchronously. So it is a feature.
+
+Q: Neovim startup is slow when |g:deoplete#enable_at_startup| is enabled.
+
+A: If it is enabled, Neovim will enable and load deoplete in startup. It
+   may be slow. You should use lazy load feature in plugin manager or use
+   |:autocmd| to call |deoplete#enable()|. >
+
+       " Enable deoplete when InsertEnter.
+       let g:deoplete#enable_at_startup = 0
+       autocmd InsertEnter * call deoplete#enable()
 <
-Q: I want to look selected function's arguments in deoplete. But I don't
-like preview window feature.
+  And you should set |g:python3_host_prog| variable. It reduces almost 20ms
+  startuptime.
 
-A: You can do it by |echodoc|.
-http://github.com/Shougo/echodoc.vim
+Q: |deoplete-source-tag| does not work.
+   https://github.com/Shougo/deoplete.nvim/issues/309
 
-Q: I want to use auto select feature like |neocomplete|.
+A: Please increase |g:deoplete#tag#cache_limit_size| value.
+
+Q: deoplete cannot complete filename after "=".
+
+A: 'isfname' contains "=".  You should remove it. >
+
+       set isfname-==
+
+Q: Deoplete does not work with vim-multiple-cursors.
+
+A: You must disable deoplete when using vim-multiple-cursors. >
+
+       function g:Multiple_cursors_before()
+         let g:deoplete#disable_auto_complete = 1
+       endfunction
+       function g:Multiple_cursors_after()
+         let g:deoplete#disable_auto_complete = 0
+       endfunction
+
+Q: I want to debug the sources.
+
+A: Please enable logging feature like this. >
+
+       let g:deoplete#enable_profile = 1
+       call deoplete#enable_logging('DEBUG', 'deoplete.log')
+       call deoplete#custom#source('jedi', 'is_debug_enabled', 1)
+<
+                                                         *deoplete-faq-config*
+2. Configuration~
+
+Q: I want to silence the |ins-completion-menu| messages in the command line
+   such as "-- XXX completion (YYY)", "match 1 of 2", "The only match",
+   "Pattern not found", "Back at original", etc.
+
+A: You can disable the messages through the 'shortmess' option. >
+
+       if has("patch-7.4.314")
+         set shortmess+=c
+       endif
+
+Q: I want to use the auto select feature like |neocomplete|.
 
 A: You can use it by the 'completeopt' option. >
 
-	set completeopt+=noinsert
+       set completeopt+=noinsert
+
+Q: How do I select one of the responses from the pop up? I assume this is
+   really obvious, but I have not figured it out.
+
+A: Please press <C-y> on the candidate.
+
+Q: I want to close the preview window after completion is done.
+
+A: >
+        autocmd CompleteDone * silent! pclose!
+<
+   Note: It conflicts with iabbr.
+   https://github.com/Shougo/deoplete.nvim/issues/234
+
+Q: I want to disable the preview window feature.
+   https://github.com/Shougo/deoplete.nvim/issues/298
+
+A: >
+       set completeopt-=preview
+
+Q: I want to look selected function's arguments in deoplete. But I don't
+   like preview window feature.
+
+A: You can do it by |echodoc|.
+   http://github.com/Shougo/echodoc.vim
+
+Q: When I press enter, neovim closes the popup instead of inserting new line.
+
+A: It is Vim/neovim's default behavior (feature.)  If you want to insert the
+   new line, you should map <CR>. >
+
+       inoremap <silent> <CR> <C-r>=<SID>my_cr_function()<CR>
+       function! s:my_cr_function() abort
+         return deoplete#close_popup() . "\<CR>"
+       endfunction
+
+Q: I don't want to see the typed word in the completion menu.
+
+A: You should add |deoplete-filter-matcher_length| to the matchers. >
+
+        call deoplete#custom#source('_', 'matchers', ['matcher_fuzzy',
+        \ 'matcher_length'])
+<
+   Note: Replace `'_'` with a specific source such as `'around'` if
+         you want to keep seeing certain sources, e.g. snippets.
+
+Q: How can I change the order of sources?
+
+A: Change the rank of the sources as following, here illustrated for
+   UltiSnips >
+
+        call deoplete#custom#source('ultisnips', 'rank', 1000)
+
+Q: How can I sort all entries alphabetically?
+
+A: >
+        call deoplete#custom#source('_', 'sorters', ['sorter_word'])
+
+Q: I want to use head matcher instead of fuzzy matcher.
+
+A: You can achieve this by following >
+
+       call deoplete#custom#source('_', 'matchers', ['matcher_head'])
+
+Q: I want to disable the buffer source.
+
+A: You can use |g:deoplete#ignore_sources|. >
+
+       let g:deoplete#ignore_sources = {}
+       let g:deoplete#ignore_sources._ = ['buffer']
+
+Q: How to prevent auto bracket completion?
+   https://github.com/Shougo/deoplete.nvim/issues/150
+
+A: >
+        call deoplete#custom#source('_', 'converters',
+        \ ['converter_remove_paren'])
+
+Q: The candidates are filtered by first character.
+   https://github.com/Shougo/deoplete.nvim/issues/288
+
+A: >
+        call deoplete#custom#source('_', 'matchers', ['matcher_full_fuzzy'])
+
+Q: I want to use the syntax files as a completion source
+
+A: Please install |neco-syntax| plugin.
+   https://github.com/Shougo/neco-syntax
+
+Q: I want to complete the candidates from other files.
+   https://github.com/Shougo/deoplete.nvim/issues/133
+
+A: You must install |context_filetype| plugin.
+   https://github.com/Shougo/context_filetype.vim
+   And you must set |g:context_filetype#same_filetypes| variable.
+
+Q: What is the difference of |g:deoplete#omni_patterns| and
+   |g:deoplete#omni#input_patterns| ?
+
+A: |g:deoplete#omni_patterns| offers:
+    - can call all omni functions
+    - called by Vim
+    - Vim regexp
+
+   |g:deoplete#omni#input_patterns| offers:
+    - cannot call some omni functions
+    - can use deoplete features
+    - called by deoplete
+    - Python3 regexp
+
+   You should use |g:deoplete#omni#input_patterns| if possible.
+
+Q: Is there a way to control the colors used for popup menu using highlight
+   groups?
+
+A: Like this:
+>
+	highlight Pmenu ctermbg=8 guibg=#606060
+	highlight PmenuSel ctermbg=1 guifg=#dddd00 guibg=#1f82cd
+	highlight PmenuSbar ctermbg=0 guibg=#d6d6d6
+<
+Q: What does each part of a line on the pop up mean?  For example I see:
+   Bree pops up Breed [~] A. What do [~] and A stand for?
+
+A: It is the source mark. [~] is from around source.  A is from
+   |deoplete-source-around|.
+
+                                                    *deoplete-faq-ft-specific*
+3. Filetype Specific Questions~
 
 Q: I want to disable the auto completion for certain filetypes.
 
 A: Please use |b:deoplete_disable_auto_complete|. >
-	autocmd FileType tex let b:deoplete_disable_auto_complete = 1
+
+       autocmd FileType tex let b:deoplete_disable_auto_complete = 1
 
 Q: Ruby omni completion does not work in neovim.
 
 A: Ruby omni completion support was added to nvim 0.1.5. For it to work you
-will need to install the neovim gem.
-https://github.com/alexgenco/neovim-ruby
+   will need to install the neovim gem.
+   https://github.com/alexgenco/neovim-ruby >
 
-	$ gem install neovim
+       $ gem install neovim
 
 Q: I want to use C/C++ omni completion with deoplete.
 
 A: You can use |clang_complete| or |deoplete-clang|.
 
-https://github.com/Rip-Rip/clang_complete
-https://github.com/zchee/deoplete-clang
+   https://github.com/Rip-Rip/clang_complete
+   https://github.com/zchee/deoplete-clang
 
-For clang_complete configuration is below. >
+   For clang_complete configuration is below. >
 
-	let g:clang_complete_auto = 0
-	let g:clang_auto_select = 0
-	let g:clang_omnicppcomplete_compliance = 0
-	let g:clang_make_default_keymappings = 0
-	"let g:clang_use_library = 1
-
-Current clang_complete supports the original deoplete source.
-It is better than using omni source.
-
-Q: I want to use head matcher instead of fuzzy matcher.
-
-A: >
-	" Use head matcher instead of fuzzy matcher
-	call deoplete#custom#source('_', 'matchers', ['matcher_head'])
-
-Q: Is deoplete faster than neocomplete?
-
-A: No.  Deoplete is asynchronous completion plugin.  But it does not
-mean that it is faster than neocomplete.  It can skip the completion if you
-input the characters too fast.  I think it is great than the speed.  You
-should use faster machine for deoplete.
-
-Q: I want to complete AAA using deoplete.
-
-A: You can create the source for it.  Why don't create the source if you need?
+       let g:clang_complete_auto = 0
+       let g:clang_auto_select = 0
+       let g:clang_omnicppcomplete_compliance = 0
+       let g:clang_make_default_keymappings = 0
+       "let g:clang_use_library = 1
+<
+   Currently |clang_complete| supports the original deoplete source.
+   It is better than using omni source.
 
 Q: I want to use jedi-vim omni completion with deoplete.
 
-A: You should install deoplete-jedi instead of jedi-vim. >
-https://github.com/zchee/deoplete-jedi
+A: You should install deoplete-jedi instead of jedi-vim.
+   https://github.com/zchee/deoplete-jedi
 
-Q: When I press enter, neovim close the popup instead of inserting new line.
+Q: I want to use Java script omnifunc.
 
-A: It is Vim/neovim's default behavior (feature.)  If you want to insert the
-new line, you should map <CR>. >
+A: Please set |g:deoplete#omni#input_patterns| manually. >
 
-	inoremap <silent> <CR> <C-r>=<SID>my_cr_function()<CR>
-	function! s:my_cr_function() abort
-	  return deoplete#close_popup() . "\<CR>"
-	endfunction
+       let g:deoplete#omni#input_patterns = {}
+       let g:deoplete#omni#input_patterns.javascript = '[^. *\t]\.\w*'
 
 Q: I want to use "vim-lua-ftplugin".
-https://github.com/xolox/vim-lua-ftplugin
+   https://github.com/xolox/vim-lua-ftplugin
 
-A: Please set the config as below.
->
-	let g:lua_check_syntax = 0
-	let g:lua_complete_omni = 1
-	let g:lua_complete_dynamic = 0
-	let g:lua_define_completion_mappings = 0
+A: Please set the config as below.  >
 
-	let g:deoplete#omni#functions.lua = 'xolox#lua#omnifunc'
-	"let g:deoplete#omni#functions.lua = 'xolox#lua#completefunc'
-<
-Q: I want to disable buffer source.
+       let g:lua_check_syntax = 0
+       let g:lua_complete_omni = 1
+       let g:lua_complete_dynamic = 0
+       let g:lua_define_completion_mappings = 0
 
-A: You can use |g:deoplete#ignore_sources|. >
+       let g:deoplete#omni#functions.lua = 'xolox#lua#omnifunc'
+       "let g:deoplete#omni#functions.lua = 'xolox#lua#completefunc'
 
-	let g:deoplete#ignore_sources = {}
-	let g:deoplete#ignore_sources._ = ['buffer']
+Q: I want to complete AAA using deoplete.
 
-Q: I want to complete go candidates.
+A: You can create the source for it. Why don't create the source if you need?
 
-A: You should install deoplete-go source.
-https://github.com/zchee/deoplete-go
+                                                        *deoplete-faq-general*
+4. General Questions~
 
-Q: I want to complete the candidates from other files.
-https://github.com/Shougo/deoplete.nvim/issues/133
+Q: How to donate money to you?
 
-A: You must install context_filetype plugin.
-https://github.com/Shougo/context_filetype.vim
-And you must set |g:context_filetype#same_filetypes| variable.
+A: I don't get the donation, but if you want to donate, please support neovim
+project.  My plugins depends on neovim development.
 
-Q: I want to close the preview window after completion is done.
+https://salt.bountysource.com/teams/neovim
 
-A: >
-	autocmd CompleteDone * silent! pclose!
+Q: What means "dark powered"?
 
-Note: It conflicts with iabbr.
-https://github.com/Shougo/deoplete.nvim/issues/234
+A: I think text editor is everything in the world. I want to do everything in
+   Vim(neovim) like Emacs. It is not allowed by |design-not| in Vim. It is not
+   the light way to use Vim. So I have defined it as the dark way. I am the
+   dark Vimmer. My plugins are dark powered.
 
-Q: I want to see the typed word in the completion menu.
+Q: Is deoplete faster than neocomplete?
 
-A: You should remove |deoplete-filter-matcher_length| from the matchers.
->
-	call deoplete#custom#source('_', 'matchers', ['matcher_fuzzy'])
-<
-Q: How to prevent auto bracket completion?
-https://github.com/Shougo/deoplete.nvim/issues/150
+A: No. Deoplete is an asynchronous completion plugin. But it does not mean
+   that it is faster than neocomplete. It can skip the completion if you input
+   the characters too fast. I think it is great than the speed. You should use
+   faster machine for deoplete.
 
-A: >
-	call deoplete#custom#source('_', 'converters',
-	\ ['converter_remove_paren'])
+Q: Is deoplete better than completor.vim?
 
-Q: What is the difference of |g:deoplete#omni_patterns| and
-|g:deoplete#omni#input_patterns| ?
+A: Please see
+   https://www.reddit.com/r/vim/comments/573e3d/completorvim_async_completion_framework_made_ease/
 
-A:
-
-g:deoplete#omni_patterns is:
-
- * can call all omni functions
-
- * called by Vim
-
- * Vim regexp
-
-g:deoplete#omni#input_patterns is:
-
- * cannot call some omni functions
-
- * can use deoplete features
-
- * called by deoplete
-
- * Python3 regexp
-
-You should use |g:deoplete#omni#input_patterns| if possible.
-
-Q: deoplete cannot complete filename after "=".
-
-A: It seems 'isfname' contains "=".  You should remove it. >
-	set isfname-==
-
-Q: Deoplete does not work with vim-multiple-cursors.
-
-A: You must disable deoplete when using vim-multiple-cursors. >
-	function g:Multiple_cursors_before()
-	  let g:deoplete#disable_auto_complete = 1
-	endfunction
-	function g:Multiple_cursors_after()
-	  let g:deoplete#disable_auto_complete = 0
-	endfunction
-
-
-Q: The candidates are filtered by first character.
-https://github.com/Shougo/deoplete.nvim/issues/288
-
-A: >
-	call deoplete#custom#source('_', 'matchers', ['matcher_full_fuzzy'])
-<
 Q: Are there any plans to support GotoDefinition feature like YouCompleteMe?
 
 A: https://github.com/zchee/deoplete-jedi/issues/35
 
-
-Q: What about the alphabetical sorting of all entries?
-
-A: >
-	call deoplete#custom#source('_', 'sorters', ['sorter_word'])
-<
-
-Q: I want to change the UltiSnips source order.
-
-A: >
-	call deoplete#custom#source('ultisnips', 'rank', 1000)
-<
-
-Q: tag source does not work.
-https://github.com/Shougo/deoplete.nvim/issues/309
-
-A: Please increase |g:deoplete#tag#cache_limit_size| value.
-
-Q: I want to debug the sources.
-
-A: Please enable logging feature like this.
->
-		let g:deoplete#enable_profile = 1
-		call deoplete#enable_logging('DEBUG', 'deoplete.log')
-		call deoplete#custom#source('jedi', 'debug_enabled', 1)
-<
-
-Q: Is deoplete better than completer.vim?
-
-A: Please see
-https://www.reddit.com/r/vim/comments/573e3d/completorvim_async_completion_framework_made_ease/
-
-Q: I want to use Java script omnifunc.
-
-A: Please set |g:deoplete#omni_patterns| manually. >
-		let g:deoplete#omni_patterns = {}
-		let g:deoplete#omni_patterns.javascript = '[^. *\t]\.\w*'
-
-
-Q: I want to use the syntax files as a completion source
-
-A: Please install neco-syntax plugin.
-https://github.com/Shougo/neco-syntax
-
-Q: Neovim startup is slow when |g:deoplete#enable_at_startup| is enabled.
-
-A: If it is enabled, Neovim will enable and load deoplete in startup.
-It may be slow.  You should use lazy load feature in plugin manager or use
-|:autocmd| to call |deoplete#enable()|.
->
-		" Enable deoplete when InsertEnter.
-		let g:deoplete#enable_at_startup = 0
-		autocmd InsertEnter * call deoplete#enable()
-
-And you should set |g:python3_host_prog| variable.
-It reduces almost 20ms startuptime.
-
-Q: I want to disable the preview window feature.
-https://github.com/Shougo/deoplete.nvim/issues/298
-
-A: >
-	set completeopt-=preview
-
-
-Q: Deoplete popup is not displayed immediately.
-
-A: Deoplete is initialized asynchronously.  So it is feature.
-
 ==============================================================================
 COMPATIBILITY					*deoplete-compatibility*
+
+2017.12.04
+* "debug_enabled" is deprecated.  Please use "is_debug_enabled" instead.
 
 2017.07.22
 * "deoplete#custom#set()" is deprecated.
