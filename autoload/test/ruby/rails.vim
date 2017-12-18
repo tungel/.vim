@@ -1,5 +1,5 @@
 if !exists('g:test#ruby#rails#file_pattern')
-  let g:test#ruby#rails#file_pattern = '_test\.rb$'
+  let g:test#ruby#rails#file_pattern = '\v_test\.rb$'
 endif
 
 function! test#ruby#rails#test_file(file) abort
@@ -11,9 +11,9 @@ function! test#ruby#rails#test_file(file) abort
 endfunction
 
 function! test#ruby#rails#build_position(type, position) abort
-  if a:type == 'nearest'
+  if a:type ==# 'nearest'
     return [a:position['file'].':'.a:position['line']]
-  elseif a:type == 'file'
+  elseif a:type ==# 'file'
     return [a:position['file']]
   else
     return []
@@ -27,7 +27,7 @@ endfunction
 function! test#ruby#rails#executable() abort
   if !empty(glob('.zeus.sock'))
     return 'zeus rails test'
-  elseif filereadable('./bin/rails')
+  elseif filereadable('./bin/rails') && get(g:, 'test#ruby#use_binstubs', 1)
     return './bin/rails test'
   elseif filereadable('Gemfile') && get(g:, 'test#ruby#bundle_exec', 1)
     return 'bundle exec rails test'
@@ -36,7 +36,7 @@ function! test#ruby#rails#executable() abort
   endif
 endfunction
 
-function! s:rails_version()
+function! s:rails_version() abort
   if filereadable('Gemfile.lock')
     for line in readfile('Gemfile.lock')
       let version_string = matchstr(line, '\v^ *rails \(\zs\d+\.\d+\..+\ze\)')

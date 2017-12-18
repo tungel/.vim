@@ -1,5 +1,5 @@
 if !exists('g:test#ruby#minitest#file_pattern')
-  let g:test#ruby#minitest#file_pattern = '_test\.rb$'
+  let g:test#ruby#minitest#file_pattern = '\v_test\.rb$'
 endif
 
 function! test#ruby#minitest#test_file(file) abort
@@ -7,14 +7,14 @@ function! test#ruby#minitest#test_file(file) abort
 endfunction
 
 function! test#ruby#minitest#build_position(type, position) abort
-  if a:type == 'nearest'
+  if a:type ==# 'nearest'
     let name = s:nearest_test(a:position)
     if !empty(name)
       return [a:position['file'], '--name', '/'.name.'/']
     else
       return [a:position['file']]
     endif
-  elseif a:type == 'file'
+  elseif a:type ==# 'file'
     return [a:position['file']]
   else
     return []
@@ -67,7 +67,7 @@ function! test#ruby#minitest#executable() abort
    \ (exists('b:rails_root') || filereadable('./bin/rails'))
     if !empty(glob('.zeus.sock'))
       return 'zeus rake test'
-    elseif filereadable('./bin/rake')
+    elseif filereadable('./bin/rake') && get(g:, 'test#ruby#use_binstubs', 1)
       return './bin/rake test'
     elseif filereadable('Gemfile') && get(g:, 'test#ruby#bundle_exec', 1)
       return 'bundle exec rake test'
@@ -93,9 +93,9 @@ function! s:nearest_test(position) abort
     let test = []
   else
     let test_name = test#base#escape_regex(name['test'][0]).'$'
-    if syntax == 'rails'    " test('foo') { ... }
+    if syntax ==# 'rails'    " test('foo') { ... }
       let test = ['test_'.substitute(test_name, '\s\+', '_', 'g')]
-    elseif syntax == 'spec' " it('foo') { ... }
+    elseif syntax ==# 'spec' " it('foo') { ... }
       let test = ['test_\d+_'.test_name]
     else
       let test = [test_name]
@@ -108,9 +108,9 @@ endfunction
 function! s:syntax(file) abort
   let lines = split(system('cat '.a:file), '\n')
 
-  if !empty(filter(copy(lines), 'v:val =~# g:test#ruby#patterns["test"][1]'))
+  if !empty(filter(copy(lines), "v:val =~# g:test#ruby#patterns['test'][1]"))
     return 'rails'
-  elseif !empty(filter(copy(lines), 'v:val =~# g:test#ruby#patterns["test"][2]'))
+  elseif !empty(filter(copy(lines), "v:val =~# g:test#ruby#patterns['test'][2]"))
     return 'spec'
   else
     return 'test'

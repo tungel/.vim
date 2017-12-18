@@ -9,6 +9,7 @@ License: Same terms as Vim itself (see |license|)
 |test-quickfix-strategies|        QUICKFIX STRATEGIES
 |test-custom-strategies|          CUSTOM STRATEGIES
 |test-configuration|              CONFIGURATION
+|test-projectionist|              PROJECTIONIST INTEGRATION
 |test-about|                      ABOUT
 |test-credits|                    CREDITS
 
@@ -81,6 +82,9 @@ In all commands [args] are forwarded to the underlying test runner.
                                                 *test-:M*
 :M [args]                    Uses the `m` command.
 
+                                                *test-:Ava*
+:Ava [args]                  Uses the `ava` command.
+
                                                 *test-:Intern*
 :Intern [args]               Uses the `intern-client` or `intern-runner` command.
 
@@ -99,6 +103,9 @@ In all commands [args] are forwarded to the underlying test runner.
                                                 *test-:Karma*
 :Karma [args]                Uses the `karma` command.
 
+                                                *test-:WebdriverIo*
+:WebdriverIo [args]          Uses the `wdio` command.
+
                                                 *test-:Nose*
 :Nose [args]                 Uses the `nosetests` command.
 
@@ -114,6 +121,9 @@ In all commands [args] are forwarded to the underlying test runner.
                                                 *test-:PyUnit*
 :PyUnit [args]               Uses the `unittest` `test` command.
 
+                                                *test-:ElmTest*
+:ElmTest [args]              Uses the `elm-test` command.
+
                                                 *test-:ExUnit*
 :ExUnit [args]               Uses the `mix` `test` command.
 
@@ -123,11 +133,19 @@ In all commands [args] are forwarded to the underlying test runner.
                                                 *test-:CommonTest*
 :CommonTest [args]           Uses the `rebar3` `ct` command.
 
+                                                *test-:Xunit*
+:Xunit [args]                Uses the `dotnet` `xunit` command.
+
+                                                *test-:DotnetTest*
+:DotnetTest [args]           Uses the `dotnet` `test` command.
+
                                                 *test-:GoTest*
 :GoTest [args]               Uses the `go` `test` command.
 
-                                                *test-:CargoTest*
+                                                *test-:Ginkgo*
 :Ginkgo [args]               Uses the `ginkgo` command.
+
+                                                *test-:CargoTest*
 :CargoTest [args]            Uses the `cargo` `test` command.
 
                                                 *test-:FireplaceTest*
@@ -155,6 +173,9 @@ In all commands [args] are forwarded to the underlying test runner.
                                                 *test-:Behat*
 :Behat [args]                Uses the `behat` command.
 
+                                                *test-:Dusk*
+:Dusk [args]                 Uses the `dusk` command.
+
                                                 *test-:PHPSpec*
 :PHPSpec [args]              Uses the `phpspec` command.
 
@@ -175,6 +196,9 @@ In all commands [args] are forwarded to the underlying test runner.
 
                                                 *test-:CrystalSpec*
 :CrystalSpec [args]          Uses the `crystal` `spec` command.
+
+                                                *test-:SwiftPM*
+:SwiftPM [args]              Uses the `swift test` command.
 
 STRATEGIES                                      *test-strategies*
 
@@ -355,7 +379,7 @@ If you want to disable clearing the screen for strategies, you can do
   let g:test#preserve_screen = 1
 <
 You may find yourself specifying certain options for your test runners in
-certain situations. You can configure your prefered options with
+certain situations. You can configure your preferred options with
 >
   let g:test#ruby#minitest#options = '--verbose'
 <
@@ -377,6 +401,21 @@ You can instruct test.vim to generate absolute file paths:
   let test#filename_modifier = ':p' " /User/janko/Code/my_project/test/models/user_test.rb
   let test#filename_modifier = ':~' " ~/Code/my_project/test/models/user_test.rb
 <
+
+Test.vim relies on you being cd-ed into the project root. However, sometimes
+you may want to execute tests from a different directory than the current
+working directory. You might have a bigger project with many sub-projects,
+or you might be using |autochdir|. In any case, you can use a different
+working directory for running tests:
+>
+  let test#project_root = "/path/to/your/project"
+<
+PROJECTIONIST INTEGRATION                       *test-projectionist*
+
+If the |projectionist| plug-in is present, you can run a test command from an
+application file, and test.vim will automatically try to run the
+command on the "alternate" test file.
+
 ABOUT                                           *test-about*
 
 You can get the latest version, see the changelog, or report a bug on GitHub:

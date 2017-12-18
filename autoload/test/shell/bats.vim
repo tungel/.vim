@@ -1,5 +1,5 @@
 if !exists('g:test#shell#bats#file_pattern')
-  let g:test#shell#bats#file_pattern = '\.bats$'
+  let g:test#shell#bats#file_pattern = '\v\.bats$'
 endif
 
 function! test#shell#bats#test_file(file) abort
@@ -7,7 +7,7 @@ function! test#shell#bats#test_file(file) abort
 endfunction
 
 function! test#shell#bats#build_position(type, position) abort
-  if a:type == 'nearest' || a:type == 'file'
+  if a:type ==# 'nearest' || a:type ==# 'file'
     return [a:position['file']]
   else
     return []

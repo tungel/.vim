@@ -3,11 +3,17 @@ function! test#strategy#vimscript(cmd) abort
 endfunction
 
 function! test#strategy#basic(cmd) abort
-  if s:restorescreen()
-    execute '!'.s:pretty_command(a:cmd)
+  if has('nvim')
+    -tabnew
+    call termopen(a:cmd)
+    startinsert
   else
-    execute '!'.a:cmd
-  endif
+    if s:restorescreen()
+      execute '!'.s:pretty_command(a:cmd)
+    else
+      execute '!'.a:cmd
+    endif
+  end
 endfunction
 
 function! test#strategy#make(cmd) abort
@@ -30,22 +36,18 @@ function! test#strategy#dispatch(cmd) abort
   execute 'Dispatch '.a:cmd
 endfunction
 
+function! test#strategy#dispatch_background(cmd) abort
+  execute 'Dispatch! '.a:cmd
+endfunction
+
 function! test#strategy#vimproc(cmd) abort
   execute 'VimProcBang '.a:cmd
 endfunction
 
 function! test#strategy#neovim(cmd) abort
-  let opts = {'suffix': ' # vim-test'}
-  function! opts.close_terminal()
-    if bufnr(self.suffix) != -1
-      execute 'bdelete!' bufnr(self.suffix)
-    end
-  endfunction
-  call opts.close_terminal()
-
   botright new
-  call termopen(a:cmd . opts.suffix, opts)
-  au BufDelete <buffer> wincmd p
+  call termopen(a:cmd)
+  au BufDelete <buffer> wincmd p " switch back to last window
   startinsert
 endfunction
 
@@ -59,7 +61,7 @@ endfunction
 
 function! test#strategy#vimux(cmd) abort
   if exists('g:test#preserve_screen') && !g:test#preserve_screen
-    if exists("g:VimuxRunnerIndex") && _VimuxHasRunner(g:VimuxRunnerIndex) != -1
+    if exists('g:VimuxRunnerIndex') && _VimuxHasRunner(g:VimuxRunnerIndex) != -1
       call VimuxRunCommand(!s:Windows() ? 'clear' : 'cls')
       call VimuxClearRunnerHistory()
     endif
@@ -86,7 +88,7 @@ function! test#strategy#iterm(cmd) abort
 endfunction
 
 
-function! s:execute_with_compiler(cmd, script)
+function! s:execute_with_compiler(cmd, script) abort
   try
     let default_makeprg = &l:makeprg
     let default_errorformat = &l:errorformat
