@@ -30,6 +30,7 @@
 let s:save_cpo = &cpo
 set cpo&vim
 
+
 function! unite#sources#outline#modules#ctags#import() abort
   return s:Ctags
 endfunction
@@ -214,7 +215,7 @@ function! s:Ctags_extract_headings(context) abort
     return []
   elseif !s:Ctags_supports(filetype)
     call unite#print_message("[unite-outline] " .
-          \ "Sorry, your ctags doesn't support " . toupper(filetype))
+          \ "Sorry, your ctags doesn't support " . filetype)
     return []
   endif
 
@@ -453,10 +454,22 @@ let s:Ctags.lang_info.cs = {
       \ 'scope_delim'  : '.',
       \ }
 
+let s:Ctags.lang_info.rust = {
+      \ 'name': 'Rust',
+      \ 'ctags_options': '',
+      \ 'scope_kinds'  : [],
+      \ }
+
 let s:Ctags.lang_info.typescript = {
       \ 'name': 'typescript',
       \ 'ctags_options': '',
       \ 'scope_kinds'  : ['modules', 'classes', 'interfaces', 'enums', 'functions', 'varlambdas'],
+      \ }
+
+let s:Ctags.lang_info.elm = {
+      \ 'name': 'Elm',
+      \ 'ctags_options': '',
+      \ 'scope_kinds'  : ['function', 'constant', 'port', 'type', 'type-alias'],
       \ }
 
 "-----------------------------------------------------------------------------
