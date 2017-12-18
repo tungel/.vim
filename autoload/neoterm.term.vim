@@ -42,26 +42,27 @@ endfunction
 function! g:neoterm.term.open()
   let l:self.origin = exists('*win_getid') ? win_getid() : 0
   call neoterm#window#reopen(l:self)
+  if g:neoterm_autoscroll
+    call l:self.normal('G')
+  end
 endfunction
 
-function! g:neoterm.term.focus()
-  exec printf('%swincmd w', bufwinnr(l:self.buffer_id))
+function! g:neoterm.term.focus_exec(cmd)
+  let l:winnr = bufwinnr(l:self.buffer_id)
+  if l:winnr > 0
+    let l:win_id = exists('*win_getid') ? win_getid() : 0
+    exec printf('%swincmd w', l:winnr)
+    call a:cmd()
+    call win_gotoid(l:win_id)
+  end
 endfunction
 
 function! g:neoterm.term.vim_exec(cmd)
-  let l:win_id = exists('*win_getid') ? win_getid() : 0
-  call l:self.focus()
-  exec a:cmd
-  call win_gotoid(l:win_id)
+  call l:self.focus_exec({ -> execute(a:cmd) })
 endfunction
 
 function! g:neoterm.term.normal(cmd)
-  let l:win_id = exists('*win_getid') ? win_getid() : 0
-  call l:self.focus()
-  if b:neoterm_id
-    exec printf('normal! %s', a:cmd)
-  end
-  call win_gotoid(l:win_id)
+  call l:self.vim_exec(printf('normal! %s', a:cmd))
 endfunction
 
 function! g:neoterm.term.close(...)

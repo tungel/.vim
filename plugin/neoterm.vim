@@ -59,6 +59,10 @@ if !exists('g:neoterm_autoinsert')
   let g:neoterm_autoinsert = 0
 end
 
+if !exists('g:neoterm_autojump')
+  let g:neoterm_autojump = 0
+endif
+
 if !exists('g:neoterm_split_on_tnew')
   let g:neoterm_split_on_tnew = 1
 end
@@ -99,6 +103,10 @@ if !exists('g:neoterm_open_in_all_tabs')
   let g:neoterm_open_in_all_tabs = 0
 end
 
+if !exists('g:neoterm_auto_repl_cmd')
+  let g:neoterm_auto_repl_cmd = 1
+end
+
 command! -bar -complete=shellcmd Tnew silent call neoterm#tnew()
 command! -bar Topen silent call neoterm#open()
 command! -bang -bar Tclose silent call neoterm#close(<bang>0)
@@ -108,6 +116,9 @@ command! -bar TtoggleAll silent call neoterm#toggleAll()
 command! -complete=shellcmd -nargs=+ T silent call neoterm#do(<q-args>)
 command! -complete=shellcmd -nargs=+ Tmap silent call neoterm#map_for(<q-args>)
 command! -nargs=1 Tpos let g:neoterm_position=<q-args>
+
+command! Tnext silent call neoterm#next()
+command! Tprevious silent call neoterm#previous()
 
 " REPL
 command! -bar -complete=customlist,neoterm#list -nargs=1 TREPLSetTerm silent call neoterm#repl#term(<q-args>)
