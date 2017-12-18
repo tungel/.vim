@@ -14,10 +14,13 @@ function! neoterm#window#create(handlers, source)
 endfunction
 
 function! s:new_split(...)
+  let l:hidden=&hidden
+  let &hidden=0
   let l:cmd = printf('botright%s ', g:neoterm_size)
   let l:cmd .= g:neoterm_position ==# 'horizontal' ? 'new' : 'vnew'
 
   exec a:0 ? printf('%s +buffer%s', l:cmd, a:1) : l:cmd
+  let &hidden=l:hidden
 endfunction
 
 function! s:term_creator(handlers, origin)
@@ -30,6 +33,7 @@ function! neoterm#window#reopen(instance)
 endfunction
 
 function! s:after_open(origin)
+  setf neoterm
   setlocal nonumber norelativenumber
 
   if g:neoterm_fixedsize
@@ -38,7 +42,7 @@ function! s:after_open(origin)
 
   if g:neoterm_autoinsert
     startinsert
-  else
+  elseif !g:neoterm_autojump
     if a:origin
       call win_gotoid(a:origin)
     else
