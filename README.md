@@ -4,6 +4,60 @@ Lean &amp; mean status/tabline for vim that's light as air.
 
 ![img](https://github.com/vim-airline/vim-airline/wiki/screenshots/demo.gif)
 
+When the plugin is correctly loaded, Vim will draw a nice statusline at the
+bottom of each window.
+
+That line consists of several sections, each one displaying some piece of
+information. By default (without configuration) this line will look like this:
+
+```
++-----------------------------------------------------------------------------+
+|~                                                                            |
+|~                                                                            |
+|~                     VIM - Vi IMproved                                      |
+|~                                                                            |
+|~                       version 8.0                                          |
+|~                    by Bram Moolenaar et al.                                |
+|~           Vim is open source and freely distributable                      |
+|~                                                                            |
+|~           type :h :q<Enter>          to exit                               |
+|~           type :help<Enter> or <F1>  for on-line help                      |
+|~           type :help version8<Enter> for version info                      |
+|~                                                                            |
+|~                                                                            |
++-----------------------------------------------------------------------------+
+| A | B |                     C                            X | Y | Z |  [...] |
++-----------------------------------------------------------------------------+
+```
+
+The statusline is the colored line at the bottom, which contains the sections
+(possibly in different colors):
+
+section|meaning (example)
+-------|------------------
+  A    | displays the mode + additional flags like crypt/spell/paste (INSERT)
+  B    | VCS information (branch, hunk summary) (master)
+  C    | filename + read-only flag (~/.vim/vimrc RO)
+  X    | filetype  (vim)
+  Y    | file encoding[fileformat] (utf-8[unix])
+  Z    | current position in the file
+ [...] | additional sections (warning/errors/statistics) from external plugins (e.g. YCM, syntastic, ...)
+
+The information in Section Z looks like this:
+
+`10% ☰ 10/100 ln : 20`
+
+This means:
+```
+10%     - 10 percent down the top of the file
+☰ 10    - current line 10
+/100 ln - of 100 lines
+: 20    - current column 20
+```
+
+For a better look, those sections can be colored differently, depending on various conditions
+(e.g. the mode or whether the current file is 'modified')
+
 # Features
 
 *  Tiny core written with extensibility in mind ([open/closed principle][8]).
@@ -160,14 +214,12 @@ This plugin follows the standard runtime path structure, and as such it can be i
 | [VAM][22] | `call vam#ActivateAddons([ 'vim-airline' ])` |
 | [Dein][52] | `call dein#add('vim-airline/vim-airline')` |
 | [minpac][54] | `call minpac#add('vim-airline/vim-airline')` |
+| pack feature (native Vim 8 package feature)| `git clone https://github.com/vim-airline/vim-airline ~/.vim/pack/dist/start/vim-airline`<br/>Remember to run `:helptags` to generate help tags |
 | manual | copy all of the files into your `~/.vim` directory |
 
-# Configuration
+# Documentation
 
 `:help airline`
-
-The default setting of 'laststatus' is for the statusline to not appear until a split is created. If you want it to appear all the time, add the following to your vimrc:
-`set laststatus=2`
 
 # Integrating with powerline fonts
 
@@ -189,7 +241,11 @@ Many optimizations have been made such that the majority of users will not see a
 
 The [minivimrc][7] project has some helper mappings to troubleshoot performance related issues.
 
-If you don't want all the bells and whistles enabled by default, you can define a value for `g:airline_extensions`.  When this variable is defined, only the extensions listed will be loaded; an empty array would effectively disable all extensions.
+If you don't want all the bells and whistles enabled by default, you can define a value for `g:airline_extensions`.  When this variable is defined, only the extensions listed will be loaded; an empty array would effectively disable all extensions (e.g. `:let g:airline_extensions = []`).
+
+Also, you can enable caching of the various syntax highlighting groups. This will try to prevent some of the more expensive `:hi` calls in Vim, which seem to be expensive in the Vim core at the expense of possibly not being hunderet percent correct all the times (especially if you often change highlighting groups yourself using `:hi` commands). To set this up do `:let g:airline_highlighting_cache = 1`. A `:AirlineRefresh` will however clear the cache.
+
+In addition you might want to check out the [dark_minimal theme][55], which does not change highlighting groups once they are defined. Also please check the [FAQ][27] for more information on how to diagnose and fix the problem.
 
 # Screenshots
 
@@ -259,3 +315,4 @@ MIT License. Copyright (c) 2013-2017 Bailey Ling & Contributors.
 [52]: https://github.com/Shougo/dein.vim
 [53]: https://github.com/lervag/vimtex
 [54]: https://github.com/k-takata/minpac/
+[55]: https://github.com/vim-airline/vim-airline-themes/blob/master/autoload/airline/themes/dark_minimal.vim
