@@ -39,6 +39,9 @@ let g:neomake_java_maven_executable =
 let g:neomake_java_gradle_executable =
             \ get(g:, 'neomake_java_gradle_executable', s:is_windows? '.\gradlew.bat' : './gradlew')
 
+let g:neomake_java_ant_executable =
+            \ get(g:, 'neomake_java_ant_executable', 'ant')
+
 let g:neomake_java_checkstyle_executable =
             \ get(g:, 'neomake_java_checkstyle_executable', 'checkstyle')
 
@@ -66,6 +69,9 @@ let g:neomake_java_javac_autoload_maven_classpath =
 let g:neomake_java_javac_autoload_gradle_classpath =
             \ get(g:, 'neomake_java_javac_autoload_gradle_classpath', 1)
 
+let g:neomake_java_javac_autoload_ant_classpath =
+            \ get(g:, 'neomake_java_javac_autoload_ant_classpath', 1)
+
 let g:neomake_java_javac_autoload_eclipse_classpath =
             \ get(g:, 'neomake_java_javac_autoload_eclipse_classpath', 1)
 
@@ -81,9 +87,16 @@ let g:neomake_java_javac_gradle_ftime =
 let g:neomake_java_javac_gradle_classpath =
             \ get(g:, 'neomake_java_javac_gradle_classpath', {})
 
+let g:neomake_java_javac_ant_ftime =
+            \ get(g:, 'neomake_java_javac_ant_ftime', {})
+
+let g:neomake_java_javac_ant_classpath =
+            \ get(g:, 'neomake_java_javac_ant_classpath', {})
+
 
 let s:has_maven = executable(expand(g:neomake_java_maven_executable, 1))
 let s:has_gradle = executable(expand(g:neomake_java_gradle_executable, 1))
+let s:has_ant = executable(expand(g:neomake_java_ant_executable, 1))
 
 function! s:tmpdir() abort
     let tempdir = tempname()
@@ -159,6 +172,10 @@ function! neomake#makers#ft#java#javac() abort
         let javac_classpath = s:AddToClasspath(javac_classpath, s:GetGradleClasspath())
     endif
 
+    if s:has_ant && g:neomake_java_javac_autoload_ant_classpath && empty(javac_classpath)
+        let javac_classpath = s:AddToClasspath(javac_classpath, s:GetAntClasspath())
+    endif
+
     if (has('python') || has('python3')) && empty(javac_classpath)
         let classpathFile = fnamemodify(findfile('.classpath', escape(expand('.'), '*[]?{}, ') . ';'), ':p')
         if !empty(classpathFile) && filereadable(classpathFile)
@@ -187,7 +204,11 @@ function! neomake#makers#ft#java#checkstyle() abort
                 \ 'args': ['-c', g:neomake_java_checkstyle_xml],
                 \ 'exe': g:neomake_java_checkstyle_executable,
                 \ 'errorformat':
-                \ '[%t%*[^]]] %f:%l:%c: %m [%s]'
+                \ '%-GStarting audit...,'.
+                \ '%-GAudit done.,'.
+                \ '%-GPicked up _JAVA_OPTIONS:%.%#,'.
+                \ '[%t%*[^]]] %f:%l:%c: %m [%s],'.
+                \ '[%t%*[^]]] %f:%l: %m [%s]'
                 \ }
 endfunction
 
@@ -344,6 +365,26 @@ function! s:GetGradleClasspath() abort
             let g:neomake_java_javac_gradle_classpath[gradle] = cp
         endif
         return g:neomake_java_javac_gradle_classpath[gradle]
+    endif
+    return ''
+endf
+
+function! s:GetAntClasspath() abort
+    let ant = s:findFileInParent('build.xml', expand('%:p:h', 1))
+    if s:has_ant && filereadable(ant)
+        if !has_key(g:neomake_java_javac_ant_ftime, ant) || g:neomake_java_javac_ant_ftime[ant] != getftime(ant)
+            try
+                let ant_cmd = 'ant classpath -f build.xml -S -q'
+                let cp = system(ant_cmd)
+                if v:shell_error != 0
+                    let cp = ''
+                endif
+            catch
+            endtry
+            let g:neomake_java_javac_ant_ftime[ant] = getftime(ant)
+            let g:neomake_java_javac_ant_classpath[ant] = cp
+        endif
+        return g:neomake_java_javac_ant_classpath[ant]
     endif
     return ''
 endf
