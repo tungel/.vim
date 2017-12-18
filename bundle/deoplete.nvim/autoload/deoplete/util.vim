@@ -156,18 +156,6 @@ function! deoplete#util#get_syn_names() abort
   return names
 endfunction
 
-function! deoplete#util#exists_omnifunc(name) abort
-  if !exists('s:called_omnifuncs')
-    let s:called_omnifuncs = {}
-  endif
-
-  if !has_key(s:called_omnifuncs, a:name)
-    silent! call {a:name}(1, '')
-    let s:called_omnifuncs[a:name] = exists('*' . a:name)
-  endif
-  return s:called_omnifuncs[a:name]
-endfunction
-
 function! deoplete#util#neovim_version() abort
   redir => v
   silent version
@@ -175,9 +163,20 @@ function! deoplete#util#neovim_version() abort
   return split(v, '\n')[0]
 endfunction
 
-function! deoplete#util#get_context_filetype(input) abort
+function! deoplete#util#has_yarp() abort
+  return !has('nvim') || get(g:, 'deoplete#enable_yarp', 0)
+endfunction
+
+function! deoplete#util#get_context_filetype(input, event) abort
   if !exists('s:context_filetype')
     let s:context_filetype = {}
+
+    " Force context_filetype call.
+    try
+      call context_filetype#get_filetype()
+    catch
+      " Ignore error
+    endtry
   endif
 
   if empty(s:context_filetype)
@@ -190,6 +189,7 @@ function! deoplete#util#get_context_filetype(input) abort
         \ || (a:input =~# '\w$' &&
         \     substitute(a:input, '\w\+$', '', '') !=#
         \     substitute(s:context_filetype.input, '\w\+$', '', ''))
+        \ || a:event ==# 'InsertEnter'
 
     let s:context_filetype.line = line('.')
     let s:context_filetype.bufnr = bufnr('.')
@@ -213,21 +213,29 @@ function! deoplete#util#get_context_filetype(input) abort
         \  s:context_filetype.filetypes, s:context_filetype.same_filetypes]
 endfunction
 
-function! deoplete#util#rpcnotify(...) abort
+function! deoplete#util#rpcnotify(event, context) abort
   if deoplete#init#_check_channel()
     return ''
   endif
 
   if !exists('s:logged') && !empty(g:deoplete#_logging)
-    call rpcnotify(g:deoplete#_channel_id,
-          \ 'deoplete_enable_logging',
-          \ g:deoplete#_logging.level, g:deoplete#_logging.logfile)
-    let g:deoplete#_logging = {}
+    call s:notify('deoplete_enable_logging',
+          \ deoplete#init#_context(a:event, []))
     let s:logged = 1
   endif
 
-  call call('rpcnotify', [g:deoplete#_channel_id] + a:000)
+  call s:notify(a:event, a:context)
   return ''
+endfunction
+
+function! s:notify(event, context) abort
+  let a:context['rpc'] = a:event
+
+  if deoplete#util#has_yarp()
+    call g:deoplete#_yarp.notify(a:event, a:context)
+  else
+    call rpcnotify(g:deoplete#_channel_id, a:event, a:context)
+  endif
 endfunction
 
 " Compare versions.  Return values is the distance between versions.  Each

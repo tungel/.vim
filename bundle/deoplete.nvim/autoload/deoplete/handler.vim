@@ -10,40 +10,43 @@ function! deoplete#handler#_init() abort
     autocmd InsertLeave * call s:on_insert_leave()
     autocmd CompleteDone * call s:on_complete_done()
     autocmd TextChangedI * call s:completion_begin('TextChangedI')
-    autocmd InsertEnter *
-          \ call s:completion_begin('InsertEnter') | call s:timer_begin()
-    autocmd InsertLeave * call s:timer_end()
+    autocmd InsertLeave * call s:completion_timer_stop()
   augroup END
 
   for event in ['BufNewFile', 'BufRead', 'BufWritePost', 'VimLeavePre']
-    execute 'autocmd deoplete' event '* call s:on_event('.string(event).')'
+    call s:define_on_event(event)
   endfor
 
-  if g:deoplete#enable_refresh_always
-    autocmd deoplete InsertCharPre * call s:completion_begin('InsertCharPre')
+  if exists('##DirChanged')
+    call s:define_on_event('DirChanged')
   endif
 
-  call s:timer_begin()
+  if g:deoplete#enable_on_insert_enter
+    autocmd deoplete InsertEnter *
+          \ call s:completion_begin('InsertEnter')
+  endif
+  if g:deoplete#enable_refresh_always
+    autocmd deoplete InsertCharPre *
+          \ call s:completion_begin('InsertCharPre')
+  endif
 endfunction
 
 function! s:do_complete(timer) abort
   let context = g:deoplete#_context
-  if get(context, 'event', '') !=# 'InsertEnter'
-        \ && mode() !=# 'i' || s:is_exiting()
-    call s:timer_end()
+  if s:is_exiting()
+        \ || (get(context, 'event', '') !=# 'InsertEnter' && mode() !=# 'i')
+    call s:completion_timer_stop()
     return
   endif
 
-  if empty(get(context, 'candidates', [])) ||
-        \ deoplete#util#get_input(context.event) !=# context.input
-    let s:prev_completion.candidates = []
-    let s:prev_completion.complete_position = getpos('.')
+  if empty(get(context, 'candidates', []))
+        \ || deoplete#util#get_input(context.event) !=# context.input
     return
   endif
 
   if context.event !=# 'Manual'
-        \     && s:prev_completion.complete_position == getpos('.')
-        \     && s:prev_completion.candidates ==# context.candidates
+        \ && s:prev_completion.complete_position == getpos('.')
+        \ && s:prev_completion.candidates ==# context.candidates
     return
   endif
 
@@ -58,30 +61,29 @@ function! s:do_complete(timer) abort
   endif
 
   if g:deoplete#complete_method ==# 'complete'
-    call feedkeys("\<Plug>_")
+    call feedkeys("\<Plug>_", 'i')
   elseif g:deoplete#complete_method ==# 'completefunc'
     let &l:completefunc = 'deoplete#mapping#_completefunc'
-    call feedkeys("\<C-x>\<C-u>", 'n')
+    call feedkeys("\<C-x>\<C-u>", 'in')
   elseif g:deoplete#complete_method ==# 'omnifunc'
     let &l:omnifunc = 'deoplete#mapping#_completefunc'
-    call feedkeys("\<C-x>\<C-o>", 'n')
+    call feedkeys("\<C-x>\<C-o>", 'in')
   endif
 endfunction
 
-function! s:timer_begin() abort
+function! deoplete#handler#_completion_timer_start() abort
   if exists('s:completion_timer')
-    return
+    call s:completion_timer_stop()
   endif
 
   let delay = max([50, g:deoplete#auto_complete_delay])
-  let s:completion_timer = timer_start(delay,
-            \ function('s:do_complete'), {'repeat': -1})
+  let s:completion_timer = timer_start(delay, function('s:do_complete'))
 
   let s:prev_completion = {
         \ 'complete_position': [], 'candidates': [], 'event': ''
         \ }
 endfunction
-function! s:timer_end() abort
+function! s:completion_timer_stop() abort
   if !exists('s:completion_timer')
     return
   endif
@@ -131,11 +133,13 @@ function! s:completion_begin(event) abort
             \ 'b:deoplete_omni_patterns',
             \ 'g:deoplete#omni_patterns',
             \ 'g:deoplete#_omni_patterns'))
+        let blacklist = ['LanguageClient#complete']
         if pattern !=# '' && &l:omnifunc !=# ''
               \ && context.input =~# '\%('.pattern.'\)$'
+              \ && index(blacklist, &l:omnifunc) < 0
           let g:deoplete#_context.candidates = []
           call deoplete#mapping#_set_completeopt()
-          call feedkeys("\<C-x>\<C-o>", 'n')
+          call feedkeys("\<C-x>\<C-o>", 'in')
           return
         endif
       endfor
@@ -193,9 +197,10 @@ function! s:is_skip_text(event) abort
         \     && index(skip_chars, input[-1:]) >= 0)
 endfunction
 
-function! s:on_event(event) abort
-  call deoplete#util#rpcnotify('deoplete_on_event',
-        \ deoplete#init#_context(a:event, []))
+function! s:define_on_event(event) abort
+  execute 'autocmd deoplete' a:event
+        \ '* call deoplete#util#rpcnotify("deoplete_on_event",'
+        \.'deoplete#init#_context('.string(a:event).', []))'
 endfunction
 
 function! s:on_insert_leave() abort

@@ -11,44 +11,74 @@ current buffer.
 To view the current options, please consult the
 [documentation](https://github.com/Shougo/deoplete.nvim/blob/master/doc%2Fdeoplete.txt).
 
+
 ## Installation
 
-**Note:** deoplete requires Neovim(latest is recommended) with Python3 and
+**Note:** deoplete requires Neovim(latest is recommended) or Vim8 with Python3 and
 timers(neovim ver.0.1.5+) enabled.  See [requirements](#requirements) if you
 aren't sure whether you have this.
 
-1. Extract the files and put them in your Neovim directory
+1. Extract the files and put them in your Neovim or .vim directory
    (usually `$XDG_CONFIG_HOME/nvim/`).
-2. Execute the `:UpdateRemotePlugins` and restart Neovim.
-3. Write `call deoplete#enable()` or `let g:deoplete#enable_at_startup = 1` in
+2. Write `call deoplete#enable()` or `let g:deoplete#enable_at_startup = 1` in
    your `init.vim`
 
 
 For vim-plug
 
 ```viml
-Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
+if has('nvim')
+  Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
+else
+  Plug 'Shougo/deoplete.nvim'
+  Plug 'roxma/nvim-yarp'
+  Plug 'roxma/vim-hug-neovim-rpc'
+endif
 ```
 
 For dein.vim
 
 ```viml
 call dein#add('Shougo/deoplete.nvim')
+if !has('nvim')
+  call dein#add('roxma/nvim-yarp')
+  call dein#add('roxma/vim-hug-neovim-rpc')
+endif
 ```
 
 
 ## Requirements
 
-deoplete requires Neovim with if\_python3.
-If `:echo has("python3")` returns `1`, then you're done; otherwise, see below.
+deoplete requires Neovim or Vim8 with if\_python3.
+If `:echo has("python3")` returns `1`, then you have python 3 support; otherwise, see below.
 
 You can enable Python3 interface with pip:
 
     pip3 install neovim
 
+Please install nvim-yarp plugin for Vim8.
+https://github.com/roxma/nvim-yarp
+
+Please install vim-hug-neovim-rpc plugin for Vim8.
+https://github.com/roxma/vim-hug-neovim-rpc
+
+
+## Note: Python3 must be enabled before updating remote plugins
+If Deoplete was installed prior to Python support being added to Neovim,
+`:UpdateRemotePlugins` should be executed manually in order to enable
+auto-completion.
+
+
+## Configuration Examples
+
+```vim
+" Use deoplete.
+let g:deoplete#enable_at_startup = 1
+```
+
 ## Sources
 
-deoplete will display completions via omnifunc by default.
+deoplete will display completions via `complete()` by default.
 
 Here are some [completion sources](https://github.com/Shougo/deoplete.nvim/wiki/Completion-Sources) specifically made for deoplete.nvim.
 
@@ -62,10 +92,6 @@ If you want to read the Neovim-python/python3 interface install documentation,
 you should read `:help provider-python` and the Wiki.
 https://github.com/zchee/deoplete-jedi/wiki/Setting-up-Python-for-Neovim
 
-## Note: Python3 must be enabled before updating remote plugins
-If Deoplete was installed prior to Python support being added to Neovim,
-`:UpdateRemotePlugins` should be executed manually in order to enable
-auto-completion.
 
 ## Screenshots
 
@@ -92,9 +118,9 @@ https://www.youtube.com/watch?v=oanoPTpiSF4
 
 [Vim Script completion using neco-vim](https://cloud.githubusercontent.com/assets/3712731/17461000/660e15be-5caf-11e6-8c02-eb9f9c169f3c.gif)
 
-## Configuration Examples
+[C# completion using deoplete-omnisharp](https://camo.githubusercontent.com/f429dc72f91b25619980dbb9d436065ba3fb0a44/68747470733a2f2f692e696d6775722e636f6d2f464e634c4441752e676966)
 
-```vim
-" Use deoplete.
-let g:deoplete#enable_at_startup = 1
-```
+[Register/Extract list completions](https://camo.githubusercontent.com/6a6df993ad0e05c014c72c8f8702447f9b34ad90/68747470733a2f2f692e696d6775722e636f6d2f5131663731744a2e676966)
+
+### deoplete-fsharp sample ( Enjoy! )
+![FSharp completion using deopletefs](https://github.com/callmekohei/deoplete-fsharp/blob/master/pic/sample.gif)
