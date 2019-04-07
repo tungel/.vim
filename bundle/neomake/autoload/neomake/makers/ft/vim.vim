@@ -1,27 +1,60 @@
-" vim: ts=4 sw=4 et
-
 function! neomake#makers#ft#vim#EnabledMakers() abort
     return ['vint']
 endfunction
 
+let s:slash = neomake#utils#Slash()
+let s:neomake_root = expand('<sfile>:p:h:h:h:h:h', 1)
+
+let s:vint_supports_stdin = {}
+
+function! neomake#makers#ft#vim#neomake_checks() abort
+    let maker = {
+                \ 'exe': join([s:neomake_root, 'contrib', 'vim-checks'], s:slash),
+                \ 'errorformat': '%f:%l: %m',
+                \ }
+
+    return maker
+endfunction
+
 function! neomake#makers#ft#vim#vint() abort
-    let l:args = ['--style-problem', '--no-color',
+    let args = ['--style-problem', '--no-color',
         \ '-f', '{file_path}:{line_number}:{column_number}:{severity}:{description} ({policy_name})']
 
     if has('nvim')
-        call add(l:args, '--enable-neovim')
+        call add(args, '--enable-neovim')
     endif
 
-    return {
-        \ 'args': l:args,
+    let maker = {
+        \ 'args': args,
         \ 'errorformat': '%I%f:%l:%c:style_problem:%m,'
         \   .'%f:%l:%c:%t%*[^:]:E%n: %m,'
         \   .'%f:%l:%c:%t%*[^:]:%m',
         \ 'output_stream': 'stdout',
         \ 'postprocess': {
-        \   'fn': function('neomake#postprocess#GenericLengthPostprocess'),
-        \   'pattern': '\v(Undefined variable: |:)\zs([^ ]+)',
+        \   'fn': function('neomake#postprocess#generic_length'),
+        \   'pattern': '\v%(^:|%([^:]+: ))\zs(\S+)',
         \ }}
+
+    function! maker.supports_stdin(_jobinfo) abort
+        let exe = exists('*exepath') ? exepath(self.exe) : self.exe
+        let support = get(s:vint_supports_stdin, exe, -1)
+        if support == -1
+            let ver = neomake#compat#systemlist(['vint', '--version'])
+            let ver_split = split(ver[0], '\.')
+            if len(ver_split) > 1 && (ver_split[0] > 0 || +ver_split[1] >= 4)
+                let support = 1
+            else
+                let support = 0
+            endif
+            let s:vint_supports_stdin[exe] = support
+            call neomake#log#debug('vint: stdin support: '.support.'.')
+        endif
+        if support
+            let self.args += ['--stdin-display-name', '%:.']
+        endif
+        return support
+    endfunction
+    return maker
 endfunction
 
 function! neomake#makers#ft#vim#vimlint() abort
@@ -51,3 +84,4 @@ function! neomake#makers#ft#vim#PostprocessVimlint(entry) abort
         let a:entry.length = l - 2
     endif
 endfunction
+" vim: ts=4 sw=4 et

@@ -1,7 +1,13 @@
 " vim: ts=4 sw=4 et
 
 function! neomake#makers#ft#javascript#EnabledMakers() abort
-    return ['jshint', 'jscs', 'eslint']
+    return ['jshint', 'jscs',
+                \ executable('eslint_d') ? 'eslint_d' : 'eslint',
+                \]
+endfunction
+
+function! neomake#makers#ft#javascript#tsc() abort
+    return neomake#makers#ft#typescript#tsc()
 endfunction
 
 function! neomake#makers#ft#javascript#gjslint() abort
@@ -18,8 +24,8 @@ endfunction
 function! neomake#makers#ft#javascript#jshint() abort
     return {
         \ 'args': ['--verbose'],
-        \ 'errorformat': '%A%f: line %l\, col %v\, %m \(%t%*\d\)',
-        \ 'postprocess': function('neomake#postprocess#GenericLengthPostprocess'),
+        \ 'errorformat': '%A%f: line %l\, col %v\, %m \(%t%*\d\),%-G,%-G%\\d%\\+ errors',
+        \ 'postprocess': function('neomake#postprocess#generic_length'),
         \ }
 endfunction
 
@@ -31,19 +37,25 @@ function! neomake#makers#ft#javascript#jscs() abort
 endfunction
 
 function! neomake#makers#ft#javascript#eslint() abort
-    return {
-        \ 'args': ['-f', 'compact'],
+    let maker = {
+        \ 'args': ['--format=compact'],
         \ 'errorformat': '%E%f: line %l\, col %c\, Error - %m,' .
-        \   '%W%f: line %l\, col %c\, Warning - %m,%-G,%-G%*\d problems%#'
+        \   '%W%f: line %l\, col %c\, Warning - %m,%-G,%-G%*\d problems%#',
+        \ 'cwd': '%:p:h',
+        \ 'output_stream': 'stdout',
         \ }
+
+    function! maker.supports_stdin(_jobinfo) abort
+        let self.args += ['--stdin', '--stdin-filename=%:p']
+        let self.tempfile_name = ''
+        return 1
+    endfunction
+
+    return maker
 endfunction
 
 function! neomake#makers#ft#javascript#eslint_d() abort
-    return {
-        \ 'args': ['-f', 'compact'],
-        \ 'errorformat': '%E%f: line %l\, col %c\, Error - %m,' .
-        \ '%W%f: line %l\, col %c\, Warning - %m'
-        \ }
+    return neomake#makers#ft#javascript#eslint()
 endfunction
 
 function! neomake#makers#ft#javascript#standard() abort
@@ -62,7 +74,7 @@ endfunction
 function! neomake#makers#ft#javascript#rjsx() abort
     return {
         \ 'exe': 'emacs',
-        \ 'args': ['%','--quick','--batch','--eval='
+        \ 'args': ['%t','--quick','--batch','--eval='
         \ .'(progn(setq package-load-list ''((js2-mode t)(rjsx-mode t)))(package-initialize)(require ''rjsx-mode)'
         \ .'  (setq js2-include-node-externs t js2-include-rhino-externs t js2-include-browser-externs t js2-strict-missing-semi-warning nil)'
         \ .'  (rjsx-mode)(js2-reparse)(js2-display-error-list)'
@@ -80,16 +92,16 @@ function! neomake#makers#ft#javascript#flow() abort
         \   '%-GNo errors!,'
         \   .'%EFile "%f"\, line %l\, characters %c-%m,'
         \   .'%trror: File "%f"\, line %l\, characters %c-%m,'
-        \   .'%C%m,%Z%m',
+        \   .'%C%m,%Z',
         \ 'postprocess': function('neomake#makers#ft#javascript#FlowProcess')
         \ }
 endfunction
 
 function! neomake#makers#ft#javascript#FlowProcess(entry) abort
-    let l:lines = split(a:entry.text, '\n')
-    if !empty(l:lines)
-        let a:entry.text = join(l:lines[1:])
-        let a:entry.length = l:lines[0] - a:entry.col + 1
+    let lines = split(a:entry.text, '\n')
+    if !empty(lines)
+        let a:entry.text = join(lines[1:])
+        let a:entry.length = lines[0] - a:entry.col + 1
     endif
 endfunction
 

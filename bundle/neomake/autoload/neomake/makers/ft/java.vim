@@ -134,7 +134,7 @@ function! s:ReadClassPathFile(classpathFile) abort
     endif
     return cp
 endfunction
-" @vimlint(EVL103, 0)
+" @vimlint(EVL103, 0, a:classpathFile)
 
 function! neomake#makers#ft#java#EnabledMakers() abort
     let makers = []
@@ -195,7 +195,8 @@ function! neomake#makers#ft#java#javac() abort
                 \ '%W%f:%l: warning: %m,'.
                 \ '%E%f:%l: %m,'.
                 \ '%Z%p^,'.
-                \ '%-G%.%#'
+                \ '%-G%.%#',
+                \ 'version_arg': '-version'
                 \ }
 endfunction
 
@@ -208,7 +209,8 @@ function! neomake#makers#ft#java#checkstyle() abort
                 \ '%-GAudit done.,'.
                 \ '%-GPicked up _JAVA_OPTIONS:%.%#,'.
                 \ '[%t%*[^]]] %f:%l:%c: %m [%s],'.
-                \ '[%t%*[^]]] %f:%l: %m [%s]'
+                \ '[%t%*[^]]] %f:%l: %m [%s]',
+                \ 'version_arg': '-v'
                 \ }
 endfunction
 
@@ -391,3 +393,4 @@ endf
 
 let &cpoptions = s:save_cpo
 unlet s:save_cpo
+" vim: ts=4 sw=4 et

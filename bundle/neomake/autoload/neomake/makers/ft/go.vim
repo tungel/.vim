@@ -2,7 +2,9 @@
 
 function! neomake#makers#ft#go#EnabledMakers() abort
     let makers = ['go']
-    if executable('gometalinter')
+    if executable('golangci-lint')
+        call add(makers, 'golangci_lint')
+    elseif executable('gometalinter')
         call add(makers, 'gometalinter')
     else
         call extend(makers, ['golint', 'govet'])
@@ -14,7 +16,7 @@ function! neomake#makers#ft#go#go() abort
     return {
         \ 'args': [
             \ 'test', '-c',
-            \ '-o', neomake#utils#DevNull(),
+            \ '-o', g:neomake#compat#dev_null,
         \ ],
         \ 'append_file': 0,
         \ 'cwd': '%:h',
@@ -25,7 +27,10 @@ function! neomake#makers#ft#go#go() abort
             \ '%E%f:%l:%c:%m,' .
             \ '%E%f:%l:%m,' .
             \ '%C%\s%\+%m,' .
-            \ '%-G#%.%#'
+            \ '%-G%.%#\\\[no test files],' .
+            \ '%-G#%.%#',
+        \ 'postprocess': function('neomake#postprocess#compress_whitespace'),
+        \ 'version_arg': 'version',
         \ }
 endfunction
 
@@ -57,9 +62,23 @@ function! neomake#makers#ft#go#gometalinter() abort
     "
     " All linters are only warnings, the go compiler will report errors
     return {
-        \ 'args': ['--disable-all', '--enable=errcheck', '--enable=megacheck'],
+        \ 'args': ['--disable-all', '--enable=errcheck', '--enable=megacheck', '--vendor'],
         \ 'append_file': 0,
         \ 'cwd': '%:h',
-        \ 'errorformat': '%f:%l:%c:%t%*[^:]: %m',
+        \ 'errorformat':
+            \ '%f:%l:%c:%t%*[^:]: %m,' .
+            \ '%f:%l::%t%*[^:]: %m'
+        \ }
+endfunction
+
+function! neomake#makers#ft#go#golangci_lint() abort
+    return {
+        \ 'exe': 'golangci-lint',
+        \ 'args': ['run', '--out-format=line-number', '--print-issued-lines=false'],
+        \ 'output_stream': 'stdout',
+        \ 'append_file': 0,
+        \ 'cwd': '%:h',
+        \ 'errorformat':
+            \ '%f:%l:%c: %m'
         \ }
 endfunction

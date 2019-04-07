@@ -5,6 +5,16 @@ Execute (neomake#compat#uniq):
   AssertEqual neomake#compat#uniq([1, 2]), [1, 2]
   AssertEqual neomake#compat#uniq([1, 2, 1]), [1, 2, 1]
   AssertEqual neomake#compat#uniq([1, 1, 2]), [1, 2]
+  AssertEqual neomake#compat#uniq([1, 1, 2, 2]), [1, 2]
+  AssertEqual neomake#compat#uniq([1, 1, 2, 2, '2']), [1, 2, '2']
+
+  AssertEqual neomake#compat#uniq([[1], [1]]), [[1]]
+  AssertEqual neomake#compat#uniq([{'a': 1}]), [{'a': 1}]
+
+Execute (neomake#compat#uniq modifies list in place):
+  let l = [5, 5]
+  call neomake#compat#uniq(l)
+  AssertEqual l, [5]
 
 Execute (neomake#compat#reltimefloat):
   let r = neomake#compat#reltimefloat()
@@ -37,6 +47,26 @@ Execute (neomake#compat#systemlist with empty args):
 
 Execute (neomake#compat#json_decode):
   AssertEqual neomake#compat#json_decode(''), g:neomake#compat#json_none
+  Assert neomake#compat#json_decode('') is g:neomake#compat#json_none
+
+  if has('nvim')
+    let expected_exception = 'Vim(return):E474: Unidentified byte: success'
+  elseif exists('*json_decode')
+    let expected_exception = 'Vim(return):E474: Invalid argument'
+  else
+    let expected_exception = 'Neomake: Failed to parse JSON input: invalid input'
+  endif
+  AssertThrows call neomake#compat#json_decode('success')
+  AssertEqual g:vader_exception, expected_exception
+
+Execute (neomake#compat#json_decode: handles newlines):
+  let json = '{"foo": '."\n".'"bar"}'
+  AssertEqual neomake#compat#json_decode(json), {'foo': 'bar'}
+
+Execute (neomake#compat#json_none):
+  AssertThrows call items(g:neomake#compat#json_none)
+  AssertEqual g:vader_exception, 'Vim(call):E715: Dictionary required'
+  Assert empty(g:neomake#compat#json_none), 'json_none is empty'
 
 Execute (neomake#compat#get_mode):
   AssertEqual neomake#compat#get_mode(), 'n'
@@ -48,7 +78,7 @@ Execute (neomake#compat#get_mode):
 
   if has('nvim')
     let nvim_exe = '/proc/'.getpid().'/exe'
-    let nvim = jobstart([nvim_exe, '-u', 'tests/vim/vimrc', '--embed'], {'rpc': v:true})
+    let nvim = jobstart([nvim_exe, '-u', 'tests/vim/vimrc', '--headless', '--embed'], {'rpc': v:true})
     call rpcrequest(nvim, 'nvim_call_function', 'feedkeys', ['d', '!'])
     call rpcrequest(nvim, 'nvim_eval', 'assert_equal(neomake#compat#get_mode(), "no")')
     let rpc_errors = rpcrequest(nvim, 'nvim_eval', 'v:errors')
@@ -80,7 +110,8 @@ Execute (neomake#compat#get_mode with insert mode completion (feedkeys)):
     endfunction
 
     call timer_start(10, 's:close_pum')
-    call feedkeys("oword\<C-p>", 'x!')
+    " NOTE: silent for Neovim (https://github.com/neovim/neovim/issues/9372).
+    silent call feedkeys("oword\<C-p>", 'x!')
 
     if has('patch-8.0.0283')
       AssertEqual s:mode, 'ic'
@@ -104,7 +135,8 @@ Execute (neomake#compat#get_mode with insert mode completion (imap)):
     return ''
   endfunction
 
-  inoremap <buffer> <F2> <C-r>=s:save_mode()<CR>
+  " NOTE: silent for Neovim (https://github.com/neovim/neovim/issues/9372).
+  inoremap <silent> <buffer> <F2> <C-r>=s:save_mode()<CR>
 
   exe "normal oword\<C-p>\<F2>\<C-e>\<Esc>"
   if has('patch-8.0.0283')
@@ -119,5 +151,28 @@ Execute (neomake#compat#get_mode with insert mode completion (imap)):
   AssertEqual s:mode, 'i'
   AssertEqual s:in_completion, 0
   AssertEqual getline('.'), 'word'
-
   bwipe!
+
+Execute (neomake#compat#glob_list):
+  AssertEqual neomake#compat#glob_list('doesnotexist'), []
+  AssertEqual neomake#compat#glob_list(g:vader_file), [g:vader_file]
+
+  Save &wildignore
+  let &wildignore = '*.vader'
+  AssertEqual fnamemodify(g:vader_file, ':e'), 'vader'
+  AssertEqual neomake#compat#glob_list(g:vader_file), [g:vader_file]
+
+Execute (neomake#compat#restore_prev_windows handles removed windows):
+  new
+  new
+  if exists('*win_getid')
+    let expected_msg = printf('Cannot restore previous windows (previous window with ID %d not found).',
+    \ win_getid())
+  else
+    let expected_msg = 'Cannot restore previous windows (3 > 2).'
+  endif
+  call neomake#compat#save_prev_windows()
+  bwipe
+  call neomake#compat#restore_prev_windows()
+  AssertNeomakeMessage expected_msg, 3
+  bwipe
