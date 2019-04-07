@@ -1,17 +1,17 @@
 "=============================================================================
-" File    : autoload/unite/sources/outline/defaults/python.vim
-" Author  : h1mesuke <himesuke@gmail.com>
-" Updated : 2012-01-11
+" File    : autoload/unite/sources/outline/defaults/arduino.vim
+" Author  : kurokky <blacktree0228@gmail.com>
+" Updated : 2018-08-22
 "
 " Licensed under the MIT license:
 " http://www.opensource.org/licenses/mit-license.php
 "
 "=============================================================================
 
-" Default outline info for Python
-" Version: 0.2.0
+" Default outline info for Arduino
+" Version: 0.0.2
 
-function! unite#sources#outline#defaults#python#outline_info() abort
+function! unite#sources#outline#defaults#arduino#outline_info() abort
   return s:outline_info
 endfunction
 
@@ -21,15 +21,9 @@ let s:Util = unite#sources#outline#import('Util')
 " Outline Info
 
 let s:outline_info = {
-      \ 'heading'  : '^\s*\%(class\|\%(async\s\+\)\=def\)\>',
-      \
-      \ 'skip': {
-      \   'header': s:Util.shared_pattern('sh', 'header'),
-      \   'block' : ['r\="""', '\\\@<!"""'],
-      \ },
+      \ 'heading'  : '^\s*\%(void\|command_data_t\|serial_data_t\|middle_data_t\)\>',
       \
       \ 'heading_groups': {
-      \   'type'     : ['class'],
       \   'function' : ['function'],
       \ },
       \
@@ -38,8 +32,8 @@ let s:outline_info = {
       \ ],
       \
       \ 'highlight_rules': [
-      \   { 'name'   : 'type',
-      \     'pattern': '/\S\+\ze : class/' },
+      \   { 'name'   : 'comment',
+      \     'pattern': "'/[/*].*'" },
       \   { 'name'   : 'function',
       \     'pattern': '/\h\w*\ze\s*(/' },
       \   { 'name'   : 'parameter_list',
@@ -56,14 +50,10 @@ function! s:outline_info.create_heading(which, heading_line, matched_line, conte
         \ 'type' : 'generic',
         \ }
 
-  if heading.word =~ '^\s*class\>'
-    " Class
-    let heading.type = 'class'
-    let heading.word = matchstr(heading.word, '^\s*class\s\+\zs\h\w*') . ' : class'
-  elseif heading.word =~ '^\s*\%(async\s\+\)\=def\>'
+  if heading.word =~ '^\s*void\>'
     " Function
     let heading.type = 'function'
-    let heading.word = substitute(heading.word, '\<\%(async\s\+\)\=def\s*', '', '')
+    let heading.word = substitute(heading.word, '\<void\s*', '', '')
     let heading.word = substitute(heading.word, '\S\zs(', ' (', '')
     let heading.word = substitute(heading.word, '\%(:\|#\).*$', '', '')
   endif
