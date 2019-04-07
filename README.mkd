@@ -51,7 +51,7 @@ Plug 'Shougo/vimproc.vim', {'do' : 'make'}
 If you use [Vundle](https://github.com/VundleVim/Vundle.vim), add the following to your `.vimrc`.
 
 ```vim
-Plugin 'Shougo/vimproc.vim
+Plugin 'Shougo/vimproc.vim'
 ```
 Then compile the plugin manually where it was installed.
 
@@ -60,7 +60,7 @@ i.e. on Linux & Mac
 $ cd ~/.vim/bundle/vimproc.vim && make
 ```
 
-See [bulding](https://github.com/Shougo/vimproc.vim#building)
+See [building](https://github.com/Shougo/vimproc.vim#building)
 
 ### NeoBundle
 
