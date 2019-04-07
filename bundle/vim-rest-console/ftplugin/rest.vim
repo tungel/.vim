@@ -20,6 +20,19 @@ let s:deprecatedCurlOpts = {
   \ 'vrc_ssl_secure': '-k',
 \}
 
+"""
+" Properly escape string to use in Windows and Non-Windows shells
+"
+" @param  string val
+" @return string
+"
+function! s:Shellescape(val)
+  if has("win32")
+    return '"'.substitute(a:val, '["&\\]', '\\&', 'g').'"'
+  else
+    return shellescape(a:val)
+  endif
+endfunction
 
 """
 " Trim both ends of a string.
@@ -28,7 +41,7 @@ let s:deprecatedCurlOpts = {
 " @return string
 "
 function! s:StrTrim(txt)
-  return substitute(a:txt, '\v^\s*([^[:space:]].*[^[:space:]])\s*$', '\1', 'g')
+  return substitute(a:txt, '\v^\s*(\S(.*\S)*)\s*$', '\1', 'g')
 endfunction
 
 """
@@ -190,7 +203,7 @@ function! s:ParseHeaders(start, end)
   let hasContentType = 0
   for line in lineBuf
     let line = s:StrTrim(line)
-    if line ==? '' || line =~? s:vrc_comment_delim
+    if line ==? '' || line =~? s:vrc_comment_delim || line =~? '\v^--?\w+'
       continue
     endif
     let sepIdx = stridx(line, ':')
@@ -225,7 +238,12 @@ function! s:ParseVals(start, end)
     let sepIdx = stridx(line, '=')
     if sepIdx > -1
       let key = s:StrTrim(line[0:sepIdx - 1])
-      let vals[key] = s:StrTrim(line[sepIdx + 1:])
+      let val = s:StrTrim(line[sepIdx + 1:])
+      if val[:0] is# "$"
+        let vals[key] = expand(val)
+      else
+        let vals[key] = val
+      endif
     endif
   endfor
   return vals
@@ -362,10 +380,12 @@ function! s:ParseRequest(start, resumeFrom, end, globSection)
   let [httpVerb; queryPathList] = split(restQuery)
   let dataBody = getline(lineNumVerb + 1, lineNumNextVerb - 1)
 
-  """ Search and replace values in queryPath
+  """ Search and replace values in queryPath, dataBody, and headers
   let queryPath = join(queryPathList, '')
   for key in keys(vals)
     let queryPath = substitute(queryPath, ":" . key, vals[key], "")
+    call map(dataBody, 'substitute(v:val, ":" . key, vals[key], "")')
+    call map(headers,  'substitute(v:val, ":" . key, vals[key], "")')
   endfor
 
   """ Filter out comment and blank lines.
@@ -473,7 +493,7 @@ function! s:GetCurlCommand(request)
     call add(curlArgs, s:GetCurlDataArgs(a:request))
   endif
   return [
-    \ 'curl ' . join(curlArgs) . ' ' . shellescape(a:request.host . a:request.requestPath),
+    \ 'curl ' . join(curlArgs) . ' ' . s:Shellescape(a:request.host . a:request.requestPath),
     \ curlOpts
   \]
 endfunction
@@ -484,7 +504,7 @@ endfunction
 " @param string a:val
 "
 function! s:EscapeCurlOpt(val)
-  return a:val !~ '\v^-' ? shellescape(a:val) : a:val
+  return a:val !~ '\v^-' ? s:Shellescape(a:val) : a:val
 endfunction
 
 """
@@ -517,6 +537,8 @@ function! s:GetCurlDataArgs(request)
   let httpVerb = a:request.httpVerb
   let dataLines = a:request.dataBody
 
+  let preproc = s:GetOpt('vrc_body_preprocessor', '')
+
   """ These verbs should have request body passed as POST params.
   if httpVerb ==? 'POST'
     \ || httpVerb ==? 'PUT'
@@ -524,12 +546,17 @@ function! s:GetCurlDataArgs(request)
     \ || httpVerb ==? 'OPTIONS'
     """ If data is loaded from file.
     if stridx(get(dataLines, 0, ''), '@') == 0
-      return '--data-binary ' . shellescape(dataLines[0])
+      return '--data-binary ' . s:Shellescape(dataLines[0])
+    endif
+
+    """ Call body preprocessor if set.
+    if preproc != ''
+      let dataLines = systemlist(preproc, join(dataLines, "\r"))
     endif
 
     """ If request body is split line by line.
     if s:GetOpt('vrc_split_request_body', 0)
-      call map(dataLines, '"--data " . shellescape(v:val)')
+      call map(dataLines, '"--data " . s:Shellescape(v:val)')
       return join(dataLines)
     endif
 
@@ -539,7 +566,7 @@ function! s:GetCurlDataArgs(request)
       " shellescape also escapes \n (<NL>) to \\n, need to replace back.
       return '--data ' .
            \ substitute(
-             \ shellescape(join(dataLines, "\n") . "\n"),
+             \ s:Shellescape(join(dataLines, "\n") . "\n"),
              \ '\\\n',
              \ "\n",
              \ 'g'
@@ -547,22 +574,26 @@ function! s:GetCurlDataArgs(request)
     endif
 
     """ Otherwise, just join data using empty space.
-    return '--data ' . shellescape(join(dataLines, ''))
+    return '--data ' . s:Shellescape(join(dataLines, ''))
   endif
 
   """ If verb is GET and GET request body is allowed.
   if httpVerb ==? 'GET' && s:GetOpt('vrc_allow_get_request_body', 0)
-    return '--data ' . shellescape(join(dataLines, ''))
+    """ Call body preprocessor if set.
+    if preproc != ''
+      let dataLines = systemlist(preproc, join(dataLines, "\r"))
+    endif
+    return '--data ' . s:Shellescape(join(dataLines, ''))
   endif
 
   """ For other cases, request body is passed as GET params.
   if s:GetOpt('vrc_split_request_body', 0)
     """ If request body is split, url-encode each line.
-    call map(dataLines, '"--data-urlencode " . shellescape(v:val)')
+    call map(dataLines, '"--data-urlencode " . s:Shellescape(v:val)')
     return join(dataLines)
   endif
   """ Otherwise, url-encode and send the request body as a whole.
-  return '--data-urlencode ' . shellescape(join(dataLines, ''))
+  return '--data-urlencode ' . s:Shellescape(join(dataLines, ''))
 endfunction
 
 """
@@ -588,6 +619,10 @@ function! s:DisplayOutput(tmpBufName, outputInfo, config)
     let cmdSplit = 'vsplit'
     if s:GetOpt('vrc_horizontal_split', 0)
       let cmdSplit = 'split'
+    endif
+
+    if s:GetOpt('vrc_keepalt', 0)
+      let cmdSplit = 'keepalt ' . cmdSplit
     endif
 
     """ Create view if not loadded or hidden.

@@ -34,6 +34,7 @@ CONTENTS                                                         *VrcContents*
       vrc_elasticsearch_support.................. |vrc_elasticsearch_support|
       vrc_header_content_type...................... |vrc_header_content_type|
       vrc_horizontal_split.....   .................... |vrc_horizontal_split|
+      vrc_keepalt.............................................. |vrc_keepalt|
       vrc_output_buffer_name........................ |vrc_output_buffer_name|
       vrc_response_default_content_type.. |vrc_response_default_content_type|
       vrc_set_default_mapping...................... |vrc_set_default_mapping|
@@ -464,6 +465,18 @@ If set, VRC will try to transform all unicode `\uXXXX` instances in the
 response to the corresponding symbols. It's turned of by default.
 
 ------------------------------------------------------------------------------
+*vrc_body_preprocessor*
+
+An external command to run using the request body as input, the output of
+which will then be used as the body for the request. Default is an empty
+string, which will not run any preprocessing.
+
+Example using yaml2json to convert from yaml (easier to type) to JSON,
+and then piping into jq minify that:
+>
+    let g:vrc_body_preprocessor = 'yaml2json | jq -c .'
+<
+------------------------------------------------------------------------------
 *vrc_curl_opts*
 
 A dictionary that contains the default cUrl options. Default: not exist.
@@ -509,6 +522,12 @@ setting.
 By default, the output buffer is displayed to the right of the rest buffer
 (vertical split). If this option is set, the output buffer is displayed
 below the rest buffer.
+
+------------------------------------------------------------------------------
+vrc_keepalt
+
+By default, the current alternate file name will be changed. If this
+option is set, it will keep the current alternate file.
 
 ------------------------------------------------------------------------------
 *vrc_output_buffer_name*
