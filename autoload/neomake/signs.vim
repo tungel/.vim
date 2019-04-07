@@ -2,7 +2,7 @@
 scriptencoding utf-8
 
 if !has('signs')
-    call neomake#utils#ErrorMessage('Trying to load signs.vim, without +signs.')
+    call neomake#log#error('Trying to load signs.vim, without +signs.')
     finish
 endif
 
@@ -13,39 +13,25 @@ let s:last_placed_signs = {'project': {}, 'file': {}}
 exe 'sign define neomake_invisible'
 
 " Reset signs placed by a :Neomake! call
-" (resetting signs means the current signs will be deleted on the next call to ResetProject)
 function! neomake#signs#ResetProject() abort
     for buf in keys(s:placed_signs.project)
-        call neomake#signs#CleanOldSigns(buf, 'project')
         call neomake#signs#Reset(buf, 'project')
+        call neomake#signs#CleanOldSigns(buf, 'project')
     endfor
 endfunction
 
 " Reset signs placed by a :Neomake call in a buffer
 function! neomake#signs#ResetFile(bufnr) abort
-    call neomake#signs#CleanOldSigns(a:bufnr, 'file')
     call neomake#signs#Reset(a:bufnr, 'file')
+    call neomake#signs#CleanOldSigns(a:bufnr, 'file')
 endfunction
 
 function! neomake#signs#Reset(bufnr, type) abort
     if has_key(s:placed_signs[a:type], a:bufnr)
+        " Clean any lingering, already retired signs.
+        call neomake#signs#CleanOldSigns(a:bufnr, a:type)
         let s:last_placed_signs[a:type][a:bufnr] = s:placed_signs[a:type][a:bufnr]
         unlet s:placed_signs[a:type][a:bufnr]
-    endif
-endfunction
-
-" Remove and clean all signs in a buffer.
-function! neomake#signs#Clean(bufnr, type) abort
-    if has_key(s:placed_signs[a:type], a:bufnr)
-        for sign_id in keys(s:placed_signs[a:type][a:bufnr])
-            let cmd = 'sign unplace '.sign_id.' buffer='.a:bufnr
-            call neomake#utils#DebugMessage('Unplacing sign: '.cmd.'.')
-            exe cmd
-        endfor
-        unlet s:placed_signs[a:type][a:bufnr]
-    endif
-    if has_key(s:last_placed_signs[a:type], a:bufnr)
-        unlet s:last_placed_signs[a:type][a:bufnr]
     endif
 endfunction
 
@@ -59,9 +45,22 @@ let s:sign_order = {'neomake_file_err': 0, 'neomake_file_warn': 1,
 " If there are multiple entries for a line only the first (visible) entry is
 " returned.
 function! neomake#signs#by_lnum(bufnr) abort
-    if !bufexists(a:bufnr + 0)
+    let bufnr = a:bufnr + 0
+    if !bufexists(bufnr)
         return {}
     endif
+
+    let r = {}
+    if exists('*sign_getplaced')  " patch-8.1.0614
+        for sign in sign_getplaced(bufnr)[0].signs
+            if has_key(r, sign.lnum)
+                continue
+            endif
+            let r[sign.lnum] = [sign.id, sign.name]
+        endfor
+        return r
+    endif
+
     let signs_output = split(neomake#utils#redir('sign place buffer='.a:bufnr), '\n')
 
     " Originally via ALE.
@@ -71,113 +70,102 @@ function! neomake#signs#by_lnum(bufnr) abort
     " 行=1  識別子=1000001  名前=neomake_err
     " línea=12 id=1000001 nombre=neomake_err
     " riga=1 id=1000001, nome=neomake_err
-    let d = {}
     for line in reverse(signs_output[2:])
+        " XXX: does not really match "name="
+        "      (broken by patch-8.1.0614, but handled above)
         let sign_type = line[strridx(line, '=')+1:]
         if sign_type[0:7] ==# 'neomake_'
             let lnum_idx = stridx(line, '=')
             let lnum = line[lnum_idx+1:] + 0
             if lnum
                 let sign_id = line[stridx(line, '=', lnum_idx+1)+1:] + 0
-                let d[lnum] = [sign_id, sign_type]
+                let r[lnum] = [sign_id, sign_type]
             endif
         endif
     endfor
-    return d
+    return r
 endfunction
 
+let s:entry_to_sign_type = {'W': 'warn', 'I': 'info', 'M': 'msg'}
+
+" Place signs for list a:entries in a:bufnr for a:type ('file' or 'project').
+" List items in a:entries need to have a "type" and "lnum" (non-zero) property.
 function! neomake#signs#PlaceSigns(bufnr, entries, type) abort
-    let entries_by_bufnr = {}
-    let bufnr = a:bufnr
+    " Query the list of currently placed signs.
+    " This allows to cope with movements, e.g. when lines were added.
+    let placed_signs = neomake#signs#by_lnum(a:bufnr)
 
-    let entries_by_bufnr[bufnr] = a:entries
-    " let entries_by_bufnr = {}
-    " for entry in a:entries
-    "     let entries_by_bufnr[entry.bufnr] = entry
-    " endfor
+    let entries_by_linenr = {}
+    for entry in a:entries
+        let lnum = entry.lnum
+        let sign_type = printf('neomake_%s_%s',
+                    \ a:type,
+                    \ get(s:entry_to_sign_type, toupper(entry.type), 'err'))
+        if !exists('entries_by_linenr[lnum]')
+                    \ || s:sign_order[entries_by_linenr[lnum]]
+                    \    > s:sign_order[sign_type]
+            let entries_by_linenr[lnum] = sign_type
+        endif
+    endfor
 
-    for [bufnr, entries] in items(entries_by_bufnr)
-        " Query the list of currently placed signs.
-        " This allows to cope with movements, e.g. when lines where added.
-        let placed_signs = neomake#signs#by_lnum(bufnr)
+    let place_new = []
+    let log_context = {'bufnr': a:bufnr}
+    let count_reused = 0
+    for [lnum, sign_type] in items(entries_by_linenr)
+        let existing_sign = get(placed_signs, lnum, [])
+        if empty(existing_sign) || existing_sign[1] !~# '^neomake_'.a:type.'_'
+            call add(place_new, [lnum, sign_type])
+            continue
+        endif
 
-        let entries_by_linenr = {}
-        for entry in entries
-            if entry.lnum == 0
-                continue
-            endif
-            if entry.type ==? 'W'
-                let sign_type = 'warn'
-            elseif entry.type ==? 'I'
-                let sign_type = 'info'
-            elseif entry.type ==? 'M'
-                let sign_type = 'msg'
-            else
-                let sign_type = 'err'
-            endif
-            let sign_type = 'neomake_'.a:type.'_'.sign_type
-
-            if ! exists('entries_by_linenr[entry.lnum]')
-                        \ || s:sign_order[entries_by_linenr[entry.lnum][1]]
-                        \    > s:sign_order[sign_type]
-                let entries_by_linenr[entry.lnum] = [entry, sign_type]
-            endif
-        endfor
-
-        let place_new = []
-        let log_context = {'bufnr': bufnr}
-        for [lnum, entry_info] in items(entries_by_linenr)
-            let [entry, sign_type] = entry_info
-
-            let existing_sign = get(placed_signs, entry.lnum, [])
-            if empty(existing_sign) || existing_sign[1] !~# '^neomake_'.a:type.'_'
-                call add(place_new, [lnum, sign_type])
-                continue
-            endif
-            if existing_sign[1] == sign_type
-                let sign_id = existing_sign[0]
-                call neomake#utils#DebugMessage(printf(
-                            \ 'Reusing sign: id=%d, type=%s, lnum=%d.',
-                            \ sign_id, existing_sign[1], lnum), log_context)
-
-                " Keep this sign from being cleaned.
-                if exists('s:last_placed_signs[a:type][bufnr][sign_id]')
-                    unlet s:last_placed_signs[a:type][bufnr][sign_id]
-                endif
-            else
-                let cmd = 'sign place '.existing_sign[0].' name='.sign_type.' buffer='.bufnr
-                call neomake#utils#DebugMessage('Upgrading sign for lnum='.lnum.': '.cmd.'.', log_context)
-                exe cmd
-            endif
-        endfor
-
-        for [lnum, sign_type] in place_new
-            if !exists('next_sign_id')
-                if !empty(placed_signs)
-                    let next_sign_id = max(map(values(copy(placed_signs)), 'v:val[0]')) + 1
-                else
-                    let next_sign_id = s:base_sign_id
-                endif
-            else
-                let next_sign_id += 1
-            endif
-            let cmd = 'sign place '.next_sign_id.' line='.lnum.
-                        \ ' name='.sign_type.
-                        \ ' buffer='.bufnr
-            call neomake#utils#DebugMessage('Placing sign: '.cmd.'.', log_context)
-            let placed_signs[lnum] = [next_sign_id, sign_type]
+        let sign_id = existing_sign[0]
+        if existing_sign[1] == sign_type
+            let count_reused += 1
+            " call neomake#log#debug(printf(
+            "             \ 'Reusing sign: id=%d, type=%s, lnum=%d.',
+            "             \ sign_id, existing_sign[1], lnum), log_context)
+        else
+            let cmd = printf('sign place %s name=%s buffer=%d',
+                        \ sign_id, sign_type, a:bufnr)
+            call neomake#log#debug('Upgrading sign for lnum='.lnum.': '.cmd.'.', log_context)
             exe cmd
-        endfor
+        endif
 
-        let s:placed_signs[a:type][bufnr] = {}
-        for [lnum, sign_info] in items(placed_signs)
-            let s:placed_signs[a:type][bufnr][sign_info[0]] = sign_info[1]
-        endfor
+        " Keep this sign from being cleaned.
+        if exists('s:last_placed_signs[a:type][a:bufnr][sign_id]')
+            unlet s:last_placed_signs[a:type][a:bufnr][sign_id]
+        endif
+    endfor
+    if count_reused
+        call neomake#log#debug(printf('Reused %d signs.', count_reused), log_context)
+    endif
+
+    for [lnum, sign_type] in place_new
+        if !exists('next_sign_id')
+            if !empty(placed_signs)
+                let next_sign_id = max(map(values(copy(placed_signs)), 'v:val[0]')) + 1
+            else
+                let next_sign_id = s:base_sign_id
+            endif
+        else
+            let next_sign_id += 1
+        endif
+        let cmd = 'sign place '.next_sign_id.' line='.lnum.
+                    \ ' name='.sign_type.
+                    \ ' buffer='.a:bufnr
+        call neomake#log#debug('Placing sign: '.cmd.'.', log_context)
+        let placed_signs[lnum] = [next_sign_id, sign_type]
+        exe cmd
+    endfor
+
+    let s:placed_signs[a:type][a:bufnr] = {}
+    for [lnum, sign_info] in items(placed_signs)
+        let s:placed_signs[a:type][a:bufnr][sign_info[0]] = sign_info[1]
     endfor
 endfunction
 
 function! neomake#signs#CleanAllOldSigns(type) abort
-    call neomake#utils#DebugObject('Removing signs', s:last_placed_signs)
+    call neomake#log#debug_obj('Removing signs', s:last_placed_signs)
     for buf in keys(s:last_placed_signs[a:type])
         call neomake#signs#CleanOldSigns(buf, a:type)
     endfor
@@ -191,11 +179,9 @@ function! neomake#signs#CleanOldSigns(bufnr, type) abort
     let placed_signs = s:last_placed_signs[a:type][a:bufnr]
     unlet s:last_placed_signs[a:type][a:bufnr]
     if bufexists(+a:bufnr)
-        call neomake#utils#DebugObject('Cleaning old signs in buffer '.a:bufnr, placed_signs)
+        call neomake#log#debug(printf('Cleaning %d old signs.', len(placed_signs)), {'bufnr': a:bufnr})
         for sign_id in keys(placed_signs)
-            let cmd = 'sign unplace '.sign_id.' buffer='.a:bufnr
-            call neomake#utils#DebugMessage('Unplacing sign: '.cmd.'.')
-            exe cmd
+            exe 'sign unplace '.sign_id.' buffer='.a:bufnr
             if has_key(s:placed_signs[a:type], a:bufnr)
                 if has_key(s:placed_signs[a:type][a:bufnr], sign_id)
                     unlet s:placed_signs[a:type][a:bufnr][sign_id]
@@ -203,7 +189,7 @@ function! neomake#signs#CleanOldSigns(bufnr, type) abort
             endif
         endfor
     else
-        call neomake#utils#DebugObject('Skipped cleaning of old signs in non-existing buffer '.a:bufnr, placed_signs)
+        call neomake#log#debug_obj('Skipped cleaning of old signs in non-existing buffer '.a:bufnr, placed_signs)
     endif
 endfunction
 
@@ -212,7 +198,7 @@ function! neomake#signs#RedefineSign(name, opts) abort
     for attr in keys(a:opts)
         let sign_define .= ' '.attr.'='.a:opts[attr]
     endfor
-    call neomake#utils#DebugMessage(printf('Defining sign: %s.', sign_define))
+    call neomake#log#debug(printf('Defining sign: %s.', sign_define))
     exe sign_define
 endfunction
 
@@ -269,8 +255,9 @@ function! neomake#signs#RedefineInfoSign(...) abort
 endfunction
 
 function! neomake#signs#DefineHighlights() abort
-    let ctermbg = neomake#utils#GetHighlight('SignColumn', 'bg')
-    let guibg = neomake#utils#GetHighlight('SignColumn', 'bg#')
+    " Use background from SignColumn.
+    let ctermbg = neomake#utils#GetHighlight('SignColumn', 'bg', 'Normal')
+    let guibg = neomake#utils#GetHighlight('SignColumn', 'bg#', 'Normal')
     let bg = 'ctermbg='.ctermbg.' guibg='.guibg
 
     for [group, fg_from] in items({
@@ -280,14 +267,17 @@ function! neomake#signs#DefineHighlights() abort
                 \ 'NeomakeMessageSign': ['ModeMsg', 'fg']
                 \ })
         let [fg_group, fg_attr] = fg_from
-        let ctermfg = neomake#utils#GetHighlight(fg_group, fg_attr)
-        let guifg = neomake#utils#GetHighlight(fg_group, fg_attr.'#')
+        " NOTE: fg falls back to "Normal" always, not "SignColumn" inbetween.
+        let ctermfg = neomake#utils#GetHighlight(fg_group, fg_attr, 'Normal')
+        let guifg = neomake#utils#GetHighlight(fg_group, fg_attr.'#', 'Normal')
+
         " Ensure that we're not using SignColumn bg as fg (as with gotham
         " colorscheme, issue https://github.com/neomake/neomake/pull/659).
-        if ctermfg == ctermbg && guifg == guibg
-            let fg_attr = neomake#utils#ReverseSynIDattr(fg_attr)
-            let ctermfg = neomake#utils#GetHighlight(fg_group, fg_attr)
-            let guifg = neomake#utils#GetHighlight(fg_group, fg_attr.'#')
+        if ctermfg !=# 'NONE' && ctermfg ==# ctermbg
+            let ctermfg = neomake#utils#GetHighlight(fg_group, neomake#utils#ReverseSynIDattr(fg_attr))
+        endif
+        if guifg !=# 'NONE' && guifg ==# guibg
+            let guifg = neomake#utils#GetHighlight(fg_group, neomake#utils#ReverseSynIDattr(fg_attr).'#')
         endif
         exe 'hi '.group.'Default ctermfg='.ctermfg.' guifg='.guifg.' '.bg
         if !neomake#utils#highlight_is_defined(group)

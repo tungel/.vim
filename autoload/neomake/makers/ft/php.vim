@@ -15,15 +15,16 @@ function! neomake#makers#ft#php#php() abort
             \ '%EFatal error: %m in %f on line %l,'.
             \ '%-G\s%#,'.
             \ '%-GErrors parsing %.%#',
+        \ 'output_stream': 'stdout',
         \ }
 endfunction
 
 function! neomake#makers#ft#php#phpcs() abort
-    let l:args = ['--report=csv']
+    let args = ['--report=csv', '-q']
 
     "Add standard argument if one is set.
     if exists('g:neomake_php_phpcs_args_standard')
-        call add(l:args, '--standard=' . expand(g:neomake_php_phpcs_args_standard))
+        call add(args, '--standard=' . expand(g:neomake_php_phpcs_args_standard))
     endif
 
     return {
@@ -36,7 +37,8 @@ endfunction
 
 function! neomake#makers#ft#php#phpmd() abort
     return {
-        \ 'args': ['%:p', 'text', 'codesize,design,unusedcode,naming'],
+        \ 'args': ['%t', 'text', 'codesize,design,unusedcode,naming'],
+        \ 'append_file': 0,
         \ 'errorformat': '%W%f:%l%\s%\s%#%m'
         \ }
 endfunction
@@ -44,7 +46,7 @@ endfunction
 function! neomake#makers#ft#php#phpstan() abort
     " PHPStan normally considers 0 to be the default level, so that is used here as the default:
     let maker = {
-        \ 'args': ['analyse', '--errorFormat', 'raw', '--no-progress', '--level', get(g:, 'neomake_phpstan_level', 0)],
+        \ 'args': ['analyse', '--error-format', 'raw', '--no-progress', '--level', get(g:, 'neomake_phpstan_level', 0)],
         \ 'errorformat': '%E%f:%l:%m',
         \ }
     " Check for the existence of a default PHPStan project configuration file.
@@ -56,5 +58,15 @@ function! neomake#makers#ft#php#phpstan() abort
     if !empty(phpStanConfigFilePath)
         call extend(maker.args, ['-c', phpStanConfigFilePath])
     endif
+    return maker
+endfunction
+
+function! neomake#makers#ft#php#psalm() abort
+    let maker = {
+        \ 'args': [
+            \ '--output-format=pylint'
+        \ ],
+        \ 'errorformat': '%A%f:%l:%\s[%t%n]%\s%m',
+        \ }
     return maker
 endfunction

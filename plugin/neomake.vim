@@ -19,91 +19,32 @@ command! -bang -nargs=1 -complete=custom,neomake#cmd#complete_jobs
             \ NeomakeCancelJob call neomake#CancelJob(<q-args>, <bang>0)
 command! -bang NeomakeCancelJobs call neomake#CancelJobs(<bang>0)
 
-command! -bang -bar NeomakeInfo call neomake#DisplayInfo(<bang>0)
+command! -bang -bar -nargs=? -complete=customlist,neomake#cmd#complete_makers
+            \ NeomakeInfo call neomake#debug#display_info(<bang>0, <f-args>)
 
-" Enable/disable/toggle commands.  {{{
-function! s:toggle(scope) abort
-    let new = !get(get(a:scope, 'neomake', {}), 'disabled', 0)
-    if new
-        call neomake#config#set_dict(a:scope, 'neomake.disabled', new)
-    else
-        call neomake#config#unset_dict(a:scope, 'neomake.disabled')
-    endif
-    call s:display_status()
-endfunction
-function! s:disable(scope, disabled) abort
-    call neomake#config#set_dict(a:scope, 'neomake.disabled', a:disabled)
-    if a:scope is# g:
-        if a:disabled
-            augroup neomake
-                au!
-            augroup END
-            augroup! neomake
-        else
-            call s:setup_autocmds()
-        endif
-    endif
-    if &verbose
-        call s:display_status()
-    endif
-endfunction
-function! s:display_status() abort
-    let [disabled, source] = neomake#config#get_with_source('disabled', 0)
-    let msg = 'Neomake is ' . (disabled ? 'disabled' : 'enabled')
-    if source !=# 'default'
-        let msg .= ' ('.source.')'
-    endif
-    echom msg.'.'
-endfunction
-command! -bar NeomakeToggle call s:toggle(g:)
-command! -bar NeomakeToggleBuffer call s:toggle(b:)
-command! -bar NeomakeToggleTab call s:toggle(t:)
-command! -bar NeomakeDisable call s:disable(g:, 1)
-command! -bar NeomakeDisableBuffer call s:disable(b:, 1)
-command! -bar NeomakeDisableTab call s:disable(t:, 1)
-command! -bar NeomakeEnable call s:disable(g:, 0)
-command! -bar NeomakeEnableBuffer call s:disable(b:, 0)
-command! -bar NeomakeEnableTab call s:disable(t:, 0)
+command! -bang -bar NeomakeClean call neomake#cmd#clean(<bang>1)
 
-command! NeomakeStatus call s:display_status()
-" }}}
+" Enable/disable/toggle commands.
+command! -bar NeomakeToggle call neomake#cmd#toggle(g:)
+command! -bar NeomakeToggleBuffer call neomake#cmd#toggle(b:)
+command! -bar NeomakeToggleTab call neomake#cmd#toggle(t:)
+command! -bar NeomakeDisable call neomake#cmd#disable(g:)
+command! -bar NeomakeDisableBuffer call neomake#cmd#disable(b:)
+command! -bar NeomakeDisableTab call neomake#cmd#disable(t:)
+command! -bar NeomakeEnable call neomake#cmd#enable(g:)
+command! -bar NeomakeEnableBuffer call neomake#cmd#enable(b:)
+command! -bar NeomakeEnableTab call neomake#cmd#enable(t:)
 
-function! s:define_highlights() abort
-    if g:neomake_place_signs
-        call neomake#signs#DefineHighlights()
-    endif
-    if get(g:, 'neomake_highlight_columns', 1)
-                \ || get(g:, 'neomake_highlight_lines', 0)
-        call neomake#highlights#DefineHighlights()
-    endif
-endfunction
+command! NeomakeStatus call neomake#cmd#display_status()
 
-function! s:setup_autocmds() abort
-    augroup neomake
-        au!
-        if !exists('*nvim_buf_add_highlight')
-            autocmd BufEnter * call neomake#highlights#ShowHighlights()
-        endif
-        if has('timers')
-            autocmd CursorMoved * call neomake#CursorMovedDelayed()
-            " Force-redraw display of current error after resizing Vim, which appears
-            " to clear the previously echoed error.
-            autocmd VimResized * call timer_start(100, function('neomake#EchoCurrentError'))
-        else
-            autocmd CursorMoved * call neomake#CursorMoved()
-        endif
-        autocmd VimLeave * call neomake#VimLeave()
-        autocmd ColorScheme * call s:define_highlights()
-    augroup END
-endfunction
+" NOTE: experimental, no default mappings.
+" NOTE: uses -addr=lines (default), and therefore negative counts do not work
+"       (see https://github.com/vim/vim/issues/3654).
+command! -bar -count=1 NeomakeNextLoclist call neomake#list#next(<count>, 1)
+command! -bar -count=1 NeomakePrevLoclist call neomake#list#prev(<count>, 1)
+command! -bar -count=1 NeomakeNextQuickfix call neomake#list#next(<count>, 0)
+command! -bar -count=1 NeomakePrevQuickfix call neomake#list#prev(<count>, 0)
 
-if has('signs')
-    let g:neomake_place_signs = get(g:, 'neomake_place_signs', 1)
-else
-    let g:neomake_place_signs = 0
-    lockvar g:neomake_place_signs
-endif
+call neomake#setup#setup_autocmds()
 
-call s:setup_autocmds()
-
-" vim: sw=4 et
+" vim: ts=4 sw=4 et

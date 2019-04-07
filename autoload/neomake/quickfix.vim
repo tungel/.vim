@@ -5,24 +5,45 @@ let s:is_enabled = 0
 
 let s:match_base_priority = 10
 
-function! neomake#quickfix#enable() abort
+" args: a:1: force enabling?  (used in tests and for VimEnter callback)
+function! neomake#quickfix#enable(...) abort
+    if has('vim_starting') && !(a:0 && a:1)
+        " Delay enabling for our FileType autocommand to happen as late as
+        " possible, since placing signs triggers a redraw, and together with
+        " vim-qf_resize this causes flicker.
+        " https://github.com/vim/vim/issues/2763
+        augroup neomake_qf
+            autocmd!
+            autocmd VimEnter * call neomake#quickfix#enable(1)
+        augroup END
+        return
+    endif
+    call neomake#log#debug('enabling custom quickfix list handling.')
     let s:is_enabled = 1
     augroup neomake_qf
         autocmd!
         autocmd FileType qf call neomake#quickfix#FormatQuickfix()
     augroup END
+    if &filetype ==# 'qf'
+        call neomake#quickfix#FormatQuickfix()
+    endif
 endfunction
-
 
 function! neomake#quickfix#disable() abort
+    call neomake#log#debug('disabling custom quickfix list handling.')
     let s:is_enabled = 0
+    if &filetype ==# 'qf'
+        call neomake#quickfix#FormatQuickfix()
+    endif
+    if exists('#neomake_qf')
+        autocmd! neomake_qf
+        augroup! neomake_qf
+    endif
 endfunction
-
 
 function! neomake#quickfix#is_enabled() abort
     return s:is_enabled
 endfunction
-
 
 function! s:cursor_moved() abort
     if b:neomake_start_col
@@ -47,51 +68,82 @@ function! s:cursor_moved() abort
     endif
 endfunction
 
+function! s:set_qf_lines(lines) abort
+    let ul = &l:undolevels
+    setlocal modifiable nonumber undolevels=-1
 
-function! neomake#quickfix#set_syntax(names) abort
-    runtime! syntax/neomake/qf.vim
-    for name in a:names
-        execute 'runtime! syntax/neomake/'.name.'.vim '
-                    \  . 'syntax/neomake/'.name.'/*.vim'
-    endfor
+    call setline(1, a:lines)
+
+    let &l:undolevels = ul
+    setlocal nomodifiable nomodified
 endfunction
 
+function! s:clean_qf_annotations() abort
+    call neomake#log#debug('cleaning qf annotations.', {'bufnr': bufnr('%')})
+    if exists('b:_neomake_qf_orig_lines')
+        call s:set_qf_lines(b:_neomake_qf_orig_lines)
+        unlet b:_neomake_qf_orig_lines
+    endif
+    unlet b:neomake_qf
+    augroup neomake_qf
+        autocmd! * <buffer>
+    augroup END
+
+    if exists('b:_neomake_maker_match_id')
+        silent! call matchdelete(b:_neomake_maker_match_id)
+    endif
+    if exists('b:_neomake_gutter_match_id')
+        silent! call matchdelete(b:_neomake_gutter_match_id)
+    endif
+    if exists('b:_neomake_bufname_match_id')
+        silent! call matchdelete(b:_neomake_bufname_match_id)
+    endif
+    if exists('b:_neomake_cursor_match_id')
+        silent! call matchdelete(b:_neomake_cursor_match_id)
+    endif
+    call neomake#signs#ResetFile(bufnr('%'))
+endfunction
 
 function! neomake#quickfix#FormatQuickfix() abort
     let buf = bufnr('%')
     if !s:is_enabled || &filetype !=# 'qf'
         if exists('b:neomake_qf')
-            call neomake#signs#Clean(buf, 'file')
-            unlet! b:neomake_qf
-            augroup neomake_qf
-                autocmd! * <buffer>
-            augroup END
+            call s:clean_qf_annotations()
         endif
         return
     endif
 
     let src_buf = 0
-    let loclist = 1
-    let qflist = getloclist(0)
-    if empty(qflist)
-        let loclist = 0
-        let qflist = getqflist()
+    if has('patch-7.4.2215')
+        let is_loclist = getwininfo(win_getid())[0].loclist
+        if is_loclist
+            let qflist = getloclist(0)
+        else
+            let qflist = getqflist()
+        endif
+    else
+        let is_loclist = 1
+        let qflist = getloclist(0)
+        if empty(qflist)
+            let is_loclist = 0
+            let qflist = getqflist()
+        endif
     endif
 
     if empty(qflist) || qflist[0].text !~# ' nmcfg:{.\{-}}$'
-        set syntax=qf
+        if exists('b:neomake_qf')
+            call neomake#log#debug('Resetting custom qf for non-Neomake change.')
+            call s:clean_qf_annotations()
+        endif
         return
     endif
 
-    if loclist
+    if is_loclist
         let b:neomake_qf = 'file'
         let src_buf = qflist[0].bufnr
     else
         let b:neomake_qf = 'project'
     endif
-
-    let ul = &l:undolevels
-    setlocal modifiable nonumber undolevels=-1
 
     let lines = []
     let signs = []
@@ -99,8 +151,8 @@ function! neomake#quickfix#FormatQuickfix() abort
     let lnum_width = 0
     let col_width = 0
     let maker_width = 0
-    let maker = {}
-    let makers = []
+    let nmcfg = {}
+    let makers = {}
 
     for item in qflist
         " Look for marker at end of entry.
@@ -109,20 +161,25 @@ function! neomake#quickfix#FormatQuickfix() abort
             if idx != -1
                 let config = item.text[idx+7:]
                 try
-                    let maker = eval(config)
-                    if index(makers, maker.name) == -1
-                        call add(makers, maker.name)
+                    let nmcfg = eval(config)
+                    if !has_key(makers, nmcfg.name)
+                        let makers[nmcfg.name] = 0
                     endif
-                    let item.text = item.text[:(idx-1)]
+                    let item.text = idx == 0 ? '' : item.text[:(idx-1)]
                 catch
-                    call neomake#utils#log_exception(printf(
+                    call neomake#log#exception(printf(
                                 \ 'Error when evaluating nmcfg (%s): %s.',
                                 \ config, v:exception))
                 endtry
             endif
         endif
 
-        let item.maker_name = get(maker, 'short', '????')
+        " Count entries.
+        if !empty(nmcfg)
+            let makers[nmcfg.name] += 1
+        endif
+
+        let item.maker_name = get(nmcfg, 'short', '????')
         let maker_width = max([len(item.maker_name), maker_width])
 
         if item.lnum
@@ -133,7 +190,7 @@ function! neomake#quickfix#FormatQuickfix() abort
         let i += 1
     endfor
 
-    let syntax = makers
+    let syntax = keys(makers)
     if src_buf
         for ft in split(neomake#compat#getbufvar(src_buf, '&filetype', ''), '\.')
             if !empty(ft) && index(syntax, ft) == -1
@@ -141,7 +198,14 @@ function! neomake#quickfix#FormatQuickfix() abort
             endif
         endfor
     endif
-    call neomake#quickfix#set_syntax(syntax)
+    if get(b:, '_neomake_cur_syntax', []) != syntax
+        runtime! syntax/neomake/qf.vim
+        for name in syntax
+            execute 'runtime! syntax/neomake/'.name.'.vim '
+                        \  . 'syntax/neomake/'.name.'/*.vim'
+        endfor
+        let b:_neomake_cur_syntax = syntax
+    endif
 
     if maker_width + lnum_width + col_width > 0
         let b:neomake_start_col = maker_width + lnum_width + col_width + 2
@@ -154,7 +218,8 @@ function! neomake#quickfix#FormatQuickfix() abort
     endif
 
     " Count number of different buffers and cache their names.
-    let buffers = neomake#compat#uniq(sort(map(copy(qflist), 'v:val.bufnr')))
+    let buffers = neomake#compat#uniq(sort(
+                \ filter(map(copy(qflist), 'v:val.bufnr'), 'v:val != 0')))
     let buffer_names = {}
     if len(buffers) > 1
         for b in buffers
@@ -180,7 +245,7 @@ function! neomake#quickfix#FormatQuickfix() abort
         let i += 1
 
         let text = item.text
-        if !empty(buffer_names)
+        if item.bufnr != 0 && !empty(buffer_names)
             if last_bufnr != item.bufnr
                 let text = printf('[%s] %s', buffer_names[item.bufnr], text)
                 let last_bufnr = item.bufnr
@@ -200,9 +265,10 @@ function! neomake#quickfix#FormatQuickfix() abort
         endif
     endfor
 
-    call setline(1, lines)
-    let &l:undolevels = ul
-    setlocal nomodifiable nomodified
+    if !exists('b:_neomake_qf_orig_lines')
+        let b:_neomake_qf_orig_lines = getbufline('%', 1, '$')
+    endif
+    call s:set_qf_lines(lines)
 
     if exists('+breakindent')
         " Keeps the text aligned with the fake gutter.
@@ -210,7 +276,6 @@ function! neomake#quickfix#FormatQuickfix() abort
         let &breakindentopt = 'shift:'.(b:neomake_start_col + 1)
     endif
 
-    call neomake#signs#CleanOldSigns(buf, 'file')
     call neomake#signs#Reset(buf, 'file')
     call neomake#signs#PlaceSigns(buf, signs, 'file')
 
@@ -228,6 +293,12 @@ function! neomake#quickfix#FormatQuickfix() abort
                     \ '\%>'.(maker_width).'c'
                     \ .'.*\%<'.(b:neomake_start_col + 2).'c',
                     \ s:match_base_priority+2)
+        if exists('b:_neomake_bufname_match_id')
+            silent! call matchdelete(b:_neomake_bufname_match_id)
+        endif
+        let b:_neomake_bufname_match_id = matchadd('neomakeBufferName',
+                    \ '.*\%<'.(maker_width + 1).'c',
+                    \ s:match_base_priority+3)
     endif
 
     augroup neomake_qf
@@ -235,16 +306,19 @@ function! neomake#quickfix#FormatQuickfix() abort
         autocmd CursorMoved <buffer> call s:cursor_moved()
     augroup END
 
-    if loclist
-        let bufname = bufname(src_buf)
-        if empty(bufname)
-            let bufname = 'buf:'.src_buf
+    " Set title.
+    " Fallback without patch-7.4.2200, fix for without 8.0.1831.
+    if !has('patch-7.4.2200') || !exists('w:quickfix_title') || w:quickfix_title[0] ==# ':'
+        let maker_info = []
+        for [maker, c] in items(makers)
+            call add(maker_info, maker.'('.c.')')
+        endfor
+        let maker_info_str = join(maker_info, ', ')
+        if is_loclist
+            let prefix = 'file'
         else
-            let bufname = pathshorten(bufname)
+            let prefix = 'project'
         endif
-        let w:quickfix_title = printf('Neomake[file]: %s (%s)',
-                    \ bufname, join(makers, ', '))
-    else
-        let w:quickfix_title = 'Neomake[project]: '.join(makers, ', ')
+        let w:quickfix_title = neomake#list#get_title(prefix, src_buf, maker_info_str)
     endif
 endfunction

@@ -4,7 +4,7 @@ endfunction
 
 function! neomake#makers#ft#moon#moonc() abort
     return {
-        \ 'args': ['-l', '%:p'],
+        \ 'args': ['-l'],
         \ 'errorformat':
             \ '%-G,' .
             \ '%-G>%#,' .
@@ -12,3 +12,4 @@ function! neomake#makers#ft#moon#moonc() abort
             \ 'line\ %l:\ %m'
     \ }
 endfunction
+" vim: ts=4 sw=4 et
