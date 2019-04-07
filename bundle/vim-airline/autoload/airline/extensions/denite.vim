@@ -1,4 +1,4 @@
-" MIT License. Copyright (c) 2017 Thomas Dy
+" MIT License. Copyright (c) 2017-2019 Thomas Dy et al.
 " vim: et ts=2 sts=2 sw=2
 
 scriptencoding utf-8
@@ -15,7 +15,7 @@ function! airline#extensions#denite#check_denite_mode(bufnr)
     return ''
   endif
   let mode = split(denite#get_status_mode(), ' ')
-  let mode = tolower(mode[1])
+  let mode = tolower(get(mode, 1, ''))
   if !exists('b:denite_mode_cache') || mode != b:denite_mode_cache
     call airline#highlighter#highlight([mode], a:bufnr)
     let b:denite_mode_cache = mode
@@ -39,4 +39,3 @@ function! airline#extensions#denite#init(ext)
   call denite#custom#option('_', 'statusline', 0)
   call a:ext.add_statusline_func('airline#extensions#denite#apply')
 endfunction
-
