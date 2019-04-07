@@ -5,7 +5,8 @@
 # ============================================================================
 
 import re
-from .base import Base
+
+from deoplete.base.filter import Base
 from deoplete.util import (
     fuzzy_escape, binary_search_begin, binary_search_end)
 
@@ -22,6 +23,8 @@ class Filter(Base):
         complete_str = context['complete_str']
         if context['ignorecase']:
             complete_str = complete_str.lower()
+        if not complete_str:
+            return context['candidates']
 
         if context['is_sorted']:
             begin = binary_search_begin(

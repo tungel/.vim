@@ -4,8 +4,7 @@
 # License: MIT license
 # ============================================================================
 
-from .base import Base
-
+from deoplete.base.source import Base
 from deoplete.util import parse_buffer_pattern, getlines
 
 
@@ -16,38 +15,51 @@ class Source(Base):
 
         self.name = 'buffer'
         self.mark = '[B]'
-        self.limit = 1000000
-        self.__buffers = {}
-        self.__max_lines = 5000
+        self.events = ['Init', 'BufReadPost', 'BufWritePost']
+        self.vars = {
+            'require_same_filetype': True,
+        }
+
+        self._limit = 1000000
+        self._buffers = {}
+        self._max_lines = 5000
 
     def on_event(self, context):
-        bufnr = context['bufnr']
-        if (bufnr not in self.__buffers or
-                context['event'] == 'BufWritePost'):
-            self.__make_cache(context, bufnr)
+        self._make_cache(context)
+
+        tab_bufnrs = self.vim.call('tabpagebuflist')
+        self._buffers = {
+            x['bufnr']: x for x in self._buffers.values()
+            if x['bufnr'] in tab_bufnrs or
+            self.vim.call('buflisted', x['bufnr'])
+        }
 
     def gather_candidates(self, context):
-        self.on_event(context)
         tab_bufnrs = self.vim.call('tabpagebuflist')
-        same_filetype = context['vars'].get(
-            'deoplete#buffer#require_same_filetype', True)
+        same_filetype = self.get_var('require_same_filetype')
         return {'sorted_candidates': [
-            x['candidates'] for x in self.__buffers.values()
+            x['candidates'] for x in self._buffers.values()
             if not same_filetype or
             x['filetype'] in context['filetypes'] or
             x['filetype'] in context['same_filetypes'] or
             x['bufnr'] in tab_bufnrs
         ]}
 
-    def __make_cache(self, context, bufnr):
+    def _make_cache(self, context):
+        # Bufsize check
+        size = self.vim.call('line2byte',
+                             self.vim.call('line', '$') + 1) - 1
+        if size > self._limit:
+            return
+
         try:
-            self.__buffers[bufnr] = {
-                'bufnr': bufnr,
-                'filetype': self.vim.eval('&l:filetype'),
+            self._buffers[context['bufnr']] = {
+                'bufnr': context['bufnr'],
+                'filetype': self.get_buf_option('filetype'),
                 'candidates': [
                     {'word': x} for x in
                     sorted(parse_buffer_pattern(getlines(self.vim),
-                                                context['keyword_patterns']),
+                                                context['keyword_pattern']),
                            key=str.lower)
                 ]
             }

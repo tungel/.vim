@@ -1,4 +1,4 @@
-**Warning:  I will close the issue without the minimal init.vim and the reproduce ways.**
+**Warning:  I will close the issue without the minimal init.vim and the reproduction instructions.**
 
 # Problems summary
 
@@ -8,11 +8,11 @@
 
 ## Environment Information
 
- * deoplete version(SHA1):
+ * deoplete version (SHA1):
 
  * OS:
 
- * neovim/Vim version:
+ * neovim/Vim `:version` output:
 
  * `:checkhealth` or `:CheckHealth` result(neovim only):
 
@@ -22,10 +22,14 @@
 " Your minimal init.vim/vimrc
 set runtimepath+=~/path/to/deoplete.nvim/
 let g:deoplete#enable_at_startup = 1
+
+" For Vim only
+"set runtimepath+=~/path/to/nvim-yarp/
+"set runtimepath+=~/path/to/vim-hug-neovim-rpc/
 ```
 
 
-## The reproduce ways from neovim/Vim starting (Required!)
+## How to reproduce the problem from neovim/Vim startup (Required!)
 
  1. foo
  2. bar
@@ -41,7 +45,7 @@ let g:deoplete#enable_at_startup = 1
  5. cat /tmp/log_{PID}
 
 
-## Screen shot (if possible)
+## Screenshot (if possible)
 
 
 ## Upload the log file
