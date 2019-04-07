@@ -20,6 +20,10 @@ function! test#strategy#make(cmd) abort
   call s:execute_with_compiler(a:cmd, 'make')
 endfunction
 
+function! test#strategy#make_bang(cmd) abort
+  call s:execute_with_compiler(a:cmd, 'make!')
+endfunction
+
 function! test#strategy#neomake(cmd) abort
   call s:execute_with_compiler(a:cmd, 'NeomakeProject')
 endfunction
@@ -45,14 +49,25 @@ function! test#strategy#vimproc(cmd) abort
 endfunction
 
 function! test#strategy#neovim(cmd) abort
-  botright new
+  let term_position = get(g:, 'test#neovim#term_position', 'botright')
+  execute term_position . ' new'
   call termopen(a:cmd)
   au BufDelete <buffer> wincmd p " switch back to last window
   startinsert
 endfunction
 
+function! test#strategy#vimterminal(cmd) abort
+  let term_position = get(g:, 'test#vim#term_position', 'botright')
+  execute term_position . ' new'
+  call term_start(!s:Windows() ? ['/bin/sh', '-c', a:cmd] : ['cmd.exe', '/c', a:cmd], {'curwin': 1, 'term_name': a:cmd})
+  au BufLeave <buffer> wincmd p
+  nnoremap <buffer> <Enter> :q<CR>
+  redraw
+  echo "Press <Enter> to exit test runner terminal (<Ctrl-C> first if command is still running)"
+endfunction
+
 function! test#strategy#neoterm(cmd) abort
-  call neoterm#do(a:cmd)
+  call neoterm#do({ 'cmd': a:cmd})
 endfunction
 
 function! test#strategy#vtr(cmd) abort
@@ -80,11 +95,13 @@ function! test#strategy#vimshell(cmd) abort
 endfunction
 
 function! test#strategy#terminal(cmd) abort
-  call s:execute_script('osx_terminal', s:pretty_command(a:cmd))
+  let cmd = join(['cd ' . shellescape(getcwd()), s:pretty_command(a:cmd)], '; ')
+  call s:execute_script('osx_terminal', cmd)
 endfunction
 
 function! test#strategy#iterm(cmd) abort
-  call s:execute_script('osx_iterm', s:pretty_command(a:cmd))
+  let cmd = join(['cd ' . shellescape(getcwd()), s:pretty_command(a:cmd)], '; ')
+  call s:execute_script('osx_iterm', cmd)
 endfunction
 
 
@@ -98,8 +115,6 @@ function! s:execute_with_compiler(cmd, script) abort
       let compiler = dispatch#compiler_for_program(a:cmd)
       if !empty(compiler)
         execute 'compiler ' . compiler
-      else
-        echoerr 'Could not find compiler for command: '.a:cmd
       endif
     endif
 
@@ -125,22 +140,20 @@ endfunction
 
 function! s:pretty_command(cmd) abort
   let clear = !s:Windows() ? 'clear' : 'cls'
-  let cd = 'cd ' . shellescape(getcwd())
   let echo  = !s:Windows() ? 'echo -e '.shellescape(a:cmd) : 'Echo '.shellescape(a:cmd)
   let separator = !s:Windows() ? '; ' : ' & '
 
   if !get(g:, 'test#preserve_screen')
-    return join([l:clear, l:cd, l:echo, a:cmd], l:separator)
+    return join([l:clear, l:echo, a:cmd], l:separator)
   else
-    return join([l:cd, l:echo, a:cmd], l:separator)
+    return join([l:echo, a:cmd], l:separator)
   endif
 endfunction
 
 function! s:command(cmd) abort
-  let cd = 'cd ' . shellescape(getcwd())
   let separator = !s:Windows() ? '; ' : ' & '
 
-  return join([l:cd, a:cmd], l:separator)
+  return join([a:cmd], l:separator)
 endfunction
 
 function! s:Windows() abort
@@ -152,13 +165,5 @@ function! s:restorescreen() abort
     return &restorescreen
   else
     return !empty(&t_ti) || !empty(&t_te)
-  endif
-endfunction
-
-function! s:cat(filename) abort
-  if s:Windows()
-    return system('type '.a:filename)
-  else
-    return system('cat '.a:filename)
   endif
 endfunction

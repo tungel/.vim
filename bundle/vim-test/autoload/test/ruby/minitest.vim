@@ -56,14 +56,14 @@ endfunction
 
 function! s:build_ruby_args(path, args) abort
   if a:path =~# '*'
-    return ['-e '.shellescape('Dir["./'.a:path.'"].each &method(:require)')] + a:args
+    return ['-e', shellescape('Dir["./'.a:path.'"].each &method(:require)'), '--'] + a:args
   else
     return [a:path] + a:args
   endif
 endfunction
 
 function! test#ruby#minitest#executable() abort
-  if system('cat Rakefile') =~# 'Rake::TestTask' ||
+  if filereadable('Rakefile') && system('cat Rakefile') =~# 'Rake::TestTask' ||
    \ (exists('b:rails_root') || filereadable('./bin/rails'))
     if !empty(glob('.zeus.sock'))
       return 'zeus rake test'
