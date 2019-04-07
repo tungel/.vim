@@ -10,7 +10,7 @@ import logging
 from functools import wraps
 from collections import defaultdict
 
-log_format = '%(asctime)s %(levelname)-8s (%(name)s) %(message)s'
+log_format = '%(asctime)s %(levelname)-8s [%(process)d] (%(name)s) %(message)s'
 log_message_cooldown = 0.5
 
 root = logging.getLogger('deoplete')
@@ -48,17 +48,21 @@ def setup(vim, level, output_file=None):
         try:
             import pkg_resources
 
-            neovim_version = pkg_resources.get_distribution('neovim').version
-        except ImportError:
-            neovim_version = 'unknown'
+            pynvim_version = pkg_resources.get_distribution('pynvim').version
+        except Exception:
+            pynvim_version = 'unknown'
 
         log = getLogger('logging')
         log.info('--- Deoplete Log Start ---')
-        log.info('%s, Python %s, neovim client %s',
+        log.info('%s, Python %s, pynvim %s',
                  vim.call('deoplete#util#neovim_version'),
                  '.'.join(map(str, sys.version_info[:3])),
-                 neovim_version)
-        vim.call('deoplete#util#print_warning', 'Logging to %s' % output_file)
+                 pynvim_version)
+
+        if not vim.vars.get('deoplete#_logging_notified'):
+            vim.vars['deoplete#_logging_notified'] = 1
+            vim.call('deoplete#util#print_debug', 'Logging to %s' % (
+                output_file))
 
 
 def logmethod(func):
@@ -136,7 +140,8 @@ class DeopleteLogFilter(logging.Filter):
                 # Only permit 2 errors in succession from a logging source to
                 # display errors inside of Neovim.  After this, it is no longer
                 # permitted to emit any more errors and should be addressed.
-                self.vim.call('deoplete#util#print_error', record.getMessage())
+                self.vim.call('deoplete#util#print_error', record.getMessage(),
+                              record.name)
             if record.exc_info and record.stack_info:
                 # Add a penalty for messages that generate exceptions to avoid
                 # making the log harder to read with doubled stack traces.

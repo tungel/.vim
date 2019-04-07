@@ -5,7 +5,7 @@
 # ============================================================================
 
 import re
-from .base import Base
+from deoplete.base.filter import Base
 
 
 class Filter(Base):
@@ -18,13 +18,13 @@ class Filter(Base):
     def filter(self, context):
         if not context['next_input']:
             return context['candidates']
-        m = re.match('\S+', context['next_input'])
+        m = re.match(r'\S+', context['next_input'])
         if not m:
             return context['candidates']
-        next = m.group(0)
+        next_input = m.group(0)
         for [overlap, candidate] in [
                 [x, y] for x, y
-                in [[overlap_length(x['word'], next), x]
+                in [[overlap_length(x['word'], next_input), x]
                     for x in context['candidates']] if x > 0]:
             if 'abbr' not in candidate:
                 candidate['abbr'] = candidate['word']

@@ -8,26 +8,9 @@ import os
 import re
 import sys
 import glob
+import importlib.util
 import traceback
 import unicodedata
-
-from importlib.machinery import SourceFileLoader
-
-
-def get_buffer_config(context, filetype, buffer_var, user_var, default_var):
-    if buffer_var in context['bufvars']:
-        return context['bufvars'][buffer_var]
-
-    ft = filetype if (filetype in context['vars'][user_var] or
-                      filetype in default_var) else '_'
-    default = default_var.get(ft, '')
-    return context['vars'][user_var].get(ft, default)
-
-
-def get_simple_buffer_config(context, buffer_var, user_var):
-    return (context['bufvars'][buffer_var]
-            if buffer_var in context['bufvars']
-            else context['vars'][user_var])
 
 
 def set_pattern(variable, keys, pattern):
@@ -35,49 +18,28 @@ def set_pattern(variable, keys, pattern):
         variable[key] = pattern
 
 
-def set_list(vim, variable, keys, list):
-    return vim.call('deoplete#util#set_pattern', variable, keys, list)
-
-
-def set_default(vim, var, val):
-    return vim.call('deoplete#util#set_default', var, val)
-
-
 def convert2list(expr):
     return (expr if isinstance(expr, list) else [expr])
 
 
 def convert2candidates(l):
-    return ([{'word': x} for x in l]
-            if l and isinstance(l, list) and isinstance(l[0], str) else l)
+    ret = []
+    if l and isinstance(l, list):
+        for x in l:
+            if isinstance(x, str):
+                ret.append({'word': x})
+            else:
+                ret.append(x)
+    else:
+        ret = l
+    return ret
 
 
 def globruntime(runtimepath, path):
     ret = []
-    for rtp in re.split(',', runtimepath):
+    for rtp in runtimepath.split(','):
         ret += glob.glob(rtp + '/' + path)
     return ret
-
-
-def find_rplugins(context, source):
-    """Search for base.py or *.py
-
-    Searches $VIMRUNTIME/*/rplugin/python3/deoplete/$source[s]/
-    """
-    rtp = context.get('runtimepath', '').split(',')
-    if not rtp:
-        return
-
-    sources = (
-        os.path.join('rplugin/python3/deoplete', source, 'base.py'),
-        os.path.join('rplugin/python3/deoplete', source, '*.py'),
-        os.path.join('rplugin/python3/deoplete', source + 's', '*.py'),
-        os.path.join('rplugin/python3/deoplete', source, '*', '*.py'),
-    )
-
-    for src in sources:
-        for path in rtp:
-            yield from glob.iglob(os.path.join(path, src))
 
 
 def import_plugin(path, source, classname):
@@ -88,7 +50,9 @@ def import_plugin(path, source, classname):
     name = os.path.splitext(os.path.basename(path))[0]
     module_name = 'deoplete.%s.%s' % (source, name)
 
-    module = SourceFileLoader(module_name, path).load_module()
+    spec = importlib.util.spec_from_file_location(module_name, path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
     cls = getattr(module, classname, None)
     if not cls:
         return None
@@ -116,9 +80,16 @@ def error(vim, expr):
 
 
 def error_tb(vim, msg):
-    for line in traceback.format_exc().splitlines():
-        error(vim, str(line))
-    error(vim, '%s.  Use :messages for error details.' % msg)
+    lines = []
+    t, v, tb = sys.exc_info()
+    if t and v and tb:
+        lines += traceback.format_exc().splitlines()
+    lines += ['%s.  Use :messages / see above for error details.' % msg]
+    if hasattr(vim, 'err_write'):
+        vim.err_write('[deoplete] %s\n' % '\n'.join(lines))
+    else:
+        for line in lines:
+            vim.call('deoplete#util#print_error', line)
 
 
 def error_vim(vim, msg):
@@ -135,12 +106,12 @@ def escape(expr):
     return expr.replace("'", "''")
 
 
-def charpos2bytepos(encoding, input, pos):
-    return len(bytes(input[: pos], encoding, errors='replace'))
+def charpos2bytepos(encoding, text, pos):
+    return len(bytes(text[: pos], encoding, errors='replace'))
 
 
-def bytepos2charpos(encoding, input, pos):
-    return len(bytes(input, encoding, errors='replace')[: pos].decode(
+def bytepos2charpos(encoding, text, pos):
+    return len(bytes(text, encoding, errors='replace')[: pos].decode(
         encoding, errors='replace'))
 
 
@@ -182,8 +153,8 @@ def fuzzy_escape(string, camelcase):
     return p
 
 
-def load_external_module(file, module):
-    current = os.path.dirname(os.path.abspath(file))
+def load_external_module(base, module):
+    current = os.path.dirname(os.path.abspath(base))
     module_dir = os.path.join(os.path.dirname(current), module)
     if module_dir not in sys.path:
         sys.path.insert(0, module_dir)
@@ -232,7 +203,7 @@ def charwidth(c):
 
 
 def expand(path):
-    return os.path.expandvars(os.path.expanduser(path))
+    return os.path.expanduser(os.path.expandvars(path))
 
 
 def getlines(vim, start=1, end='$'):
@@ -293,3 +264,12 @@ def binary_search_end(l, prefix):
         else:
             s = index + 1
     return -1
+
+
+def uniq_list_dict(l):
+    # Uniq list of dictionaries
+    ret = []
+    for d in l:
+        if d not in ret:
+            ret.append(d)
+    return ret

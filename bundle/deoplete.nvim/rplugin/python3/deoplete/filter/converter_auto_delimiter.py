@@ -4,7 +4,7 @@
 # License: MIT license
 # ============================================================================
 
-from .base import Base
+from deoplete.base.filter import Base
 
 
 class Filter(Base):
@@ -13,9 +13,12 @@ class Filter(Base):
 
         self.name = 'converter_auto_delimiter'
         self.description = 'auto delimiter converter'
+        self.vars = {
+            'delimiters': ['/'],
+        }
 
     def filter(self, context):
-        delimiters = context['vars']['deoplete#delimiters']
+        delimiters = self.get_var('delimiters')
         for candidate, delimiter in [
                 [x, last_find(x['abbr'], delimiters)]
                 for x in context['candidates']

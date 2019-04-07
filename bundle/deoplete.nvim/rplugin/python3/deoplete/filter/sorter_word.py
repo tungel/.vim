@@ -4,7 +4,7 @@
 # License: MIT license
 # ============================================================================
 
-from .base import Base
+from deoplete.base.filter import Base
 
 
 class Filter(Base):
@@ -17,4 +17,4 @@ class Filter(Base):
 
     def filter(self, context):
         return sorted(context['candidates'],
-                      key=lambda x: x['word'])
+                      key=lambda x: x['word'].swapcase())
