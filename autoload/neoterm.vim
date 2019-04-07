@@ -1,132 +1,178 @@
-" Internal: Creates a new neoterm buffer.
+" Creates a new neoterm instance.
+"
+" Params: Optional dictionary with the optional keys:
+"        mod: Which could be one of vim mods (`:help mods`).
+"        handlers: Dictionary with `on_stdout`, `on_stderr` and/or `on_exit`.
+"                   On vim these will be renamed to `out_cb`, `err_cb`,
+"                   `exit_cb`. For more info read `:help job_control.txt`
 function! neoterm#new(...)
-  let l:handlers = len(a:000) ? a:1 : {}
-  call neoterm#window#create(l:handlers, '')
+  call neoterm#term#load()
+
+  let l:opts = extend(get(a:, 1, {}), {
+        \ 'handlers': {},
+        \ 'mod': '',
+        \ 'buffer_id': 0,
+        \ 'origin': s:winid()
+        \ }, 'keep')
+
+  let l:instance = extend(copy(g:neoterm.prototype), l:opts)
+  call s:create_window(l:instance)
+
+  let l:instance.id = g:neoterm.next_id()
+  let t:neoterm_id = l:instance.id
+  let l:instance.name = printf('neoterm-%s', l:instance.id)
+  let l:instance.termid = g:neoterm.new(l:instance)
+  let l:instance.buffer_id = bufnr('')
+
+  call s:after_open(l:instance)
+
+  let g:neoterm.instances[l:instance.id] = l:instance
+
+  return l:instance
 endfunction
 
-function! neoterm#tnew()
-  call neoterm#window#create({}, 'tnew')
-endfunction
+function! neoterm#open(...)
+  let l:opts = extend(a:1, { 'mod': '', 'target': 0 }, 'keep')
+  let l:instance = s:target(l:opts)
 
-function! neoterm#toggle()
-  call s:toggle(g:neoterm.last())
-endfunction
-
-function! neoterm#toggleAll()
-  for l:instance in values(g:neoterm.instances)
-    call s:toggle(l:instance)
-  endfor
-endfunction
-
-function! s:toggle(instance)
-  if g:neoterm.has_any()
-    let a:instance.origin = exists('*win_getid') ? win_getid() : 0
-
-    if neoterm#tab_has_neoterm()
-      call a:instance.close()
-    else
-      call a:instance.open()
+  if empty(l:instance)
+    call neoterm#new({ 'mod': l:opts.mod })
+    let g:neoterm.last_active = g:neoterm.last_id
+  elseif bufwinnr(l:instance.buffer_id) == -1
+    if l:opts.mod !=# ''
+      let l:instance.mod = l:opts.mod
     end
-  else
-    call neoterm#new()
-  end
-endfunction
 
-" Internal: Creates a new neoterm buffer, or opens if it already exists.
-function! neoterm#open()
-  if !neoterm#tab_has_neoterm()
-    if !g:neoterm.has_any()
-      call neoterm#new()
-    else
-      call g:neoterm.last().open()
+    let l:instance.origin = s:winid()
+    call s:create_window(l:instance)
+    call s:after_open(l:instance)
+
+    let g:neoterm.last_active = l:instance.id
+    if g:neoterm_autoscroll
+      call l:instance.normal('G')
     end
   end
 endfunction
 
 function! neoterm#close(...)
-  let l:instance = g:neoterm.last()
-  let l:instance.origin = exists('*win_getid') ? win_getid() : 0
+  let l:opts = extend(a:1, { 'target': 0, 'force': 0 }, 'keep')
+  let l:instance = s:target(l:opts)
 
-  let l:force = get(a:, '1', 0)
-  if g:neoterm.has_any()
-    call l:instance.close(l:force)
+  if !empty(l:instance)
+    let l:instance.origin = s:winid()
+
+    try
+      if l:opts.force || !g:neoterm_keep_term_open
+        exec printf('%sbdelete!', l:instance.buffer_id)
+      else
+        exec printf('%shide', bufwinnr(l:instance.buffer_id))
+      end
+
+      if l:instance.origin
+        call win_gotoid(l:instance.origin)
+      end
+    catch /^Vim\%((\a\+)\)\=:E444/
+      " noop
+      " Avoid messages when the terminal is the last window
+    endtry
   end
 endfunction
 
 function! neoterm#closeAll(...)
-  let l:origin = exists('*win_getid') ? win_getid() : 0
-
-  let l:force = get(a:, '1', 0)
   for l:instance in values(g:neoterm.instances)
-    let l:instance.origin = l:origin
-    call l:instance.close(l:force)
+    call neoterm#close(extend(a:1, { 'target': l:instance.id }))
   endfor
 endfunction
 
-" Public: Executes a command on terminal.
-" Evaluates any "%" inside the command to the full path of the current file.
-function! neoterm#do(command)
-  let l:command = neoterm#expand_cmd(a:command)
-  call neoterm#exec([l:command, g:neoterm_eof])
-endfunction
+function! s:after_open(instance)
+  let b:neoterm_id = a:instance.id
+  let b:term_title = a:instance.name
+  setf neoterm
+  setlocal nonumber norelativenumber signcolumn=auto
 
-" Internal: Loads a terminal, if it is not loaded, and execute a list of
-" commands.
-function! neoterm#exec(command)
-  if !g:neoterm.has_any() || g:neoterm_open_in_all_tabs
-    call neoterm#open()
+  if g:neoterm_fixedsize
+    setlocal winfixheight winfixwidth
   end
 
-  call g:neoterm.last().exec(a:command)
+  if g:neoterm_autoinsert
+    startinsert
+  elseif !g:neoterm_autojump
+    if a:instance.origin
+      call win_gotoid(a:instance.origin)
+    else
+      wincmd p
+    end
+  end
+endfunction
+
+function! neoterm#toggle(...)
+  let l:opts = extend(a:1, { 'mod': '', 'target': 0 }, 'keep')
+  let l:instance = s:target(l:opts)
+
+  if empty(l:instance) || (g:neoterm_term_per_tab && !has_key(t:, 'neoterm_id'))
+    call neoterm#new({ 'mod': l:opts.mod })
+  else
+    if bufwinnr(l:instance.buffer_id) > 0
+      call neoterm#close(l:opts)
+    else
+      call neoterm#open(l:opts)
+    end
+  end
+endfunction
+
+function! neoterm#toggleAll()
+  for l:id in keys(g:neoterm.instances)
+    call neoterm#toggle({ 'target': l:id })
+  endfor
+endfunction
+
+function! neoterm#do(opts)
+  let l:opts = extend(a:opts, { 'mod': '', 'target': 0 }, 'keep')
+  let l:opts.cmd = [l:opts.cmd, g:neoterm_eof]
+  call neoterm#exec(l:opts)
+endfunction
+
+function! neoterm#exec(opts)
+  let l:command = map(copy(a:opts.cmd), { i, cmd -> s:expand(cmd) })
+  let l:instance = s:target({ 'target': get(a:opts, 'target', 0) })
+
+  if empty(l:instance) && !g:neoterm.has_any()
+    let l:instance = neoterm#new({ 'mod': get(a:opts, 'mod', '') })
+  end
+
+  let g:neoterm.last_active = l:instance.id
+  call l:instance.exec(l:command)
+
+  if get(a:opts, 'force_clear', 0)
+    let l:bufname = bufname(l:instance.buffer_id)
+    let l:scrollback = getbufvar(l:bufname, '&scrollback')
+
+    call setbufvar(l:bufname, "&scrollback", 0)
+    sleep 100m
+    call setbufvar(l:bufname, "&scrollback", l:scrollback)
+  end
 endfunction
 
 function! neoterm#map_for(command)
   exec 'nnoremap <silent> '
         \ . g:neoterm_automap_keys .
-        \ ' :T ' . neoterm#expand_cmd(a:command) . '<cr>'
+        \ ' :T ' . s:expand(a:command) . '<cr>'
 endfunction
 
-" Internal: Expands "%" in commands to current file full path.
-function! neoterm#expand_cmd(command)
-  let l:command = substitute(a:command, '%\(:[phtre]\)\+', '\=expand(submatch(0))', 'g')
-
-  if g:neoterm_use_relative_path
-    let l:path = expand('%')
-  else
-    let l:path = expand('%:p')
-  end
-
-  return substitute(l:command, '%', l:path, 'g')
+function! neoterm#clear(...)
+  call neoterm#exec(extend(a:1, { 'cmd': ["\<c-l>"], 'force_clear': 0 }, 'keep'))
 endfunction
 
-" Internal: Open a new split with the current neoterm buffer if there is one.
-"
-" Returns: 1 if a neoterm split is opened, 0 otherwise.
-function! neoterm#tab_has_neoterm()
-  if g:neoterm.has_any()
-    let l:buffer_id = g:neoterm.last().buffer_id
-    return bufexists(l:buffer_id) > 0 && bufwinnr(l:buffer_id) != -1
-  end
+function! neoterm#kill(...)
+  call neoterm#exec(extend(a:1, { 'cmd': ["\<c-c>"] }))
 endfunction
 
-" Internal: Clear the current neoterm buffer. (Send a <C-l>)
-function! neoterm#clear()
-  silent call g:neoterm.last().clear()
-endfunction
-
-" Only executes if the window is opened.
 function! neoterm#normal(cmd)
   silent call g:neoterm.last().normal(a:cmd)
 endfunction
 
-" Only executes if the window is opened.
 function! neoterm#vim_exec(cmd)
   silent call g:neoterm.last().vim_exec(a:cmd)
-endfunction
-
-" Internal: Kill current process on neoterm. (Send a <C-c>)
-function! neoterm#kill()
-  silent call g:neoterm.last().kill()
 endfunction
 
 function! neoterm#list(arg_lead, cmd_line, cursor_pos)
@@ -134,36 +180,95 @@ function! neoterm#list(arg_lead, cmd_line, cursor_pos)
 endfunction
 
 function! neoterm#next()
-  function! s:next(buffers, index)
-    let l:next_index = a:index + 1
-    let l:next_index = l:next_index > (len(a:buffers) - 1) ? 0 : l:next_index
-    exec printf('%sbuffer', a:buffers[l:next_index])
+  function! s:next(ids, index)
+    let l:next_index = a:index +1
+    return l:next_index > (len(a:ids) - 1) ? 0 : l:next_index
   endfunction
 
-  call s:can_navigate(function('s:next'))
+  call s:navigate_with(function('s:next'))
 endfunction
 
 function! neoterm#previous()
-  function! s:previous(buffers, index)
-    let l:previous_index = a:index - 1
-    let l:previous_index = l:previous_index < 0 ? (len(a:buffers) - 1) : l:previous_index
-    exec printf('%sbuffer', a:buffers[l:previous_index])
-  endfunction
-
-  call s:can_navigate(function('s:previous'))
+  call s:navigate_with({ _, i -> i - 1 })
 endfunction
 
-function! s:can_navigate(navigate)
+function! neoterm#destroy(instance)
+  if has_key(g:neoterm, 'repl') && get(g:neoterm.repl, 'instance_id') ==# a:instance.id
+    call remove(g:neoterm.repl, 'instance_id')
+  end
+
+  if has_key(g:neoterm.instances, a:instance.id)
+    if bufexists(a:instance.buffer_id)
+      exec printf('%sbdelete!', a:instance.buffer_id)
+    end
+    call remove(g:neoterm.instances, a:instance.id)
+  end
+
+  if has_key(t:, 'neoterm_id')
+    unlet! t:neoterm_id
+  end
+
+  if g:neoterm.last_active == a:instance.id
+    let g:neoterm.last_active = 0
+  end
+endfunction
+
+function! s:create_window(instance)
+  let l:mod = a:instance.mod !=# '' ? a:instance.mod : g:neoterm_default_mod
+
+  if l:mod !=# ''
+    let l:hidden=&hidden
+    let &hidden=0
+
+    let l:cmd = printf('%s %snew', l:mod, g:neoterm_size)
+    if a:instance.buffer_id > 0
+      let l:cmd .= printf(' +buffer%s', a:instance.buffer_id)
+    end
+    exec l:cmd
+
+    if !empty(g:neoterm_size)
+      exec('resize ' .g:neoterm_size)
+    endif
+
+    let &hidden=l:hidden
+  end
+
+  if get(a:instance, 'buffer_id', 0) > 0 && bufnr('') != a:instance.buffer_id
+    exec printf('buffer %s', a:instance.buffer_id)
+  end
+endfunction
+
+function! s:target(opts)
+  if a:opts.target > 0
+    if has_key(g:neoterm.instances, a:opts.target)
+      return g:neoterm.instances[a:opts.target]
+    else
+      echoe printf('neoterm-%s not found', a:opts.target)
+    end
+  elseif g:neoterm_term_per_tab && has_key(t:, 'neoterm_id')
+    if has_key(g:neoterm.instances, t:neoterm_id)
+      return g:neoterm.instances[t:neoterm_id]
+    else
+      echoe printf('neoterm-%s not found', t:neoterm_id)
+    end
+  elseif g:neoterm.has_any()
+    return g:neoterm.last()
+  else
+    return {}
+  end
+endfunction
+
+function! s:navigate_with(callback)
   if &buftype ==? 'terminal'
     if len(g:neoterm.instances) > 1
-      let l:buffers = map(copy(g:neoterm.instances), { _, instance -> instance.buffer_id })
-      let l:buffers_ids = values(l:buffers)
-      let l:current_buffer = l:buffers[b:neoterm_id]
-      let l:current_index = index(l:buffers_ids, l:current_buffer)
-      let l:hidden = &hidden
+      let l:ids = keys(g:neoterm.instances)
+      let l:current_index = index(l:ids, string(b:neoterm_id))
+      let l:id = l:ids[a:callback(l:ids, l:current_index)]
+      let g:neoterm.last_active = l:id
 
+      let l:hidden = &hidden
       set hidden
-      call a:navigate(l:buffers_ids, l:current_index)
+      exec printf('%sbuffer', g:neoterm.instances[l:id].buffer_id)
       let &hidden = l:hidden
     else
       echo 'You do not have other terminals'
@@ -171,4 +276,19 @@ function! s:can_navigate(navigate)
   else
     echo 'You must be in a terminal to use this command'
   end
+endfunction
+
+function! s:winid()
+  return exists('*win_getid') ? win_getid() : 0
+endfunction
+
+function! s:expand(command)
+  let l:command = substitute(a:command, '[^\\]\zs%\(:[phtre]\)\+', '\=expand(submatch(0))', 'g')
+  let l:command = substitute(l:command, '\c\\<cr>', g:neoterm_eof, 'g')
+  let l:path = g:neoterm_use_relative_path ? expand('%') : expand('%:p')
+
+  let l:command = substitute(l:command, '[^\\]\zs%', l:path, 'g')
+  let l:command = substitute(l:command, '\\%', '%', 'g')
+
+  return l:command
 endfunction
