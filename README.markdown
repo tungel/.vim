@@ -69,8 +69,9 @@ MATLAB, Mercury, NASM, Nix, Objective-C, Objective-C++, OCaml, Perl, Perl
 NG, reStructuredText, RPM spec, Ruby, SASS/SCSS, Scala, Slim, SML, Solidity,
 Sphinx, SQL, Stylus, Tcl, TeX, Texinfo, Twig, TypeScript, Vala, Verilog, VHDL,
 Vim help, VimL, Vue.js, xHtml, XML, XSLT, XQuery, YACC, YAML, YANG data models,
-z80, Zope page templates, and Zsh. See the [manual][checkers] for details about
-the corresponding supported checkers (`:help syntastic-checkers` in Vim).
+YARA rules, z80, Zope page templates, and Zsh. See the [manual][checkers] for
+details about the corresponding supported checkers (`:help syntastic-checkers`
+in Vim).
 
 A number of third-party Vim plugins also provide checkers for syntastic, for
 example: [merlin][merlin], [omnisharp-vim][omnisharp], [rust.vim][rust],
@@ -534,9 +535,6 @@ a look at [ghcmod-vim][ghcmod], [jedi-vim][jedi], [python-mode][python_mode], [v
 [vim]:              http://www.vim.org/
 [vimgo]:            https://github.com/fatih/vim-go
 [virtualenv]:       https://virtualenv.pypa.io/en/stable/
-[vnu]:              http://about.validator.nu/
-[vnu_jar]:          https://github.com/validator/validator/releases/latest
-[vnu_server]:       http://validator.github.io/validator/#standalone
 [vundle]:           https://github.com/gmarik/Vundle.vim
 [ycm]:              http://valloric.github.io/YouCompleteMe/
 
