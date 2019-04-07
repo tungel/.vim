@@ -7,7 +7,7 @@
 function! neosnippet#view#_expand(cur_text, col, trigger_name) abort
   let snippets = neosnippet#helpers#get_snippets()
 
-  if a:trigger_name == '' || !has_key(snippets, a:trigger_name)
+  if a:trigger_name ==# '' || !has_key(snippets, a:trigger_name)
     let pos = getpos('.')
     let pos[2] = len(a:cur_text)+1
     call setpos('.', pos)
@@ -32,13 +32,16 @@ function! neosnippet#view#_insert(snippet, options, cur_text, col) abort
         \ a:options)
 
   let snip_word = a:snippet
-  if snip_word =~ '\\\@<!`.*\\\@<!`'
+  if snip_word =~# '\\\@<!`.*\\\@<!`'
     let snip_word = s:eval_snippet(snip_word)
   endif
 
   " Substitute markers.
   let snip_word = substitute(snip_word,
         \ neosnippet#get_placeholder_marker_substitute_pattern(),
+        \ '<`\1`>', 'g')
+  let snip_word = substitute(snip_word,
+        \ neosnippet#get_placeholder_marker_substitute_zero_pattern(),
         \ '<`\1`>', 'g')
   let snip_word = substitute(snip_word,
         \ neosnippet#get_mirror_placeholder_marker_substitute_pattern(),
@@ -57,6 +60,8 @@ function! neosnippet#view#_insert(snippet, options, cur_text, col) abort
   let begin_line = line('.')
   let end_line = line('.') + len(snippet_lines) - 1
 
+  let expanded_word = snippet_lines[0]
+
   let snippet_lines[0] = a:cur_text . snippet_lines[0]
   let snippet_lines[-1] = snippet_lines[-1] . next_line
 
@@ -71,13 +76,22 @@ function! neosnippet#view#_insert(snippet, options, cur_text, col) abort
   let expand_stack = neosnippet#variables#expand_stack()
 
   try
+    let base_indent = matchstr(getline(begin_line), '^\s\+')
     if len(snippet_lines) > 1
       call append('.', snippet_lines[1:])
     endif
     call setline('.', snippet_lines[0])
 
+    let next_col = len(a:cur_text) + len(expanded_word) + 1
+    call cursor([begin_line, next_col])
+    if next_col >= col('$')
+      startinsert!
+    else
+      startinsert
+    endif
+
     if begin_line != end_line || options.indent
-      call s:indent_snippet(begin_line, end_line)
+      call s:indent_snippet(begin_line, end_line, base_indent)
     endif
 
     let begin_patterns = (begin_line > 1) ?
@@ -150,7 +164,7 @@ function! neosnippet#view#_jump(_, col) abort
   endtry
 endfunction
 
-function! s:indent_snippet(begin, end) abort
+function! s:indent_snippet(begin, end, base_indent) abort
   if a:begin > a:end
     return
   endif
@@ -162,22 +176,24 @@ function! s:indent_snippet(begin, end) abort
     setlocal equalprg=
 
     let neosnippet = neosnippet#variables#current_neosnippet()
-    let base_indent = matchstr(getline(a:begin), '^\s\+')
-    for line_nr in range((neosnippet.target != '' ?
+    for line_nr in range((neosnippet.target !=# '' ?
           \ a:begin : a:begin + 1), a:end)
       call cursor(line_nr, 0)
 
-      if getline('.') =~ '^\t\+'
-        " Delete head tab character.
-        let current_line = substitute(getline('.'), '^\t', '', '')
+      if getline('.') =~# '^\t\+'
+        let current_line = getline('.')
+        if line_nr != a:begin
+          " Delete head tab character.
+          let current_line = substitute(current_line, '^\t', '', '')
+        endif
 
-        if &l:expandtab && current_line =~ '^\t\+'
+        if &l:expandtab && current_line =~# '^\t\+'
           " Expand tab.
           cal setline('.', substitute(current_line,
-                \ '^\t\+', base_indent . repeat(' ', shiftwidth() *
+                \ '^\t\+', a:base_indent . repeat(' ', shiftwidth() *
                 \    len(matchstr(current_line, '^\t\+'))), ''))
         elseif line_nr != a:begin
-          call setline('.', base_indent . current_line)
+          call setline('.', a:base_indent . current_line)
         endif
       else
         silent normal! ==
@@ -244,8 +260,8 @@ function! neosnippet#view#_search_snippet_range(start, end, cnt, ...) abort
 
   for linenum in range(a:start, a:end)
     let tmp_line = getline(linenum)
-    let tmp_line = substitute(tmp_line, '\%uc(\([^)]\+\))', '\U\1\E', 'g')
-    let tmp_line = substitute(tmp_line, '\%ucfirst(\([^)]+\))', '\u\1', 'g')
+    let tmp_line = substitute(tmp_line, '%uc(\([^)]\+\))', '\U\1\E', 'g')
+    let tmp_line = substitute(tmp_line, '%ucfirst(\([^)]\+\))', '\u\1', 'g')
     call setline(linenum, tmp_line)
   endfor
 
@@ -326,9 +342,9 @@ function! s:expand_placeholder(start, end, holder_cnt, line, ...) abort
         \ '\\d\\+', a:holder_cnt, '')
   let default = substitute(
         \ matchstr(current_line, default_pattern),
-        \ '\\\ze[^\\]', '', 'g')
-  let neosnippet.optional_tabstop = (default =~ '^#:')
-  if !is_select && default =~ '^#:'
+        \ '\\\ze[^$\\]', '', 'g')
+  let neosnippet.optional_tabstop = (default =~# '^#:')
+  if !is_select && default =~# '^#:'
     " Delete comments.
     let default = ''
   endif
@@ -336,7 +352,8 @@ function! s:expand_placeholder(start, end, holder_cnt, line, ...) abort
   " Remove optional marker
   let default = substitute(default, '^#:', '', '')
 
-  let is_target = (default =~ '^TARGET\>' && neosnippet.target != '')
+  let default = substitute(default, '\${VISUAL\(:.\{-}\)\?}', 'TARGET\1', '')
+  let is_target = (default =~# '^TARGET\>' && neosnippet.target !=# '')
   let default = substitute(default, '^TARGET:\?', neosnippet.target, '')
 
   let neosnippet.selected_text = default
@@ -348,6 +365,7 @@ function! s:expand_placeholder(start, end, holder_cnt, line, ...) abort
   let default = substitute(default,
         \ neosnippet#get_mirror_placeholder_marker_substitute_pattern(),
         \ '<|\1|>', 'g')
+  let default = substitute(default, '\\\$', '$', 'g')
 
   " len() cannot use for multibyte.
   let default_len = len(substitute(default, '.', 'x', 'g'))
@@ -385,7 +403,7 @@ function! s:expand_placeholder(start, end, holder_cnt, line, ...) abort
     let neosnippet.unnamed_register = @"
 
     let len = default_len-1
-    if &l:selection == 'exclusive'
+    if &l:selection ==# 'exclusive'
       let len += 1
     endif
 
@@ -436,7 +454,7 @@ function! s:expand_target_placeholder(line, col) abort
         \ repeat(' ', target_base_indent) . '\|^' .
         \ repeat('\t', target_base_indent / &tabstop)
     call map(target_lines, 'substitute(v:val, target_strip_indent_regex, "", "")')
-    call map(target_lines, 'v:val == "" ? "" : base_indent . v:val')
+    call map(target_lines, 'v:val ==# "" ? "" : base_indent . v:val')
 
     call setline(a:line, target_lines[0])
     if len(target_lines) > 1
@@ -445,7 +463,7 @@ function! s:expand_target_placeholder(line, col) abort
 
     call cursor(end_line, 0)
 
-    if next_line != ''
+    if next_line !=# ''
       startinsert
       let col = col('.')
     else
@@ -531,7 +549,7 @@ function! s:eval_snippet(snippet_text) abort
     let prev_match = matchend(a:snippet_text,
           \ '\\\@<!`.\{-}\\\@<!`', match)
     let expr = a:snippet_text[match+1 : prev_match - 2]
-    let snip_word .= (expr == '' ? '`' : eval(expr))
+    let snip_word .= (expr ==# '' ? '`' : eval(expr))
 
     let match = match(a:snippet_text, '\\\@<!`.\{-}\\\@<!`', prev_match)
   endwhile
