@@ -13,6 +13,10 @@ function! neosnippet#parser#_parse_snippets(filename) abort
     return {}
   endif
 
+  if neosnippet#util#is_sudo()
+    return s:parse(a:filename)[0]
+  endif
+
   let cache_dir = neosnippet#variables#data_dir()
   let snippets = {}
   if !s:Cache.check_old_cache(cache_dir, a:filename)
@@ -24,7 +28,7 @@ function! neosnippet#parser#_parse_snippets(filename) abort
   endif
   if empty(snippets) || s:Cache.check_old_cache(cache_dir, a:filename)
     let [snippets, sourced] = s:parse(a:filename)
-    if len(snippets) > 5 && !neosnippet#util#is_sudo() && !sourced
+    if len(snippets) > 5 && !sourced
       call s:Cache.writefile(
             \ cache_dir, a:filename,
             \ [neosnippet#helpers#vim2json(snippets)])
@@ -58,25 +62,25 @@ function! s:parse(snippets_file) abort
   let sourced = 0
 
   for line in readfile(a:snippets_file)
-    if line =~ '^\h\w*.*\s$'
+    if line =~# '^\h\w*.*\s$'
       " Delete spaces.
       let line = substitute(line, '\s\+$', '', '')
     endif
 
-    if line =~ '^#'
+    if line =~# '^#'
       " Ignore.
-    elseif line =~ '^include'
+    elseif line =~# '^include'
       " Include snippets file.
       let snippets = extend(snippets, s:include_snippets(
             \ [matchstr(line, '^include\s\+\zs.*$')]))
-    elseif line =~ '^extends'
+    elseif line =~# '^extends'
       " Extend snippets files.
       let fts = split(matchstr(line, '^extends\s\+\zs.*$'), '\s*,\s*')
       for ft in fts
         let snippets = extend(snippets, s:include_snippets(
               \ [ft.'.snip', ft.'.snippets', ft.'/*']))
       endfor
-    elseif line =~ '^source'
+    elseif line =~# '^source'
       " Source Vim script file.
       for file in split(globpath(join(
             \ neosnippet#helpers#get_snippets_directory(), ','),
@@ -84,12 +88,12 @@ function! s:parse(snippets_file) abort
         execute 'source' fnameescape(file)
         let sourced = 1
       endfor
-    elseif line =~ '^delete\s'
+    elseif line =~# '^delete\s'
       let name = matchstr(line, '^delete\s\+\zs.*$')
-      if name != '' && has_key(snippets, name)
+      if name !=# '' && has_key(snippets, name)
         call filter(snippets, 'v:val.real_name !=# name')
       endif
-    elseif line =~ '^snippet\s'
+    elseif line =~# '^snippet\s'
       if !empty(snippet_dict)
         " Set previous snippet.
         call s:set_snippet_dict(snippet_dict,
@@ -99,14 +103,15 @@ function! s:parse(snippets_file) abort
       let snippet_dict = s:parse_snippet_name(
             \ a:snippets_file, line, linenr, dup_check)
     elseif !empty(snippet_dict)
-      if line =~ '^\s' || line == ''
-        if snippet_dict.word == ''
+      if line =~# '^\s' || line ==# ''
+        if snippet_dict.word ==# '' && line =~# '^\t'
           " Substitute head tab character.
           let line = substitute(line, '^\t', '', '')
+        else
+          let line = substitute(line, '^ *', '', '')
         endif
 
-        let snippet_dict.word .=
-              \ substitute(line, '^ *', '', '') . "\n"
+        let snippet_dict.word .= line . "\n"
       else
         call s:add_snippet_attribute(
               \ a:snippets_file, line, linenr, snippet_dict)
@@ -134,17 +139,23 @@ function! s:parse_snippet_name(snippets_file, line, linenr, dup_check) abort
         \ }
 
   " Try using the name without the description (abbr).
-  let snippet_dict.name = matchstr(a:line, '^snippet\s\+\zs\S\+')
+  let base_name = matchstr(a:line, '^snippet\s\+\zs\S\+')
+  let snippet_dict.name = base_name
 
-  " Fall back to using the name and description (abbr) combined.
+  " Fall back to using the name with integer counter,
+  " but only if the name is a duplicate.
   " SnipMate snippets may have duplicate names, but different
   " descriptions (abbrs).
   let description = matchstr(a:line, '^snippet\s\+\S\+\s\+\zs.*$')
-  if description != '' && description !=# snippet_dict.name
+  if g:neosnippet#enable_snipmate_compatibility
+        \ && description !=# '' && description !=# snippet_dict.name
+        \ && has_key(a:dup_check, snippet_dict.name)
     " Convert description.
-    let snippet_dict.name .= '_' .
-          \ substitute(substitute(
-          \    description, '\W\+', '_', 'g'), '_\+$', '', '')
+    let i = 0
+    while has_key(a:dup_check, snippet_dict.name)
+      let snippet_dict.name = base_name . '__' . i
+      let i += 1
+    endwhile
   endif
 
   " Collect the description (abbr) of the snippet, if set on snippet line.
@@ -170,25 +181,25 @@ endfunction
 function! s:add_snippet_attribute(snippets_file, line, linenr, snippet_dict) abort
   " Allow overriding/setting of the description (abbr) of the snippet.
   " This will override what was set via the snippet line.
-  if a:line =~ '^abbr\s'
+  if a:line =~# '^abbr\s'
     let a:snippet_dict.abbr = matchstr(a:line, '^abbr\s\+\zs.*$')
-  elseif a:line =~ '^alias\s'
+  elseif a:line =~# '^alias\s'
     let a:snippet_dict.alias = split(matchstr(a:line,
           \ '^alias\s\+\zs.*$'), '[,[:space:]]\+')
-  elseif a:line =~ '^prev_word\s'
+  elseif a:line =~# '^prev_word\s'
     let prev_word = matchstr(a:line,
           \ '^prev_word\s\+[''"]\zs.*\ze[''"]$')
-    if prev_word == '^'
+    if prev_word ==# '^'
       " For backward compatibility.
       let a:snippet_dict.options.head = 1
     else
       call neosnippet#util#print_error(
             \ 'prev_word must be "^" character.')
     endif
-  elseif a:line =~ '^regexp\s'
+  elseif a:line =~# '^regexp\s'
     let a:snippet_dict.regexp = matchstr(a:line,
           \ '^regexp\s\+[''"]\zs.*\ze[''"]$')
-  elseif a:line =~ '^options\s\+'
+  elseif a:line =~# '^options\s\+'
     for option in split(matchstr(a:line,
           \ '^options\s\+\zs.*$'), '[,[:space:]]\+')
       if !has_key(a:snippet_dict.options, option)
@@ -232,36 +243,33 @@ endfunction
 
 function! neosnippet#parser#_initialize_snippet(dict, path, line, pattern, name) abort
   let a:dict.word = substitute(a:dict.word, '\n\+$', '', '')
-  if a:dict.word !~ '\n'
-        \ && a:dict.word !~
-        \    neosnippet#get_placeholder_marker_substitute_pattern().'$'
-        \ && a:dict.word !~
-        \    neosnippet#get_placeholder_marker_substitute_zero_pattern()
-    " Add placeholder.
-    let a:dict.word .= '${0}'
-  endif
 
-  if !has_key(a:dict, 'abbr') || a:dict.abbr == ''
+  if !has_key(a:dict, 'abbr') || a:dict.abbr ==# ''
     " Set default abbr.
-    let abbr = substitute(a:dict.word,
-        \   neosnippet#get_placeholder_marker_pattern(). '\|'.
-        \   neosnippet#get_mirror_placeholder_marker_pattern().
-        \   '\|\s\+\|\n\|TARGET', ' ', 'g')
-    let abbr = substitute(abbr, '\\\(\\\|`\|\$\)', '\1', 'g')
+    let abbr = ''
     let a:dict.abbr = a:dict.name
   else
     let abbr = a:dict.abbr
   endif
 
   let snippet = {
-        \ 'word' : a:dict.name, 'snip' : a:dict.word,
-        \ 'description' : a:dict.word,
-        \ 'menu_template' : abbr,
-        \ 'menu_abbr' : abbr,
-        \ 'options' : a:dict.options,
-        \ 'action__path' : a:path, 'action__line' : a:line,
-        \ 'action__pattern' : a:pattern, 'real_name' : a:name,
+        \ 'word': a:dict.name, 'snip': a:dict.word,
+        \ 'description': a:dict.word,
+        \ 'menu_template': abbr,
+        \ 'menu_abbr': abbr,
+        \ 'options': a:dict.options,
+        \ 'real_name': a:name,
+        \ 'action__path': a:path,
+        \ 'action__line': a:line,
+        \ 'action__pattern': a:pattern,
         \}
+
+  if exists('*json_encode')
+    let snippet.user_data = json_encode({
+          \   'snippet': a:dict.word,
+          \   'snippet_trigger': a:dict.name
+          \ })
+  endif
 
   if has_key(a:dict, 'regexp')
     let snippet.regexp = a:dict.regexp
@@ -287,29 +295,46 @@ function! neosnippet#parser#_get_completed_snippet(completed_item, cur_text, nex
     return ''
   endif
 
-  if has_key(item, 'snippet')
-    return item.snippet
+  " Set abbr
+  let abbrs = []
+  if get(item, 'info', '') =~# '^.\+('
+    call add(abbrs, matchstr(item.info, '^\_s*\zs.*'))
+  endif
+  if get(item, 'abbr', '') =~# '^.\+('
+    call add(abbrs, item.abbr)
+  endif
+  if get(item, 'menu', '') =~# '^.\+('
+    call add(abbrs, item.menu)
+  endif
+  if item.word =~# '^.\+(' || get(item, 'kind', '') ==# 'f'
+    call add(abbrs, item.word)
   endif
 
-  " Set abbr
-  let abbr = (item.abbr != '') ? item.abbr : item.word
-  if len(item.menu) > 5
-    " Combine menu.
-    let abbr .= ' ' . item.menu
+  if get(item, 'user_data', '') !=# ''
+    let user_data = json_decode(item.user_data)
+    if has_key(user_data, 'lspitem')
+      " Use lspitem userdata
+      let lspitem = user_data.lspitem
+      if has_key(lspitem, 'label')
+        call add(abbrs, lspitem.label)
+      endif
+    endif
   endif
-  if item.info != ''
-    let abbr .= split(item.info, '\n')[0]
-  endif
-  let abbr = escape(abbr, '\')
-  let pairs = neosnippet#util#get_buffer_config(
-      \ &filetype, '',
-      \ 'g:neosnippet#completed_pairs', 'g:neosnippet#_completed_pairs', {})
-  let word_pattern = neosnippet#util#escape_pattern(item.word)
-  let angle_pattern = word_pattern . '<.\+>(.*)'
+
+  call map(abbrs, "escape(v:val, '\')")
+
+  " () Only supported
+  let pairs = {'(': ')'}
   let no_key = index(keys(pairs), item.word[-1:]) < 0
-  if no_key && abbr !~# word_pattern . '\%(<.\+>\)\?(.*)'
+  let word_pattern = '\<' . neosnippet#util#escape_pattern(item.word)
+  let angle_pattern = word_pattern . '<.\+>(.*)'
+  let check_pattern = word_pattern . '\%(<.\+>\)\?(.*)'
+  let abbrs = filter(abbrs, '!no_key || v:val =~# check_pattern')
+
+  if empty(abbrs)
     return ''
   endif
+  let abbr = abbrs[0]
 
   let key = no_key ? '(' : item.word[-1:]
   if a:next_text[:0] ==# key
@@ -370,7 +395,7 @@ function! neosnippet#parser#_get_completed_snippet(completed_item, cur_text, nex
   endfor
   let snippet .= args
 
-  if key != '(' && snippet == ''
+  if key !=# '(' && snippet ==# ''
     let snippet .= '${' . cnt . '}'
     let cnt += 1
   endif
@@ -392,7 +417,7 @@ function! neosnippet#parser#_get_in_paren(key, pair, str) abort
         continue
       endif
     elseif c ==# a:pair
-      if level == 1 && (s != '' || a:str =~ '()\s*(.\{-})')
+      if level == 1 && (s !=# '' || a:str =~# '()\s*(.\{-})')
         return s
       else
         let level -= 1
@@ -410,7 +435,7 @@ endfunction
 function! neosnippet#parser#_conceal_argument(arg, cnt, args) abort
   let outside = ''
   let inside = ''
-  if (a:args != '')
+  if a:args !=# ''
     if g:neosnippet#enable_optional_arguments
       let inside = ', '
     else
@@ -423,10 +448,11 @@ endfunction
 function! s:include_snippets(globs) abort
   let snippets = {}
   for glob in a:globs
-      for file in split(globpath(join(
-            \ neosnippet#helpers#get_snippets_directory(), ','), glob), '\n')
-        call extend(snippets, neosnippet#parser#_parse_snippets(file))
-      endfor
+    let snippets_dir = neosnippet#helpers#get_snippets_directory(
+          \ fnamemodify(glob, ':r'))
+    for file in split(globpath(join(snippets_dir, ','), glob), '\n')
+      call extend(snippets, neosnippet#parser#_parse_snippets(file))
+    endfor
   endfor
 
   return snippets
