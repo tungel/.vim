@@ -5,7 +5,6 @@
   "main": "build.js",
   "scripts": {
     "build": "node build.js",
-    "precommit": "npm test",
     "test": "eslint build.js && node build.js check"
   },
   "author": {
@@ -19,11 +18,15 @@
     "url": "https://github.com/joshdick/onedark.vim.git"
   },
   "devDependencies": {
-    "eslint": "^3.15.0",
-    "husky": "^0.13.1"
+    "eslint": "^6.5.1",
+    "husky": "^3.0.9"
   },
   "dependencies": {
-    "dot": "^1.1.1",
     "termcolors": "latest"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "npm test"
+    }
   }
 }
