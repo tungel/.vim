@@ -37,15 +37,21 @@ function! neosnippet#view#_insert(snippet, options, cur_text, col) abort
   endif
 
   " Substitute markers.
-  let snip_word = substitute(snip_word,
-        \ neosnippet#get_placeholder_marker_substitute_pattern(),
-        \ '<`\1`>', 'g')
+  if snip_word =~# neosnippet#get_placeholder_marker_substitute_pattern()
+    let snip_word = substitute(snip_word,
+          \ neosnippet#get_placeholder_marker_substitute_pattern(),
+          \ '<`\1`>', 'g')
+    let snip_word = substitute(snip_word,
+          \ neosnippet#get_mirror_placeholder_marker_substitute_pattern(),
+          \ '<|\1|>', 'g')
+  else
+    let snip_word = substitute(snip_word,
+          \ neosnippet#get_mirror_placeholder_marker_substitute_pattern(),
+          \ '<`\1`>', 'g')
+  endif
   let snip_word = substitute(snip_word,
         \ neosnippet#get_placeholder_marker_substitute_zero_pattern(),
         \ '<`\1`>', 'g')
-  let snip_word = substitute(snip_word,
-        \ neosnippet#get_mirror_placeholder_marker_substitute_pattern(),
-        \ '<|\1|>', 'g')
 
   " Substitute escaped characters.
   let snip_word = substitute(snip_word, '\\\(\\\|`\|\$\)', '\1', 'g')
@@ -91,7 +97,7 @@ function! neosnippet#view#_insert(snippet, options, cur_text, col) abort
     endif
 
     if begin_line != end_line || options.indent
-      call s:indent_snippet(begin_line, end_line, base_indent)
+      call s:indent_snippet(begin_line, end_line, base_indent, options)
     endif
 
     let begin_patterns = (begin_line > 1) ?
@@ -164,7 +170,7 @@ function! neosnippet#view#_jump(_, col) abort
   endtry
 endfunction
 
-function! s:indent_snippet(begin, end, base_indent) abort
+function! s:indent_snippet(begin, end, base_indent, options) abort
   if a:begin > a:end
     return
   endif
@@ -182,7 +188,7 @@ function! s:indent_snippet(begin, end, base_indent) abort
 
       if getline('.') =~# '^\t\+'
         let current_line = getline('.')
-        if line_nr != a:begin
+        if line_nr != a:begin && !a:options.lspitem
           " Delete head tab character.
           let current_line = substitute(current_line, '^\t', '', '')
         endif
@@ -400,8 +406,6 @@ function! s:expand_placeholder(start, end, holder_cnt, line, ...) abort
 
   if default_len > 0 && is_select
     " Select default value.
-    let neosnippet.unnamed_register = @"
-
     let len = default_len-1
     if &l:selection ==# 'exclusive'
       let len += 1
@@ -441,8 +445,10 @@ function! s:expand_target_placeholder(line, col) abort
     let target_base_indent = -1
     for target_line in target_lines
       if match(target_line, '^\s\+$') < 0
-        let target_current_indent = max([matchend(target_line, '^ *'), matchend(target_line, '^\t*') * &tabstop])
-        if target_base_indent < 0 || target_current_indent < target_base_indent
+        let target_current_indent = max([matchend(target_line, '^ *'),
+              \ matchend(target_line, '^\t*') * &tabstop])
+        if target_base_indent < 0
+              \ || target_current_indent < target_base_indent
           let target_base_indent = target_current_indent
         endif
       endif
@@ -453,8 +459,10 @@ function! s:expand_target_placeholder(line, col) abort
     let target_strip_indent_regex = '^\s\+$\|^' .
         \ repeat(' ', target_base_indent) . '\|^' .
         \ repeat('\t', target_base_indent / &tabstop)
-    call map(target_lines, 'substitute(v:val, target_strip_indent_regex, "", "")')
-    call map(target_lines, 'v:val ==# "" ? "" : base_indent . v:val')
+    call map(target_lines,
+          \ 'substitute(v:val, target_strip_indent_regex, "", "")')
+    call map(target_lines,
+          \ 'v:val ==# "" ? "" : base_indent . v:val')
 
     call setline(a:line, target_lines[0])
     if len(target_lines) > 1

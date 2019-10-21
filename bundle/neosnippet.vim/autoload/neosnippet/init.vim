@@ -44,11 +44,6 @@ function! s:initialize_others() abort
           \ call neosnippet#handlers#_all_clear_markers()
   endif
 
-  if exists('##TextChanged') && exists('##TextChangedI')
-    autocmd neosnippet TextChanged,TextChangedI *
-          \ call neosnippet#handlers#_restore_unnamed_register()
-  endif
-
   augroup neosnippet
     autocmd BufNewFile,BufRead,Syntax *
           \ execute 'syntax match neosnippetExpandSnippets'
@@ -57,14 +52,15 @@ function! s:initialize_others() abort
           \ .neosnippet#get_mirror_placeholder_marker_pattern()."'"
           \ 'containedin=ALL oneline'
     if g:neosnippet#enable_conceal_markers && has('conceal')
-      autocmd BufNewFile,BufRead,Syntax *
-            \ syntax region neosnippetConcealExpandSnippets
-            \ matchgroup=neosnippetExpandSnippets
-            \ start='<`\d\+:\=\%(#:\|TARGET:\?\)\?\|<{\d\+:\=\%(#:\|TARGET:\?\)\?\|<|'
-            \ end='`>\|}>\||>'
-            \ containedin=ALL
-            \ cchar=|
-            \ concealends oneline
+      let start = '<`0\|<`\|<{\d\+:\=\%(#:\|TARGET:\?\)\?\|%\w\+(<|'
+      let end = '\(:\w\+\|:#:\w\+\)\?`>\|}>\||>)\?'
+      execute ' autocmd BufNewFile,BufRead,Syntax * ' .
+            \ ' syntax region neosnippetConcealExpandSnippets ' .
+            \ ' matchgroup=neosnippetExpandSnippets ' .
+            \ printf(' start=%s end=%s', string(start), string(end)) .
+            \ ' containedin=ALL ' .
+            \ ' cchar=' . g:neosnippet#conceal_char .
+            \ ' concealends oneline'
     endif
   augroup END
   doautocmd neosnippet BufRead
