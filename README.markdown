@@ -1,27 +1,23 @@
 # fireplace.vim
 
-There's a REPL in fireplace, but you probably wouldn't have noticed if I hadn't
+There's a REPL in Fireplace, but you probably wouldn't have noticed if I hadn't
 told you.  Such is the way with fireplace.vim.  By the way, this plugin is for
 Clojure.
 
 ## Installation
 
-First, set up [cider-nrepl][].  (If you skip this step, fireplace.vim will
-make do with eval, which mostly works.) Next, fireplace.vim doesn't provide
-indenting or syntax highlighting, so you'll want [a set of Clojure runtime
-files](https://github.com/guns/vim-clojure-static) if you're on a version of
-Vim earlier than 7.4.  You might also want [salve.vim][] for assorted
-static project support.
+First, set up [cider-nrepl][].  (If you skip this step, only a subset of
+functionality will be available.)
 
-If you don't have a preferred installation method, I recommend
-installing [pathogen.vim](https://github.com/tpope/vim-pathogen), and
-then simply copy and paste:
+Install Fireplace using your favorite package manager, or use Vim's built-in
+package support:
 
-    cd ~/.vim/bundle
-    git clone git://github.com/tpope/vim-fireplace.git
+    mkdir -p ~/.vim/pack/tpope/start
+    cd ~/.vim/pack/tpope/start
+    git clone https://tpope.io/vim/fireplace.git
+    vim -u NONE -c "helptags fireplace/doc" -c q
 
-Once help tags have been generated, you can view the manual with
-`:help fireplace`.
+You might also want [salve.vim][] for assorted static project support.
 
 ## Features
 
@@ -29,24 +25,21 @@ This list isn't exhaustive; see the `:help` for details.
 
 ### Transparent setup
 
-Fireplace.vim talks to nREPL.  With Leiningen, it connects automatically using
-the `.nrepl-port` file created when you run `lein repl`. If you are starting
-nREPL some other way, run `:Connect` and enter the host and port.  You can
-connect to multiple instances of nREPL for different projects, and it will use
-the right one automatically.  ClojureScript support is just as seamless with
-[Piggieback][].
-
-The only external dependency is that you have either a Vim with Python support
-compiled in, or `python` in your path.
+Fireplace talks to nREPL.  With Leiningen and Boot, it connects automatically
+using the `.nrepl-port` file created when you run `lein repl` or `boot repl`.
+If you are starting nREPL some other way, run `:FireplaceConnect host:port`.
+You can connect to multiple instances of nREPL for different projects, and it
+will use the right one automatically.  ClojureScript support is just as
+seamless with [Piggieback][].
 
 Oh, and if you don't have an nREPL connection, installing [salve.vim][]
 lets it fall back to using `java clojure.main` for some of the basics, using a
-class path based on your Leiningen config.  It's a bit slow, but a two-second
-delay is vastly preferable to being forced out of my flow for a single
-command, in my book.
+class path based on your Leiningen or Boot config.  It's a bit slow, but a
+two-second delay is vastly preferable to being forced out of my flow for a
+single command, in my book.
 
 [cider-nrepl]: https://github.com/clojure-emacs/cider-nrepl
-[Piggieback]: https://github.com/cemerick/piggieback
+[Piggieback]: https://github.com/nrepl/piggieback
 [classpath.vim]: https://github.com/tpope/vim-classpath
 [salve.vim]: https://github.com/tpope/vim-salve
 
@@ -57,7 +50,7 @@ absolutely flawlessly, never breaking just because you did something innocuous
 like backspace through part of the prompt?  No?  Such a shame, you really
 would have liked it.
 
-I've taken a different approach in fireplace.vim.  `cq`  (Think "Clojure
+I've taken a different approach in Fireplace.  `cq`  (Think "Clojure
 Quasi-REPL") is the prefix for a set of commands that bring up a *command-line
 window* — the same thing you get when you hit `q:` — but set up for Clojure
 code.
