@@ -10,6 +10,13 @@ if !exists('g:classpath_cache')
   let g:classpath_cache = '~/.cache/vim/classpath'
 endif
 
+if !exists('g:salve_edn_deps')
+  let g:salve_edn_deps = '{:deps {cider/cider-nrepl {:mvn/version "RELEASE"} }}'
+endif
+if !exists('g:salve_edn_middleware')
+  let g:salve_edn_middleware = '[cider.nrepl/cider-middleware]'
+endif
+
 if !isdirectory(expand(g:classpath_cache))
   call mkdir(expand(g:classpath_cache), 'p')
 endif
@@ -81,8 +88,12 @@ function! s:connect(autostart) abort
     let portfile = s:portfile()
   endif
 
-  return empty(portfile) ? {} :
-        \ fireplace#register_port_file(portfile, b:salve.root)
+  try
+    return empty(portfile) ? {} :
+          \ fireplace#register_port_file(portfile, b:salve.root)
+  catch
+    return {}
+  endtry
 endfunction
 
 function! s:detect(file) abort
@@ -114,6 +125,15 @@ function! s:detect(file) abort
               \ "start_cmd": "boot repl"}
         let b:java_root = root
         break
+      elseif filereadable(root . '/deps.edn')
+        let b:salve = {
+              \ "local_manifest": root.'/deps.edn',
+              \ "global_manifest": expand('~/.clojure/deps.edn'),
+              \ "root": root,
+              \ "compiler": "clojure",
+              \ "classpath_cmd": "clojure -Spath",
+              \ "start_cmd": "clojure -Sdeps " . shellescape(g:salve_edn_deps) . " -m nrepl.cmdline --interactive --middleware " . shellescape(g:salve_edn_middleware)}
+        let b:java_root = root
       endif
       let previous = root
       let root = fnamemodify(root, ':h')
@@ -126,6 +146,14 @@ function! s:split(path) abort
   return split(a:path, has('win32') ? ';' : ':')
 endfunction
 
+function! s:absolute(path, parent) abort
+  if a:path =~# '^/\|^\a\+:'
+    return a:path
+  else
+    return a:parent . (exists('+shellslash') && !&shellslash ? '\' : '/') . a:path
+  endif
+endfunction
+
 function! s:scrape_path() abort
   let cd = exists('*haslocaldir') && haslocaldir() ? 'lcd' : 'cd'
   let cwd = getcwd()
@@ -135,15 +163,34 @@ function! s:scrape_path() abort
     if v:shell_error
       return []
     endif
-    return s:split(path)
+    return map(s:split(path), 's:absolute(v:val, b:salve.root)')
   finally
     execute cd fnameescape(cwd)
   endtry
 endfunction
 
-function! s:path() abort
-  let conn = s:connect(0)
+function! s:eval(conn, code, default) abort
+  try
+    if has_key(a:conn, 'message') || has_key(a:conn, 'Message')
+      let request = {'op': 'eval', 'code': a:code, 'session': '', 'ns': 'user'}
+      for msg in has_key(a:conn, 'message') ? a:conn.message(request, type([])) : a:conn.Message(request, type([]))
+        if has_key(msg, 'value')
+          return msg.value
+        endif
+      endfor
+    endif
+  catch
+  endtry
+  return a:default
+endfunction
 
+function! s:my_paths(path) abort
+  return map(filter(copy(a:path),
+        \ 'strpart(v:val, 0, len(b:salve.root)) ==# b:salve.root'),
+        \ 'v:val[strlen(b:salve.root)+1:-1]')
+endfunction
+
+function! s:path() abort
   let projts = getftime(b:salve.local_manifest)
   let profts = getftime(b:salve.global_manifest)
   let cache = expand(g:classpath_cache . '/') . substitute(b:salve.root, '[:\/]', '%', 'g')
@@ -152,14 +199,19 @@ function! s:path() abort
   if ts > projts && ts > profts
     let path = split(get(readfile(cache), 0, ''), ',')
 
-  elseif has_key(conn, 'path')
-    let ts = +get(conn.eval('(.getStartTime (java.lang.management.ManagementFactory/getRuntimeMXBean))', {'session': '', 'ns': 'user'}), 'value', '-2000')[0:-4]
+  elseif b:salve.compiler !=# 'clojure'
+    let conn = s:connect(0)
+    let ts = +s:eval(conn, '(.getStartTime (java.lang.management.ManagementFactory/getRuntimeMXBean))', '-2000')[0:-4]
     if ts > projts && ts > profts
-      let response = conn.eval(
-            \ '[(System/getProperty "path.separator") (or (System/getProperty "fake.class.path") (System/getProperty "java.class.path"))]',
-            \ {'session': '', 'ns': 'user'})
-      let path = split(eval(response.value[5:-2]), response.value[2])
-      call writefile([join(path, ',')], cache)
+      let value = s:eval(conn, '[(System/getProperty "path.separator") (or (System/getProperty "fake.class.path") (System/getProperty "java.class.path") "")]', '')
+      if len(value) > 8
+        let path = split(eval(value[5:-2]), value[2])
+        if empty(s:my_paths(path))
+          unlet path
+        else
+          call writefile([join(path, ',')], cache)
+        endif
+      endif
     endif
   endif
 
@@ -180,8 +232,8 @@ function! s:activate() abort
   endif
   command! -buffer -bar -bang -nargs=* Console call s:repl(<bang>0, <q-args>)
   execute 'compiler' b:salve.compiler
-  let &l:errorformat .= ',' . escape('chdir '.b:salve.root, '\,')
-  let &l:errorformat .= ',' . escape('classpath,'.join(s:path(), ','), '\,')
+  let &l:errorformat .= ',%\&' . escape('dir='.b:salve.root, '\,')
+  let &l:errorformat .= ',%\&' . escape('classpath='.join(s:path(), ','), '\,')
   if get(b:, 'dispatch') =~# ':RunTests '
     let &l:errorformat .= ',%\&buffer=test ' . matchstr(b:dispatch, ':RunTests \zs.*')
   endif
@@ -198,7 +250,7 @@ function! s:projectionist_detect() abort
   let main = []
   let test = []
   let spec = []
-  for path in mypaths
+  for path in s:my_paths(s:path())
     let projections[path.'/*'] = {'type': 'resource'}
     if path !~# 'target\|resources'
       let projections[path.'/*.clj'] = {'type': 'source', 'template': ['(ns {dot|hyphenate})']}
@@ -214,7 +266,6 @@ function! s:projectionist_detect() abort
       let main += [path]
     endif
   endfor
-  let projections['*'] = {'start': b:salve.start_cmd}
   call projectionist#append(b:salve.root, projections)
   let projections = {}
 
