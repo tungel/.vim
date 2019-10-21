@@ -23,13 +23,23 @@ endfunction
 let s:script_path = tolower(resolve(expand('<sfile>:p:h')))
 
 let s:filetype_overrides = {
-      \ 'nerdtree': [ get(g:, 'NERDTreeStatusline', 'NERD'), '' ],
+      \ 'defx':  ['defx', '%{b:defx.paths[0]}'],
       \ 'gundo': [ 'Gundo', '' ],
-      \ 'vimfiler': [ 'vimfiler', '%{vimfiler#get_status_string()}' ],
+      \ 'help':  [ 'Help', '%f' ],
       \ 'minibufexpl': [ 'MiniBufExplorer', '' ],
+      \ 'nerdtree': [ get(g:, 'NERDTreeStatusline', 'NERD'), '' ],
       \ 'startify': [ 'startify', '' ],
       \ 'vim-plug': [ 'Plugins', '' ],
+      \ 'vimfiler': [ 'vimfiler', '%{vimfiler#get_status_string()}' ],
+      \ 'vimshell': ['vimshell','%{vimshell#get_status_string()}'],
       \ }
+
+if exists(':Gina')
+  let s:filetype_overrides['gina-status'] = ['gina', '%{gina#component#repo#preset()}' ]
+  let s:filetype_overrides['diff'] = ['gina', '%{gina#component#repo#preset()}' ]
+  let s:filetype_overrides['gina-log'] = ['gina', '%{gina#component#repo#preset()}' ]
+  let s:filetype_overrides['gina-tag'] = ['gina', '%{gina#component#repo#preset()}' ]
+endif
 
 let s:filetype_regex_overrides = {}
 
@@ -58,16 +68,11 @@ function! airline#extensions#apply_left_override(section1, section2)
 endfunction
 
 function! airline#extensions#apply(...)
+  let filetype_overrides = get(s:, 'filetype_overrides', {})
+  call extend(filetype_overrides, get(g:, 'airline_filetype_overrides', {}), 'force')
 
   if s:is_excluded_window()
     return -1
-  endif
-
-  if &buftype == 'help'
-    call airline#extensions#apply_left_override('Help', '%f')
-    let w:airline_section_x = ''
-    let w:airline_section_y = ''
-    let w:airline_render_right = 1
   endif
 
   if &buftype == 'terminal'
@@ -81,9 +86,18 @@ function! airline#extensions#apply(...)
     let w:airline_section_c = bufname(winbufnr(winnr()))
   endif
 
-  if has_key(s:filetype_overrides, &ft)
-    let args = s:filetype_overrides[&ft]
+  if has_key(filetype_overrides, &ft) &&
+        \ ((&filetype == 'help' && &buftype == 'help') || &filetype !~ 'help')
+    " for help files only override it, if the buftype is also of type 'help',
+    " else it would trigger when editing Vim help files
+    let args = filetype_overrides[&ft]
     call airline#extensions#apply_left_override(args[0], args[1])
+  endif
+
+  if &buftype == 'help'
+    let w:airline_section_x = ''
+    let w:airline_section_y = ''
+    let w:airline_render_right = 1
   endif
 
   for item in items(s:filetype_regex_overrides)
@@ -149,7 +163,8 @@ function! airline#extensions#load()
     call add(s:loaded_ext, 'netrw')
   endif
 
-  if has("terminal") || has('nvim')
+  if (has("terminal") || has('nvim')) &&
+        \ get(g:, 'airline#extensions#term#enabled', 1)
     call airline#extensions#term#init(s:ext)
     call add(s:loaded_ext, 'term')
   endif
@@ -206,6 +221,17 @@ function! airline#extensions#load()
     call add(s:loaded_ext, 'tagbar')
   endif
 
+  if get(g:, 'airline#extensions#vista#enabled', 1)
+    call airline#extensions#vista#init(s:ext)
+    call add(s:loaded_ext, 'vista')
+  endif
+
+  if get(g:, 'airline#extensions#bookmark#enabled', 1)
+        \ && exists(':BookmarkToggle')
+    call airline#extensions#bookmark#init(s:ext)
+    call add(s:loaded_ext, 'bookmark')
+  endif
+
   if get(g:, 'airline#extensions#csv#enabled', 1)
         \ && (get(g:, 'loaded_csv', 0) || exists(':Table'))
     call airline#extensions#csv#init(s:ext)
@@ -213,12 +239,7 @@ function! airline#extensions#load()
   endif
 
   if exists(':VimShell')
-    let s:filetype_overrides['vimshell'] = ['vimshell','%{vimshell#get_status_string()}']
     let s:filetype_regex_overrides['^int-'] = ['vimshell','%{substitute(&ft, "int-", "", "")}']
-  endif
-
-  if exists(':Defx')
-    let s:filetype_overrides['defx'] = ['defx', '%{b:defx.paths[0]}']
   endif
 
   if get(g:, 'airline#extensions#branch#enabled', 1) && (
@@ -262,6 +283,11 @@ function! airline#extensions#load()
   if (get(g:, 'airline#extensions#ale#enabled', 1) && exists(':ALELint'))
     call airline#extensions#ale#init(s:ext)
     call add(s:loaded_ext, 'ale')
+  endif
+
+  if (get(g:, 'airline#extensions#coc#enabled', 1) && exists(':CocCommand'))
+    call airline#extensions#coc#init(s:ext)
+    call add(s:loaded_ext, 'coc')
   endif
 
   if (get(g:, 'airline#extensions#languageclient#enabled', 1) && exists(':LanguageClientStart'))
