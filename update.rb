@@ -38,6 +38,8 @@ package_list = {
   'gruvbox' => 'https://github.com/morhetz/gruvbox.git',
   'jellybeans.vim' => 'https://github.com/nanotech/jellybeans.vim.git',
   'Apprentice' => 'https://github.com/romainl/Apprentice.git',
+  'oceanic-next' => 'https://github.com/mhartington/oceanic-next.git',
+  'onedark.vim' => 'https://github.com/joshdick/onedark.vim.git',
   # end color scheme }}}
 
   'vimux' => 'git@github.com:benmills/vimux.git',
