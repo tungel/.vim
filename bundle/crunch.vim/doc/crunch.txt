@@ -34,6 +34,7 @@
          4.2 g:crunch_comment ....................... |crunch-comment|
          4.3 g:crunch_result_type_append ............ |crunch-result-type-append|
          4.4 g:crunch_user_variables ................ |crunch-user-variables|
+         4.5 g:crunch_precision ..................... |crunch-precision|
      5. Known Issues ................................ |crunch-known-issues|
      6. Contribute .................................. |crunch-contribute|
      7. Change Log .................................. |crunch-change-log|
@@ -294,7 +295,7 @@ see |crunch-comments|
 ------------------------------------------------------------------------------
 4.3 g:crunch_result_type_append                   *crunch-result-type-append*
 
-Defualt 1
+Default 1
 
 Controls whether or not the result of each expression(s) is appended to the 
 expression or if the result replaces the expression(s).
@@ -322,13 +323,23 @@ ALTERNATIVELY~
 
 let g:crunch_user_variables = {'e': exp(1),  'pi':3.14159265359}
 
+------------------------------------------------------------------------------
+4.5 g:crunch_precision                                     *crunch-precision*
+
+Default 6
+
+Controls the output precision of floating point numbers formated with printf
+specifier %g. The Maximum precision depends on the precision of the floating
+point library used when compiling vim, see |floating-point-precision| for
+details. Note that trailing 0s in results are removed.
+
+
 ==============================================================================
 5. KNOWN ISSUES                                         *crunch-known-issues*
 
 * Modulus operation is not supported due to converting all numbers into floats
 * Expression similar to the following evaluate 23.43.22 + 0 = 23.43. This is
   caused by the way str2float() converts 23.34.22 into 23.34
-
 
 ==============================================================================
 6. CONTRIBUTE                                             *crunch-contribute*
