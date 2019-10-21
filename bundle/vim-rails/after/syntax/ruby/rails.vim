@@ -1,6 +1,6 @@
 hi def link rubyEntity                      rubyMacro
 hi def link rubyEntities                    rubyMacro
-hi def link rubyExceptionHandler            rubyMacro
+hi def link rubyExceptionMacro              rubyMacro
 hi def link rubyValidation                  rubyMacro
 hi def link rubyCallback                    rubyMacro
 hi def link rubyRakeMacro                   rubyMacro
@@ -21,7 +21,7 @@ hi def link rubyHelper                      Function
 let s:has_app = exists('*RailsDetect') && RailsDetect()
 let s:path = tr(expand('%:p'), '\', '/')
 
-if s:path =~# '\v/app/%(channels|controllers|helpers|jobs|mailers|models)/.*\.rb$\|/app/views/'
+if s:path =~# '\v/app/%(channels|controllers|helpers|jobs|mailers|models)/.*\.rb$|/app/views/'
   syn keyword rubyHelper logger
 endif
 
@@ -37,7 +37,7 @@ elseif s:path =~# '/app/models/.*\.rb$'
   syn keyword rubyCallback before_create before_destroy before_save before_update
   syn keyword rubyCallback  after_create  after_destroy  after_save  after_update
   syn keyword rubyCallback around_create around_destroy around_save around_update
-  syn keyword rubyCallback after_commit after_create_commit after_update_commit after_destroy_commit after_rollback
+  syn keyword rubyCallback after_commit after_create_commit after_update_commit after_save_commit after_destroy_commit after_rollback
   syn keyword rubyCallback after_find after_initialize after_touch
   syn keyword rubyValidation validates validates_acceptance_of validates_associated validates_confirmation_of validates_each validates_exclusion_of validates_format_of validates_inclusion_of validates_length_of validates_numericality_of validates_presence_of validates_absence_of validates_size_of validates_with
   syn keyword rubyValidation validates_associated validates_uniqueness_of
@@ -46,7 +46,7 @@ endif
 
 if s:path =~# '/app/jobs/.*\.rb$'
   syn keyword rubyMacro queue_as
-  syn keyword rubyExceptionHandler rescue_from retry_on discard_on
+  syn keyword rubyExceptionMacro rescue_from retry_on discard_on
   syn keyword rubyCallback before_enqueue around_enqueue after_enqueue before_perform around_perform after_perform
 endif
 
@@ -89,11 +89,12 @@ if s:path =~# '/app/controllers/.*\.rb$'
   syn keyword rubyResponse render head redirect_to redirect_back respond_with send_data send_file
 endif
 
+let b:rails_path = s:path
 if s:path =~# '/app/controllers/.*\.rb$\|/app/mailers/.*\.rb$\|/app/models/.*_mailer\.rb$'
   syn keyword rubyHelper render_to_string
   syn keyword rubyCallback before_action append_before_action prepend_before_action after_action append_after_action prepend_after_action around_action append_around_action prepend_around_action skip_before_action skip_after_action skip_action
   syn keyword rubyMacro helper helper_attr helper_method layout
-  syn keyword rubyExceptionHandler rescue_from
+  syn keyword rubyExceptionMacro rescue_from
 endif
 
 if s:path =~# '/app/mailers/.*\.rb$\|/app/models/.*_mailer\.rb$'
@@ -139,14 +140,11 @@ if s:path =~# '/config/routes\>.*\.rb$'
 endif
 
 if s:path =~# '/test\%(/\|/.*/\)test_[^\/]*\.rb$\|/test/.*_test\.rb$\|/features/step_definitions/.*\.rb$'
-  " refute_* <=> assert_* <=> assert_not_*
   syn keyword rubyAssertion refute     refute_empty     refute_equal     refute_in_delta     refute_in_epsilon     refute_includes     refute_instance_of     refute_kind_of     refute_match    refute_nil     refute_operator     refute_predicate     refute_respond_to     refute_same
   syn keyword rubyAssertion assert     assert_empty     assert_equal     assert_in_delta     assert_in_epsilon     assert_includes     assert_instance_of     assert_kind_of     assert_match    assert_nil     assert_operator     assert_predicate     assert_respond_to     assert_same
   syn keyword rubyAssertion assert_not assert_not_empty assert_not_equal assert_not_in_delta assert_not_in_epsilon assert_not_includes assert_not_instance_of assert_not_kind_of assert_no_match assert_not_nil assert_not_operator assert_not_predicate assert_not_respond_to assert_not_same
-  " assert_* <=> assert_not_*
   syn keyword rubyAssertion assert_raises         assert_send     assert_throws
   syn keyword rubyAssertion assert_nothing_raised assert_not_send assert_nothing_thrown
-  " assert_*
   syn keyword rubyAssertion assert_raise assert_block assert_mock assert_output assert_raise_with_message assert_silent
   syn keyword rubyAssertion flunk
 endif
@@ -180,6 +178,7 @@ if rails#buffer().type_name('test')
   syn keyword rubyTestMacro test setup teardown
   syn keyword rubyAssertion assert_difference assert_no_difference
   syn keyword rubyAssertion assert_changes    assert_no_changes
+  syn keyword rubyAssertion assert_emails assert_enqueued_emails assert_no_emails assert_no_enqueued_emails
   syn keyword rubyTestAction travel travel_to travel_back
 endif
 if rails#buffer().type_name('test-controller', 'test-integration', 'test-system')
@@ -238,22 +237,18 @@ syn keyword rubyAttribute thread_cattr_accessor thread_cattr_reader thread_cattr
 syn keyword rubyMacro alias_attribute concern concerning delegate delegate_missing_to with_options
 
 let s:special = {
-      \ '[': '\>\[\@=',
-      \ ']': '\>[[.]\@!',
-      \ '{': '\>\%(\s*{\|\s*do\>\)\@=',
-      \ '}': '\>\%(\s*{\|\s*do\>\)\@!'}
+      \ '[': '\[\@=',
+      \ ']': '[[.]\@!',
+      \ '{': '\%(\s*{\|\s\+do\>\)\@=',
+      \ '}': '\%(\s*{\|\s\+do\>\)\@!'}
 function! s:highlight(group, ...) abort
   let value = rails#buffer().projected(a:0 ? a:1 : a:group)
   let words = split(join(filter(value, 'type(v:val) == type("")'), ' '))
-  let special = filter(copy(words), 'type(v:val) == type("") && v:val =~# ''^\h\k*[][{}?!]$''')
-  let regular = filter(copy(words), 'type(v:val) == type("") && v:val =~# ''^\h\k*$''')
-  if !empty(special)
+  call filter(words, 'type(v:val) == type("") && v:val =~# ''^\h\k*[!?]\=[][{}]\=$''')
+  if !empty(words)
     exe 'syn match' a:group substitute(
-          \ '"\<\%('.join(special, '\|').'\)"',
+          \ '"\<\%('.join(words, '\|').'\)\%(\k\@<!\|\k\@!:\@!\)"',
           \ '[][{}]', '\=get(s:special, submatch(0), submatch(0))', 'g')
-  endif
-  if !empty(regular)
-    exe 'syn keyword' a:group join(regular, ' ')
   endif
 endfunction
 
