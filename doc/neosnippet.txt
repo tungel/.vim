@@ -39,7 +39,8 @@ recommended.
 Default snippets files are available in neosnippet-snippets.
 https://github.com/Shougo/neosnippet-snippets
 
-Note: Installing the default snippets is optional. If you choose not to install
+Note: Installing the default snippets is optional. If you choose not to
+install them, you must set |g:neosnippet#disable_runtime_snippets|. >
 them, you must set |g:neosnippet#disable_runtime_snippets|. >
 		let g:neosnippet#disable_runtime_snippets = {
 		\   '_' : 1,
@@ -62,8 +63,8 @@ COMMANDS 					*neosnippet-commands*
 						*:NeoSnippetMakeCache*
 :NeoSnippetMakeCache [filetype]
 		Creates a cache for the snippets of the given [filetype]. It
-		automatically chooses the current buffer's file type unless you
-		specify another one by [filetype].
+		automatically chooses the current buffer's file type unless
+		you specify another one by [filetype].
 
 					*:NeoSnippetEdit*
 :NeoSnippetEdit [{options}] [filetype]
@@ -162,8 +163,8 @@ g:neosnippet#disable_runtime_snippets
 		loading "neosnippets" directories from 'runtimepath'. This is
 		very useful to prevent snippet conflicts between self defined
 		snippet files and the built-in snippet files of neosnippet. If
-		you use an "_" as key for an entry this will treat the value of
-		the entry as default value for all file types.
+		you use an "_" as key for an entry this will treat the value
+		of the entry as default value for all file types.
 
 		Note: This dictionary must be set in your .vimrc.
 
@@ -179,7 +180,6 @@ g:neosnippet#disable_runtime_snippets
 		\ }
 <
 		The default value is {}.
-
 				*g:neosnippet#enable_snipmate_compatibility*
 g:neosnippet#enable_snipmate_compatibility
 		If this variable is not 0, neosnippet will enable the snipMate
@@ -208,13 +208,13 @@ g:neosnippet#enable_conceal_markers
 
 		The default value is 1.
 
-					*g:neosnippet#enable_completed_snippet*
+				*g:neosnippet#enable_completed_snippet*
 g:neosnippet#enable_completed_snippet
 		If this variable is not 0, neosnippet can expand the function
 		prototype.
 
 		The default value is 0.
-		
+
 					*g:neosnippet#enable_complete_done*
 g:neosnippet#enable_complete_done
 		If this variable is not 0, neosnippet can expand on
@@ -224,19 +224,19 @@ g:neosnippet#enable_complete_done
 		|CompleteDone| expand.
 
 		The default value is 0.
-		
-					*g:neosnippet#enable_optional_arguments*
+
+				*g:neosnippet#enable_optional_arguments*
 g:neosnippet#enable_optional_arguments
 		If this variable is not 0, neosnippet will conceal commas in
 		expanded arguments from completed snippets.
-		
+
 		Useful for languages where arguments are optional by default.
 
 		Note: For use with |g:neosnippet#enable_completed_snippet| = 1
 
 		The default value is 1.
 
-					*g:neosnippet#enable_auto_clear_markers*
+				*g:neosnippet#enable_auto_clear_markers*
 g:neosnippet#enable_auto_clear_markers
 		If this variable is not 0, neosnippet will clear the markers
 		in the buffer when |BufWritePost|, |CursorMoved| and
@@ -254,7 +254,7 @@ g:neosnippet#scope_aliases
 		other snippet files.
 		The key is filetype, and the value is comma separated snippet
 		filenames excluded extensions.
-		It works like |g:snipMate.scope_aliases|.
+		It works like "g:snipMate.scope_aliases".
 		The default value is {}. >
 
 		let g:neosnippet#scope_aliases = {}
@@ -263,7 +263,7 @@ g:neosnippet#scope_aliases
 g:neosnippet#data_directory			*g:neosnippet#data_directory*
 		Specifies directory for neosnippet cache.  If the directory
 		doesn't exist the directory will be automatically generated.
-		
+
 		Default value is "$XDG_CACHE_HOME/neosnippet" or
 		expand("~/.cache/neosnippet"); the absolute path of it.
 
@@ -281,49 +281,37 @@ b:neosnippet_disable_snippet_triggers
 ------------------------------------------------------------------------------
 KEY MAPPINGS 					*neosnippet-key-mappings*
 
-					*i_<Plug>(neosnippet_expand_or_jump)*
-i_<Plug>(neosnippet_expand_or_jump)
-					*s_<Plug>(neosnippet_expand_or_jump)*
-s_<Plug>(neosnippet_expand_or_jump)
-		Expand a snippet in the current cursor position. If there is
-		no snippet available it jumps to the next placeholder of the
-		buffer.
-
-				*i_<Plug>(neosnippet_jump_or_expand)*
-i_<Plug>(neosnippet_jump_or_expand)
-				*s_<Plug>(neosnippet_jump_or_expand)*
-s_<Plug>(neosnippet_jump_or_expand)
+					*<Plug>(neosnippet_expand_or_jump)*
+<Plug>(neosnippet_expand_or_jump)
+					*<Plug>(neosnippet_jump_or_expand)*
+<Plug>(neosnippet_jump_or_expand)
 		Jump to the next available placeholder in the buffer. If there
 		is no placeholder it expands a snippet in the current cursor
 		position.
 
-						*i_<Plug>(neosnippet_expand)*
-i_<Plug>(neosnippet_expand)
-						*s_<Plug>(neosnippet_expand)*
-s_<Plug>(neosnippet_expand)
+						*<Plug>(neosnippet_expand)*
+<Plug>(neosnippet_expand)
 		Expand a snippet in current cursor position. It only takes
 		effect if there is a snippet text to expand or if you have
 		chosen a snippet from popup menu.
 
-						*i_<Plug>(neosnippet_jump)*
-i_<Plug>(neosnippet_jump)
-						*s_<Plug>(neosnippet_jump)*
-s_<Plug>(neosnippet_jump)
+						*<Plug>(neosnippet_jump)*
+<Plug>(neosnippet_jump)
 		Jump to the next placeholder key. It does not expand any
 		snippets.
 
 				*i_<Plug>(neosnippet_start_unite_snippet)*
-i_<Plug>(neosnippet_start_unite_snippet)
+<Plug>(neosnippet_start_unite_snippet)
 		Starts the unite snippet source. You can expand a snippet by
 		the unite interface.
 		Note: The plug-in |unite.vim| is required for that feature.
 
 					*x_<Plug>(neosnippet_expand_target)*
-x_<Plug>(neosnippet_expand_target)
+<Plug>(neosnippet_expand_target)
 		Expand the input trigger by a selected target text.
 
 			*x_<Plug>(neosnippet_register_oneshot_snippet)*
-x_<Plug>(neosnippet_register_oneshot_snippet)
+<Plug>(neosnippet_register_oneshot_snippet)
 		Register oneshot snippet in the current buffer.
 
 						*neosnippet#expandable()*
@@ -343,8 +331,8 @@ neosnippet#expandable_or_jumpable()
 		You can use this function with imap <expr>. It checks if
 		the cursor text is a snippet trigger or a placeholder. This is
 		useful to save key mappings.
-		Note: If you don't like to jump to the next placeholder, you must use
-		|neosnippet#expandable()| instead of
+		Note: If you don't like to jump to the next placeholder, you
+		must use |neosnippet#expandable()| instead of
 		|neosnippet#expandable_or_jumpable()|.
 >
 		imap <expr><C-l>
@@ -358,7 +346,7 @@ neosnippet#anonymous({snippet})
 		{options} is snippet option.
 		You can expand snippet definition without defining snippet
 		trigger.
-		Note: You can use this function with |map-<expr>|.
+		Note: You can use this function with |:map-<expr>|.
 >
 		inoremap <silent> ((
 		\ <C-r>=neosnippet#anonymous('\left(${1}\right)${0}')<CR>
@@ -370,7 +358,7 @@ neosnippet#anonymous({snippet})
 neosnippet#expand({trigger})
 		It expands the snippet trigger.
 		{trigger} is snippet trigger.
-		Note: You can use this function with |map-<expr>|.
+		Note: You can use this function with |:map-<expr>|.
 >
 		inoremap <silent> test
 		\ i<C-r>=neosnippet#expand('date_english')<CR>
@@ -390,18 +378,27 @@ neosnippet#get_snippets_directory()
 neosnippet#complete_done()
 		It expands the snippet for |CompleteDone| event.
 		Note: The function is deprecated.
-
 ==============================================================================
 EXAMPLES					*neosnippet-examples*
 >
 	" Plugin key-mappings.
-	" Note: It must be "imap" and "smap".  It uses <Plug> mappings.
+	" Note: It can be "nmap", "xmap", "imap" and "smap", and don't forget
+	" "smap" and "imap" unless you have some specific reasons.  It uses
+	" <Plug> mappings.
+	" Note: It is unrecommended to map <Plug>(neosnippet_foo) at once by
+	" "map", which could fail to work in some features.
+	" Note: Don't forget to make a "smap" out of "<Plug>(neosnippet_jump)"
+	" "<Plug>(neosnippet_expand_or_jump)" or
+	" "Plug>(neosnippet_jump_or_expand)" at least. This note is especially
+	" for you who are unfamiliar with Vim Script.
 	imap <C-k>     <Plug>(neosnippet_expand_or_jump)
 	smap <C-k>     <Plug>(neosnippet_expand_or_jump)
-	xmap <C-k>     <Plug>(neosnippet_expand_target)
+	xmap <C-k>     <Plug>(neosnippet_expand_or_jump)
+	nmap <C-k>     <Plug>(neosnippet_expand_or_jump)
 
 	" SuperTab like snippets' behavior.
-	" Note: It must be "imap" and "smap".  It uses <Plug> mappings.
+	" Note: Be careful to map <TAB> because <TAB> is equivalent to <C-i> in
+	" Vim and <C-i> is a very important key especially in Normal Mode.
 	"imap <expr><TAB>
 	" \ pumvisible() ? "\<C-n>" :
 	" \ neosnippet#expandable_or_jumpable() ?
@@ -428,7 +425,13 @@ SNIPPET SYNTAX					*neosnippet-snippet-syntax*
 It is quite easy to create your own snippets. You can use the example below to
 get started.
 
-Note: The snippets file extension must be ".snip" or ".snippets".
+Note: The snippets file extension must be ".snip" or ".snippets" and its
+filename corresponds to [filetype] regularly. If you want to avoid trouble
+about filename, use :NeoSnippetEdit command without specifying [filetype].
+corresponds to [filetype] regularly. If you want to avoid trouble about
+filename, use :NeoSnippetEdit command without specifying [filetype].
+corresponds to [filetype] regularly. If you want to avoid trouble about
+filename, use :NeoSnippetEdit command without specifying [filetype].
 
 Example:
 
@@ -567,7 +570,7 @@ The structure of a placeholder can be:
 	Note: You need to make a visual selection and expand your
 	snippet with the key mapping below for this to work.
 
-	|<Plug>(neosnippet_expand_target)|.
+	|x_<Plug>(neosnippet_expand_target)|.
 
 	This is very useful if you edit text and decide to put something in an
 	environment or some sort of brackets for folding.
@@ -719,7 +722,9 @@ this. If you want to overwrite a snippet explicitly, please use:
 <
 
 After that you can redefine the snippet. But this does not work if you include
-external snippet files. There will be no warning when snippets get overwritten.
+external snippet files. There will be no warning when snippets get
+overwritten external snippet files. There will be no warning when snippets get
+overwritten.
 
 Multi snippet feature in snipMate is available. Neosnippet substitutes trigger
 and descriptions spaces to '_'.
@@ -772,15 +777,13 @@ You can load a Vim script file for snippets.
 >
 	source go.vim
 <
-
-==============================================================================
 UNITE SOURCES					*neosnippet-unite-sources*
 
 					*neosnippet-unite-source-neosnippet*
 neosnippet
 		The candidates of the snippet source are neosnippet snippets.
 		and their kind is "snippet". You can use the snippet source
-		with the mapping |<Plug>(neosnippet_start_unite_snippet)|.
+		with the mapping |i_<Plug>(neosnippet_start_unite_snippet)|.
 		But you can also execute it by ":Unite neosnippet". The
 		snippet source offers an edit action you can use to edit the
 		snippet files.
@@ -803,8 +806,6 @@ neosnippet				*neosnippet-unite-action-neosnippet*
 	expand		Expand snippet (default action)
 	edit		Edit snippet
 	preview		View snippet definition
-
-==============================================================================
 FAQ						*neosnippet-faq*
 
 Q: What if I want to expand a snippet trigger after (, [, " etc...:
@@ -840,18 +841,6 @@ A: Please try the setting below. It defines the snipMate function.
 >
 	let g:neosnippet#enable_snipmate_compatibility = 1
 <
-Q: Cannot jump over placeholder
-https://github.com/Shougo/neosnippet/issues/120
-
-A: You must use smap in .vimrc.
->
-	imap <expr><TAB> neosnippet#expandable_or_jumpable() ?
-	\ "\<Plug>(neosnippet_expand_or_jump)" : "\<TAB>"
-	smap <expr><TAB> neosnippet#expandable_or_jumpable() ?
-	\ "\<Plug>(neosnippet_expand_or_jump)" : "\<TAB>"
-<
-Because neosnippet uses select-mode to jump over placeholder.
-
 Q: I want to disable preview window in neosnippet candidates.
 
 A:
@@ -890,6 +879,5 @@ Q: I want to auto complete with parameters.
 A: >
 	let g:neosnippet#enable_completed_snippet = 1
 	let g:neosnippet#enable_complete_done = 1
-
 ==============================================================================
 vim:tw=78:ts=8:ft=help:norl:noet:fen:noet:

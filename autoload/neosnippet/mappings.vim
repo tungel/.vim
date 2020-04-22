@@ -29,13 +29,11 @@ function! neosnippet#mappings#completed_expandable() abort
 endfunction
 
 function! neosnippet#mappings#_clear_select_mode_mappings() abort
-  if !g:neosnippet#disable_select_mode_mappings
+  if !g:neosnippet#disable_select_mode_mappings || !exists('*execute')
     return
   endif
 
-  redir => mappings
-    silent! smap
-  redir END
+  let mappings = execute('smap', 'silent!')
 
   for map in map(filter(split(mappings, '\n'),
         \ "v:val !~# '^s' && v:val !~# '^\\a*\\s*<\\S\\+>'"),
@@ -140,10 +138,6 @@ function! neosnippet#mappings#_expand(trigger) abort
 endfunction
 
 function! s:snippets_expand(cur_text, col) abort
-  if neosnippet#mappings#_complete_done(a:cur_text, a:col)
-    return 0
-  endif
-
   let cur_word = neosnippet#helpers#get_cursor_snippet(
         \ neosnippet#helpers#get_snippets('i'),
         \ a:cur_text)
@@ -186,13 +180,32 @@ function! s:get_user_data(cur_text) abort
   endif
 
   let cur_text = a:cur_text
+  let has_lspitem = has_key(user_data, 'lspitem')
+  let snippet_trigger = ''
 
-  if get(user_data, 'snippet', '') !=# ''
+  if has_lspitem && type(user_data.lspitem) == v:t_dict
+    let lspitem = user_data.lspitem
+    if has_key(lspitem, 'textEdit') && type(lspitem.textEdit) == v:t_dict
+      let snippet = lspitem.textEdit.newText
+      let snippet_trigger = lspitem.textEdit.newText
+    elseif get(lspitem, 'insertTextFormat', -1) == 2
+      let snippet = lspitem.insertText
+      let snippet_trigger = lspitem.insertText
+    endif
+  elseif get(user_data, 'snippet', '') !=# ''
     let snippet = user_data.snippet
     let snippet_trigger = get(user_data, 'snippet_trigger',
           \ v:completed_item.word)
+  endif
+
+  if snippet_trigger !=# ''
+    " Substitute $0, $1, $2,... to ${0}, ${1}, ${2}...
+    let snippet = substitute(snippet, '\$\(\d\+\)', '${\1}', 'g')
+    " Substitute quotes
+    let snippet = substitute(snippet, "'", "''", 'g')
+
     let cur_text = cur_text[: -1-len(snippet_trigger)]
-    return [cur_text, snippet, {'lspitem': has_key(user_data, 'lspitem')}]
+    return [cur_text, snippet, {'lspitem': has_lspitem}]
   endif
 
   return []
