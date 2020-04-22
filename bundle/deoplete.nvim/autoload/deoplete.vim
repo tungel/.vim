@@ -46,6 +46,9 @@ function! deoplete#send_event(event, ...) abort
         \ {'event': a:event, 'sources': sources})
 endfunction
 
+function! deoplete#complete() abort
+  return deoplete#mapping#_dummy('deoplete#mapping#_complete')
+endfunction
 function! deoplete#auto_complete(...) abort
   return deoplete#handler#_completion_begin(get(a:000, 0, 'Async'))
 endfunction
@@ -53,6 +56,8 @@ function! deoplete#manual_complete(...) abort
   if !deoplete#is_enabled()
     return ''
   endif
+
+  call deoplete#init#_prev_completion()
 
   " Start complete.
   return "\<C-r>=deoplete#mapping#_rpcrequest_wrapper("
@@ -68,14 +73,6 @@ function! deoplete#smart_close_popup() abort
 endfunction
 function! deoplete#cancel_popup() abort
   call deoplete#handler#_skip_next_completion()
-  return pumvisible() ? "\<C-e>" : ''
-endfunction
-function! deoplete#refresh() abort
-  if exists('g:deoplete#_context')
-    if get(g:deoplete#_context, 'event', '') ==# 'Manual'
-      let g:deoplete#_context.event = 'Refresh'
-    endif
-  endif
   return pumvisible() ? "\<C-e>" : ''
 endfunction
 function! deoplete#insert_candidate(number) abort
