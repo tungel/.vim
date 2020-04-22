@@ -1,11 +1,10 @@
 if !exists('g:test#scala#sbttest#file_pattern')
-  let g:test#scala#sbttest#file_pattern = '\v^(.*test.*|.*suite.*)\c\.scala$'
+  let g:test#scala#sbttest#file_pattern = '\v^(.*test.*|.*suite.*|.*spec.*)\c\.scala$'
 endif
 
 " Returns true if the given file belongs to your test runner
 function! test#scala#sbttest#test_file(file) abort
-  let current_file = fnamemodify(a:file, ':t')
-  return current_file =~? g:test#scala#sbttest#file_pattern
+  return test#scala#test_file('sbttest', g:test#scala#sbttest#file_pattern, a:file)
 endfunction
 
 " Returns test runner's arguments which will run the current file and/or line
