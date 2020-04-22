@@ -1,4 +1,4 @@
-# VIM Table Mode v4.6.7 [![Build Status](https://travis-ci.org/dhruvasagar/vim-table-mode.png?branch=master)](https://travis-ci.org/dhruvasagar/vim-table-mode)
+# VIM Table Mode v4.7.0 [![Build Status](https://travis-ci.org/dhruvasagar/vim-table-mode.png?branch=master)](https://travis-ci.org/dhruvasagar/vim-table-mode)
 
 An awesome automatic table creator & formatter allowing one to create neat
 tables as you type.
@@ -119,6 +119,11 @@ Markdown and ReST filetypes have automatically configured corners.
    aligned, whether center, right or left by using a `:` character defined by
    `g:table_mode_align_char` option.
 
+If you manipulate the table when table mode is disabled or copy paste a table
+from clipboard from outside and it ends up being misaligned, you can realign
+it using `:TableModeRealign` or using the default mapping
+<kbd>\<Leader\>tr</kbd> defined by `g:table_mode_relign_map` option.
+
 ### Formatting existing content into a table
 
    Table Mode wouldn't justify it's name if it didn't allow formatting
@@ -171,6 +176,16 @@ Markdown and ReST filetypes have automatically configured corners.
       `g:table_mode_delete_column_map` to delete the entire current column
       (provided you are within a table row), this can also be preceeded with a
       [count] to delete multiple columns.
+
+  - **Insert Column** :
+
+      You can use the <kbd>\<Leader\>tic</kbd> mapping defined by the option
+      `g:table_mode_insert_column_after_map` to insert a column after the
+      cursor (provided you are within a table row). Of course you can use the
+      <kbd>\<Leader\>tiC</kbd> mapping defined by
+      `g:table_mode_insert_column_before_map` to insert a column before the
+      cursor. Both can also be preceeded with a [count] to insert multiple
+      columns.
 
 ## Advanced Usage: Spreadsheet Capabilities
 
@@ -267,3 +282,33 @@ named <a href="https://gist.github.com/tpope/287147">cucumbertables.vim</a>.
 
 Also a shout out to godlygeek who developed the incredible <a
 href="http://github.com/godlygeek/tabular">Tabular</a> plugin.
+
+## Contributors
+
+### Code Contributors
+
+This project exists thanks to all the people who contribute. [[Contribute](CONTRIBUTING.md)].
+<a href="https://github.com/dhruvasagar/vim-table-mode/graphs/contributors"><img src="https://opencollective.com/vim-table-mode/contributors.svg?width=890&button=false" /></a>
+
+### Financial Contributors
+
+Become a financial contributor and help us sustain our community. [[Contribute](https://opencollective.com/vim-table-mode/contribute)]
+
+#### Individuals
+
+<a href="https://opencollective.com/vim-table-mode"><img src="https://opencollective.com/vim-table-mode/individuals.svg?width=890"></a>
+
+#### Organizations
+
+Support this project with your organization. Your logo will show up here with a link to your website. [[Contribute](https://opencollective.com/vim-table-mode/contribute)]
+
+<a href="https://opencollective.com/vim-table-mode/organization/0/website"><img src="https://opencollective.com/vim-table-mode/organization/0/avatar.svg"></a>
+<a href="https://opencollective.com/vim-table-mode/organization/1/website"><img src="https://opencollective.com/vim-table-mode/organization/1/avatar.svg"></a>
+<a href="https://opencollective.com/vim-table-mode/organization/2/website"><img src="https://opencollective.com/vim-table-mode/organization/2/avatar.svg"></a>
+<a href="https://opencollective.com/vim-table-mode/organization/3/website"><img src="https://opencollective.com/vim-table-mode/organization/3/avatar.svg"></a>
+<a href="https://opencollective.com/vim-table-mode/organization/4/website"><img src="https://opencollective.com/vim-table-mode/organization/4/avatar.svg"></a>
+<a href="https://opencollective.com/vim-table-mode/organization/5/website"><img src="https://opencollective.com/vim-table-mode/organization/5/avatar.svg"></a>
+<a href="https://opencollective.com/vim-table-mode/organization/6/website"><img src="https://opencollective.com/vim-table-mode/organization/6/avatar.svg"></a>
+<a href="https://opencollective.com/vim-table-mode/organization/7/website"><img src="https://opencollective.com/vim-table-mode/organization/7/avatar.svg"></a>
+<a href="https://opencollective.com/vim-table-mode/organization/8/website"><img src="https://opencollective.com/vim-table-mode/organization/8/avatar.svg"></a>
+<a href="https://opencollective.com/vim-table-mode/organization/9/website"><img src="https://opencollective.com/vim-table-mode/organization/9/avatar.svg"></a>
