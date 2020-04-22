@@ -1,3 +1,4 @@
 .flagged
-*/doc/tags
+**/doc/tags
+/init.vim
 
