@@ -4,19 +4,27 @@
 # License: MIT license
 # ============================================================================
 
-from deoplete.base.filter import Base
 import re
+import typing
+
+from deoplete.base.filter import Base
+from deoplete.util import Nvim, UserContext, Candidates
 
 
 class Filter(Base):
-    def __init__(self, vim):
+    def __init__(self, vim: Nvim) -> None:
         super().__init__(vim)
 
         self.name = 'converter_reorder_attr'
         self.description = 'Reorder candidates based on their attributes'
+        self.vars = {
+            'attrs_order': {},
+        }
 
     @staticmethod
-    def filter_attrs(candidates, preferred_order_attrs, max_list_size=500):
+    def filter_attrs(candidates: Candidates,
+                     preferred_order_attrs: typing.Dict[str, typing.Any],
+                     max_list_size: int = 500) -> Candidates:
         context_candidates = candidates[:]
         new_candidates = []
         new_candidates_len = 0
@@ -31,7 +39,8 @@ class Filter(Base):
                 size = len(context_candidates)
                 i = 0
                 while i < size:
-                    if expr.search(context_candidates[i][attr]):
+                    candidate = context_candidates[i]
+                    if attr in candidate and expr.search(candidate[attr]):
                         candidate = context_candidates.pop(i)
                         # Popping will make 'i' effectively go forward an extra
                         # time; because of that, decrease for now and wait for
@@ -53,12 +62,11 @@ class Filter(Base):
 
         return new_candidates
 
-    def filter(self, context):
-        preferred_order_attrs = self.vim.call(
-            'deoplete#custom#_get_filter', 'converter_reorder_attr'
-        ).get(context['filetype'], [])
+    def filter(self, context: UserContext) -> Candidates:
+        preferred_order_attrs = self.get_var(  # type: ignore
+            'attrs_order').get(context['filetype'], [])
         if not context['candidates'] or not preferred_order_attrs:
-            return context['candidates']
+            return context['candidates']  # type: ignore
 
         max_list_size = self.vim.call(
             'deoplete#custom#_get_option', 'max_list'

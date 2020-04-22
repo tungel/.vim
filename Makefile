@@ -5,21 +5,19 @@ export THEMIS_HOME := ./vim-themis
 
 
 install: vim-themis
-	pip install pynvim --upgrade
-	pip install pytest --upgrade
-	pip install flake8 --upgrade
-	pip install mypy --upgrade
-	pip install vim-vint --upgrade
-	pip install pytest-cov --upgrade
+	pip install --upgrade -r test/requirements.txt
+
+install-user: vim-themis
+	pip install --user --upgrade -r test/requirements.txt
 
 lint:
 	vint --version
 	vint plugin
 	vint autoload
 	flake8 --version
-	flake8 rplugin/python3/deoplete
+	flake8 rplugin
 	mypy --version
-	mypy --ignore-missing-imports --follow-imports=skip rplugin/python3/deoplete
+	mypy --ignore-missing-imports --follow-imports=skip --strict rplugin/python3/deoplete
 
 test:
 	themis --version
@@ -28,6 +26,6 @@ test:
 	pytest
 
 vim-themis:
-	git clone https://github.com/thinca/vim-themis vim-themis
+	git clone --depth 1 https://github.com/thinca/vim-themis $@
 
 .PHONY: install lint test

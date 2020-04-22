@@ -31,8 +31,8 @@ function! deoplete#custom#_update_cache() abort
 
   let custom_buffer = deoplete#custom#_get_buffer()
 
-  let s:cached.option = s:custom.option
-  let s:cached.buffer_option = custom_buffer.option
+  let s:cached.option = copy(s:custom.option)
+  let s:cached.buffer_option = copy(custom_buffer.option)
   call extend(s:cached.option, s:cached.buffer_option)
 
   let s:cached.source_vars = {}
@@ -40,6 +40,9 @@ function! deoplete#custom#_update_cache() abort
     let s:cached.source_vars[name] = get(source, 'vars', {})
   endfor
   for [name, vars] in items(custom_buffer.source_vars)
+    if !has_key(s:cached.source_vars, name)
+      let s:cached.source_vars[name] = {}
+    endif
     call extend(s:cached.source_vars[name], vars)
   endfor
   let s:cached.filter = {}
@@ -47,6 +50,9 @@ function! deoplete#custom#_update_cache() abort
     let s:cached.filter[name] = vars
   endfor
   for [name, vars] in items(custom_buffer.filter)
+    if !has_key(s:cached.filter, name)
+      let s:cached.filter[name] = {}
+    endif
     call extend(s:cached.filter[name], vars)
   endfor
 endfunction

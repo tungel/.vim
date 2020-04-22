@@ -24,6 +24,9 @@ function! deoplete#init#_initialize() abort
 
   call s:init_internal_variables()
 
+  " For context_filetype check
+  silent! call context_filetype#get()
+
   if deoplete#init#_channel()
     return 1
   endif
@@ -44,6 +47,10 @@ function! deoplete#init#_channel() abort
   endif
   if has('nvim') && !has('nvim-0.3.0')
     call deoplete#util#print_error('deoplete requires nvim 0.3.0+.')
+    return 1
+  endif
+  if !has('nvim') && v:version < 800
+    call deoplete#util#print_error('deoplete requires Vim 8.0+.')
     return 1
   endif
 
@@ -68,8 +75,11 @@ function! deoplete#init#_channel() abort
             \ 'deoplete requires Python3 support("+python3").')
     endif
 
+    if deoplete#init#_python_version_check()
+      call deoplete#util#print_error('deoplete requires Python 3.6.1+.')
+    endif
+
     if deoplete#util#has_yarp()
-      echomsg string(expand('<sfile>'))
       if !exists('*yarp#py3')
         call deoplete#util#print_error(
               \ 'deoplete requires nvim-yarp plugin.')
@@ -116,9 +126,21 @@ function! s:init_internal_variables() abort
       let g:deoplete#_serveraddr = $NVIM_LISTEN_ADDRESS
     endif
   catch
-    if deoplete#util#has_yarp() && !exists('*neovim_rpc#serveraddr')
+    call deoplete#util#print_error(v:exception)
+    call deoplete#util#print_error(v:throwpoint)
+
+    if !has('python3')
       call deoplete#util#print_error(
-            \ 'deoplete requires vim-hug-neovim-rpc plugin in Vim.')
+            \ 'deoplete requires Python3 support("+python3").')
+    endif
+
+    if deoplete#util#has_yarp()
+      " Dummy call is needed to check exists()
+      call neovim_rpc#serveraddr()
+      if !exists('*neovim_rpc#serveraddr')
+        call deoplete#util#print_error(
+              \ 'deoplete requires vim-hug-neovim-rpc plugin in Vim.')
+      endif
     endif
   endtry
 endfunction
@@ -202,9 +224,11 @@ function! deoplete#init#_option() abort
   " Note: HTML omni func use search().
   return {
         \ 'auto_complete': v:true,
+        \ 'auto_complete_popup': 'auto',
         \ 'auto_complete_delay': 0,
-        \ 'auto_refresh_delay': 20,
+        \ 'auto_refresh_delay': 100,
         \ 'camel_case': v:false,
+        \ 'check_stderr': v:true,
         \ 'ignore_case': &ignorecase,
         \ 'ignore_sources': {},
         \ 'candidate_marks': [],
@@ -215,7 +239,7 @@ function! deoplete#init#_option() abort
         \ 'on_insert_enter': v:true,
         \ 'on_text_changed_i': v:true,
         \ 'profile': v:false,
-        \ 'prev_completion_mode': 'filter',
+        \ 'prev_completion_mode': '',
         \ 'min_pattern_length': 2,
         \ 'refresh_always': v:true,
         \ 'skip_chars': ['(', ')'],
@@ -245,5 +269,15 @@ vim.vars['deoplete#_python_version_check'] = (
     sys.version_info.minor,
     sys.version_info.micro) < (3, 6, 1)
 EOF
-  return g:deoplete#_python_version_check
+  return get(g:, 'deoplete#_python_version_check', 0)
+endfunction
+
+function! deoplete#init#_msgpack_version_check() abort
+  python3 << EOF
+import vim
+import msgpack
+vim.vars['deoplete#_msgpack_version'] = msgpack.version
+vim.vars['deoplete#_msgpack_version_check'] = msgpack.version < (1, 0, 0)
+EOF
+  return get(g:, 'deoplete#_msgpack_version_check', 0)
 endfunction
