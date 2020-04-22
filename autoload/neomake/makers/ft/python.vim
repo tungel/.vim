@@ -363,7 +363,7 @@ endfunction
 function! neomake#makers#ft#python#python() abort
     return {
         \ 'args': [s:compile_script],
-        \ 'errorformat': '%E%f:%l:%c: %m',
+        \ 'errorformat': '%E%f:%l:%c: E: %m,%W%f:%l: W: %m',
         \ 'serialize': 1,
         \ 'serialize_abort_on_error': 1,
         \ 'output_stream': 'stdout',
@@ -390,10 +390,15 @@ function! neomake#makers#ft#python#vulture() abort
         \ }
 endfunction
 
-" --fast-parser: adds experimental support for async/await syntax
-" --silent-imports: replaced by --ignore-missing-imports
 function! neomake#makers#ft#python#mypy() abort
-    let args = ['--check-untyped-defs', '--ignore-missing-imports']
+    " NOTE: uses defaults suitable for using it without any config.
+    " ignore_missing_imports cannot be disabled in a config then though
+    let args = [
+                \ '--show-column-numbers',
+                \ '--show-error-codes',
+                \ '--check-untyped-defs',
+                \ '--ignore-missing-imports',
+                \ ]
 
     " Append '--py2' to args with Python 2 for Python 2 mode.
     if !exists('s:python_version')
@@ -403,13 +408,50 @@ function! neomake#makers#ft#python#mypy() abort
         call add(args, '--py2')
     endif
 
-    return {
+    let maker = {
         \ 'args': args,
+        \ 'output_stream': 'stdout',
         \ 'errorformat':
+            \ '%E%f:%l:%c: error: %m,' .
+            \ '%W%f:%l:%c: warning: %m,' .
+            \ '%I%f:%l:%c: note: %m,' .
             \ '%E%f:%l: error: %m,' .
             \ '%W%f:%l: warning: %m,' .
-            \ '%I%f:%l: note: %m',
+            \ '%I%f:%l: note: %m,' .
+            \ '%-GSuccess%.%#,' .
+            \ '%-GFound%.%#,'
         \ }
+    function! maker.InitForJob(jobinfo) abort
+        let maker = deepcopy(self)
+        let file_mode = a:jobinfo.file_mode
+        if file_mode
+            " Follow imports, but do not emit errors/issues for it, which
+            " would result in errors for other buffers etc.
+            " XXX: dmypy requires "skip" or "error"
+            call insert(maker.args, '--follow-imports=silent')
+        else
+            let project_root = neomake#utils#get_project_root(a:jobinfo.bufnr)
+            if empty(project_root)
+                call add(maker.args, '.')
+            else
+                call add(maker.args, project_root)
+            endif
+        endif
+        return maker
+    endfunction
+    function! maker.supports_stdin(jobinfo) abort
+        if !has_key(self, 'tempfile_name')
+            let self.tempfile_name = self._get_default_tempfilename(a:jobinfo)
+        endif
+        let self.args += ['--shadow-file', '%', self.tempfile_name]
+        return 0
+    endfunction
+    function! maker.postprocess(entry) abort
+        if a:entry.text =~# '\v^Need type (annotation|comment) for'
+            let a:entry.type = 'I'
+        endif
+    endfunction
+    return maker
 endfunction
 
 function! neomake#makers#ft#python#py3kwarn() abort
