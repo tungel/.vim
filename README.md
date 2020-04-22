@@ -218,7 +218,13 @@ A port of Apprentice is available for the IDEA platform. Check it out [over ther
 
 [Elysian](https://github.com/nhooyr/elysian.vim) is a new very nice colorscheme for 256color terminal emulators inspired by Apprentice.
 
-[apprentice-theme](https://github.com/sjas/apprentice-theme) is a port to spacemacs.
+[Apprentice-theme](https://github.com/sjas/apprentice-theme) is a port to spacemacs.
+
+[Warlock](https://github.com/hardselius/warlock) is a brand new greyscale variant worth trying if Apprentice's already low contrast is still too much.
+
+[Apprentice-tmux](https://github.com/tombin/apprentice-tmux) is a tmux theme based on Apprentice.
+
+[Apprentice-kitty](https://github.com/rsaihe/apprentice-kitty) is a port for kitty.
 
 Go team!
 
