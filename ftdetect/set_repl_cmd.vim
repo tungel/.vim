@@ -10,8 +10,7 @@ if has('nvim') || has('terminal')
           \ end
     " Python
     au FileType python
-          \ let s:argList = split(g:neoterm_repl_python) |
-          \ if len(s:argList) > 0 && executable(s:argList[0]) |
+          \ if neoterm#repl#python#is_valid(g:neoterm_repl_python) == 1 |
           \   call neoterm#repl#set(g:neoterm_repl_python) |
           \ elseif executable('ipython') |
           \   call neoterm#repl#set('ipython --no-autoindent') |
@@ -22,6 +21,11 @@ if has('nvim') || has('terminal')
     au FileType javascript
           \ if executable('node') |
           \   call neoterm#repl#set('node') |
+          \ end
+    " Java
+    au FileType java
+          \ if executable('jshell') |
+          \   call neoterm#repl#set('jshell') |
           \ end
     " Elixir
     au FileType elixir
@@ -42,7 +46,9 @@ if has('nvim') || has('terminal')
           \ end
     " R
     au FileType r,rmd
-          \ if executable('R') |
+          \ if executable(g:neoterm_repl_r) |
+          \   call neoterm#repl#set(g:neoterm_repl_r) |
+          \ elseif executable('R') |
           \   call neoterm#repl#set('R') |
           \ end
     " Octave
@@ -127,6 +133,11 @@ if has('nvim') || has('terminal')
     au FileType lfe
           \ if executable('lfe') |
           \   call neoterm#repl#set('lfe') |
+          \ end
+    " Rust
+    au FileType rust
+          \ if executable('evcxr') |
+          \   call neoterm#repl#set('evcxr') |
           \ end
   aug END
 end

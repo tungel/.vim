@@ -1,5 +1,15 @@
 # neoterm
 
+[![Vint](https://github.com/kassio/neoterm/workflows/Vint/badge.svg?branch=master)](https://github.com/kassio/neoterm/actions?query=workflow%3AVint)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+
+ ```
+ __   _ _______  _____  _______ _______  ______ _______
+ | \  | |______ |     |    |    |______ |_____/ |  |  |
+ |  \_| |______ |_____|    |    |______ |    \_ |  |  |
+```
+
+
 Use the same terminal for everything. The main reason for this plugin is to
 reuse the terminal easily. All commands open a terminal if one does not already
 exist. REPL commands open a terminal and the proper REPL if not already opened.
@@ -52,12 +62,38 @@ to consult neoterm's online documentation:
 silent! helptags ALL
 ```
 
-### Windows
+### Windows OS
 
 For Windows users, replace usage of the Unix `~/.vim` directory with
 `%USERPROFILE%\_vim`, or another directory if you have configured
 Vim differently. On Windows, your `~/.vimrc` file will be similarly
 stored in `%USERPROFILE%\_vimrc`.
+
+## Default behaviour
+
+Neoterm's default behavior is to create a new buffer on the current window when
+opening a neoterm. You can change this with `g:neoterm_default_mod`. Check the
+[documentation](https://github.com/kassio/neoterm/blob/master/doc/neoterm.txt)
+for more information.
+
+## Send commands to a neoterm window
+
+* `:T {command}`: Opens a terminal, or use an opened terminal, and runs the
+                  given command within a terminal.
+* `:Tmap {command}`: maps a given command to `g:neoterm_automap_keys`.
+
+## Multiple neoterm windows commands
+
+* `:3T {command}`: Will send the command to `neoterm-3`.
+
+### useful mappings:
+
+I like to set some mappings to make me more productive.
+
+```viml
+" 3<leader>tl will clear neoterm-3.
+nnoremap <leader>tl :<c-u>exec v:count.'Tclear'<cr>
+```
 
 ## test libs (removed on 05/Feb/2017)
 
@@ -78,28 +114,30 @@ stored in `%USERPROFILE%\_vimrc`.
 
 ### Supported REPLs
 
-* Ruby: `pry` and `irb`
-* Rails: `bundle exec rails console`
-* Python: `ipython` and `python`
-* JavaScript: `node`
+* Clojure: `lein repl`
 * Elixir: `iex` and `iex -S mix` (if `config/config.exs` exists)
-* Julia: `julia`
-* PARI/GP: `gp`
-* R / R Markdown: `R`
 * GNU Octave: `octave`
   * For Octave 4.0.0 and later, you can enable Qt widgets (dialogs, plots, etc.)
     using `g:neoterm_repl_octave_qt = 1`
-* MATLAB: `matlab -nodesktop -nosplash`
-* Idris: `idris`
 * Haskell: `ghci`
-* PHP: `g:neoterm_repl_php` and `psysh` and `php`
-* Clojure: `lein repl`
+* Idris: `idris`
+* JavaScript: `node`
+* Java: `java`
+* Julia: `julia`
+* LFE: `lfe`
 * Lua with `lua` and `luap`.
-* TCL: `tclsh`
+* MATLAB: `matlab -nodesktop -nosplash`
+* PARI/GP: `gp`
+* PHP: `g:neoterm_repl_php` and `psysh` and `php`
+* Python: `ipython` and `python`
+* R / R Markdown: `R`
+* Racket: `racket`
+* Rails: `bundle exec rails console`
+* Ruby: `pry` and `irb`
+* Rust: `evcxr`
 * SML: `rlwrap sml` or `sml`
 * Scala: `sbt console`
-* Racket: `racket`
-* LFE: `lfe`
+* TCL: `tclsh`
 
 ### Troubleshooting
 
@@ -115,87 +153,9 @@ the following to your `init.vim`:
 au VimEnter,BufRead,BufNewFile *.jl set filetype=julia
 au VimEnter,BufRead,BufNewFile *.idr set filetype=idris
 au VimEnter,BufRead,BufNewFile *.lidr set filetype=lidris
-au VimEnter,BufRead,BufNewFile *.lfe, set filetype=lfe
+au VimEnter,BufRead,BufNewFile *.lfe set filetype=lfe
 ```
 
-## Other useful commands
-
-* `:T {command}`: Opens a terminal, or use an opened terminal, and runs the
-                  given command within a terminal.
-* `:Tmap {command}`: maps a the given command to `,tt`.
-
-## Dynamic commands
-
-* `:3T {command}`: Will send the command to `neoterm-3`.
-
-## useful mappings:
-
-I like to set some mappings to make me more productive.
-
-```viml
-" 3<leader>tl will clear neoterm-3.
-nnoremap <leader>tl :<c-u>exec v:count.'Tclear'<cr>
-```
-
-## Contributing
-
-Open a pull request to add REPLs and other features to this plugin. :smiley:
-
-## Changelog
-
-* 11/03/2019
-  - Make the `signcolumn=auto` in neoterm buffer.
-* 29/01/2019
-  - Improve `g:neoterm_open_in_all_tabs` documentation.
-* 21/12/2018
-  - Add `g:neoterm_term_per_tab`, a way to send the commands to the term
-    associated to the vim tab.
-  - fix `:Topen` without `g:neoterm_default_mod` wasn't re-opening neoterm
-    buffer.
-* 17/11/2018
-  - add `:Tclear!`, this will clear the neoterm buffer scrollback (history)
-* 12/11/2018
-  - Use `chansend` instead of `jobsend`, which was deprecated.
-* 12/11/2018
-  - Fix `E119: Not enough arguments for function: <SNR>112_repl_result_handler`
-* 09/11/2018
-  - Yet another work with '%' expandability.
-    - '%' will be expanded to the current file path, respect g:neoterm_use_relative_path;
-    - '\%' will be expanded to '%', not the current file path, useful in Windows.
-* 20/07/2018
-  - `\%` Will not expand the `%`. (Escaping the `%`)
-* 03/03/2018
-  - **DEPRECATE g:neoterm_split_on_tnew** - `:Tnew` now accepts vim mods (`:help mods`).
-  - Introduce `g:neoterm_tnew_mod` to set a default `:Tnew` mod (`:help mods`).
-  - Revamp `:Topen`. Now `:[mods][N]Topen` accepts vim mods (`:h mods`) and a
-    target, so if one wants to open the neoterm with id 2 in vertical, one can
-    do `:vert 2Topen`.
-  - Revamp `:Tclose`. Now `:[N]Tclose[!]` accepts a target, so one can close any
-    neoterm by its id.
-  - Fix a bug with `:[N]Ttoggle` and also make it accepts the neoterm id.
-* 04/03/2018
-  - Revamp `:[N]Ttoggle`, now it accepts vim mods (`:help mods`) when the toggle
-    is opening the neoterm.
-  - Revamp `:[N]T`, now it accepts the target, so one can send the command for
-    any neoterm by id, like, to send commands to the neoterm 3, one can do
-     `:3T ls`.
-  - **DEPRECATE T[N], Topen[N], Tclose[N], Tclear[N], Tkill[N]** - The neoterm
-    id was moved to the beginning of the command, so instead of `:T2`, for
-    example, one must use `:2T`.
-* 07/03/2018
-  - Do not call `:bdelete!` if buffer does not exist `term#destroy` was calling
-    `neoterm#close` which was causing a cyclic call to `:bdelete!
-    <neoterm.buffer_id>`.
-* 08/03/2018
-  - Add vim's terminal support! 🎉🎉🎉
-* 15/03/2018
-  - Fix bug where `:[N]T` wasn't accepting quoted arguments, like:
-    `:T echo "ls"`.
-  - Make handlers/callbacks work in vim. Destroy instance when destroying a
-    terminal.
-* 18/03/2018
-  - Deprecate `g:neoterm_tnew_mod` and `g:neoterm_position` in favor of
-    `g:neoterm_default_mod`, which will be used for every new neoterm window.
-  - Add the feature of the _last active_ neoterm. When sending a command or
-    navigating among neoterms the last one will be marked as the last active and
-    it'll be used by default in the next commands.
+## [Contributing](CONTRIBUTING.md)
+## [Changelog](CHANGELOG.md)
+## [Documentation](doc/neoterm.txt)

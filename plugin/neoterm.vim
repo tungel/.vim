@@ -8,12 +8,22 @@ let g:neoterm = {
       \ 'last_id': 0,
       \ 'last_active': 0,
       \ 'open': 0,
-      \ 'instances': {}
+      \ 'instances': {},
+      \ 'managed': []
       \ }
 
+" Calculates the next neoterm's ID.
+" The ID is a sequential number starting from 1.
+" To avoid big ID numbers, the ID is reseted to 1
+" when there is no instance of a neoterm windows open
 function! g:neoterm.next_id()
-  let l:self.last_id += 1
-  return l:self.last_id
+  if len(keys(l:self.instances)) == 0
+    let l:self.last_id = 1
+    return l:self.last_id
+  else
+    let l:self.last_id += 1
+    return l:self.last_id
+  end
 endfunction
 
 function! g:neoterm.has_any()
@@ -35,7 +45,8 @@ let g:neoterm_statusline = ''
 
 if !exists('g:neoterm_shell')
   if has('nvim') && exists('&shellcmdflag')
-    let g:neoterm_shell = &shell . ' ' . substitute(&shellcmdflag, '[-/]c', '', '')
+    let g:neoterm_shell =
+          \ trim(&shell . ' ' . substitute(&shellcmdflag, '[-/]c', '', ''))
   else
     let g:neoterm_shell = &shell
   end
@@ -81,6 +92,10 @@ if !exists('g:neoterm_repl_python')
   let g:neoterm_repl_python = ''
 end
 
+if !exists('g:neoterm_repl_r')
+  let g:neoterm_repl_r = 'R'
+end
+
 if !exists('g:neoterm_repl_octave_qt')
   let g:neoterm_repl_octave_qt = 0
 end
@@ -110,7 +125,7 @@ if !exists('g:neoterm_auto_repl_cmd')
 end
 
 if !exists('g:neoterm_command_prefix')
-    let g:neoterm_command_prefix = ''
+  let g:neoterm_command_prefix = ''
 end
 
 if !exists('g:neoterm_term_per_tab')
@@ -129,13 +144,41 @@ if exists('g:neoterm_tnew_mod')
   echoe '*g:neoterm_tnew_mod* DEPRECATED! see :help g:neoterm_split_on_tnew'
 end
 
+if !exists('g:neoterm_marker')
+  if has('win32') || has('win64')
+    let g:neoterm_marker = '&::neoterm'
+  else
+    let g:neoterm_marker = ';#neoterm'
+  end
+end
+
+if !exists('g:neoterm_clear_cmd')
+  let g:neoterm_clear_cmd = ["\<c-l>"]
+end
+
+" Load the right adapter for vim or neovim
+call neoterm#term#load()
+
+if exists('#TerminalOpen')
+  autocmd TerminalOpen * call neoterm#new_from_event()
+end
+
+if exists('#TermOpen')
+  autocmd TermOpen term://*neoterm call neoterm#new_from_event()
+end
+
+exec printf(
+      \ 'nnoremap <silent> %s :call neoterm#map_do()<cr>',
+      \ g:neoterm_automap_keys
+      \ )
+
 " Handling
 command! -range=0 -complete=shellcmd -nargs=+ T
       \ call neoterm#do({ 'cmd': <q-args>, 'target': <count>, 'mod': <q-mods> })
 command! -range=0 -complete=shellcmd -nargs=+ Texec
       \ call neoterm#exec({ 'cmd': [<f-args>, ''], 'target': <count> })
 command! -bar Tnew
-      \ call neoterm#new({ 'mod': <q-mods> })
+      \ call neoterm#new({ 'mod': <q-mods>, 'update_last_active': v:true })
 command! -bar -range=0 Topen
       \ call neoterm#open({ 'mod': <q-mods>, 'target': <count> })
 command! -bar -bang -range=0 Tclose
@@ -150,13 +193,15 @@ command! -bar -bang -range=0 Tclear
       \ call neoterm#clear({ 'force_clear': <bang>0, 'target': <count> })
 command! -bar -range=0 Tkill
       \ call neoterm#kill({ 'target': <count> })
-command! -complete=shellcmd -nargs=+ Tmap
-      \ call neoterm#map_for(<q-args>)
+command! -range=0 -complete=shellcmd -nargs=+ Tmap
+      \ call neoterm#map_for({ 'cmd': <q-args>, 'target': <count> })
 " Navigation
 command! Tnext
       \ call neoterm#next()
 command! Tprevious
       \ call neoterm#previous()
+command! Tls
+      \ call neoterm#list_ids()
 " REPL
 command! -bar -complete=customlist,neoterm#list -nargs=1 TREPLSetTerm
       \ call neoterm#repl#term(<q-args>)
