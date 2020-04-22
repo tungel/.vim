@@ -1,10 +1,12 @@
+scriptencoding utf8
+
 let s:nomodeline = (v:version > 703 || (v:version == 703 && has('patch442'))) ? '<nomodeline>' : ''
 
 let s:hunk_re = '^@@ -\(\d\+\),\?\(\d*\) +\(\d\+\),\?\(\d*\) @@'
 
 " True for git v1.7.2+.
 function! s:git_supports_command_line_config_override() abort
-  call system(g:gitgutter_git_executable.' -c foo.bar=baz --version')
+  call gitgutter#utility#system(g:gitgutter_git_executable.' '.g:gitgutter_git_args.' -c foo.bar=baz --version')
   return !v:shell_error
 endfunction
 
@@ -68,9 +70,9 @@ let s:counter = 0
 "                      the hunk headers (@@ -x,y +m,n @@); only possible if
 "                      grep is available.
 function! gitgutter#diff#run_diff(bufnr, from, preserve_full_diff) abort
-  while gitgutter#utility#repo_path(a:bufnr, 0) == -1
-    sleep 5m
-  endwhile
+  if gitgutter#utility#repo_path(a:bufnr, 0) == -1
+    throw 'gitgutter author fail'
+  endif
 
   if gitgutter#utility#repo_path(a:bufnr, 0) == -2
     throw 'gitgutter not tracked'
@@ -118,15 +120,15 @@ function! gitgutter#diff#run_diff(bufnr, from, preserve_full_diff) abort
     endif
 
     " Write file from index to temporary file.
-    let index_name = g:gitgutter_diff_base.':'.gitgutter#utility#repo_path(a:bufnr, 1)
-    let cmd .= g:gitgutter_git_executable.' --no-pager show '.index_name.' > '.from_file.' && '
+    let index_name = gitgutter#utility#get_diff_base(a:bufnr).':'.gitgutter#utility#repo_path(a:bufnr, 1)
+    let cmd .= g:gitgutter_git_executable.' '.g:gitgutter_git_args.' --no-pager show '.index_name.' > '.from_file.' && '
 
   elseif a:from ==# 'working_tree'
     let from_file = gitgutter#utility#repo_path(a:bufnr, 1)
   endif
 
   " Call git-diff.
-  let cmd .= g:gitgutter_git_executable.' --no-pager '.g:gitgutter_git_args
+  let cmd .= g:gitgutter_git_executable.' '.g:gitgutter_git_args.' --no-pager '.g:gitgutter_git_args
   if s:c_flag
     let cmd .= ' -c "diff.autorefreshindex=0"'
     let cmd .= ' -c "diff.noprefix=false"'
@@ -187,7 +189,7 @@ function! gitgutter#diff#handler(bufnr, diff) abort
     call gitgutter#sign#clear_signs(a:bufnr)
 
   else
-    if g:gitgutter_signs || g:gitgutter_highlight_lines
+    if g:gitgutter_signs || g:gitgutter_highlight_lines || g:gitgutter_highlight_linenrs
       call gitgutter#sign#update_signs(a:bufnr, modified_lines)
     endif
   endif
@@ -385,6 +387,10 @@ function! s:write_buffer(bufnr, file)
     call map(bufcontents, 'v:val."\r"')
   endif
 
+  if getbufvar(a:bufnr, '&endofline')
+    call add(bufcontents, '')
+  endif
+
   let fenc = getbufvar(a:bufnr, '&fileencoding')
   if fenc !=# &encoding
     call map(bufcontents, 'iconv(v:val, &encoding, "'.fenc.'")')
@@ -394,12 +400,10 @@ function! s:write_buffer(bufnr, file)
     let bufcontents[0]='﻿'.bufcontents[0]
   endif
 
-  call writefile(bufcontents, a:file)
+  call writefile(bufcontents, a:file, 'b')
 endfunction
 
 
 function! s:save_last_seen_change(bufnr) abort
   call gitgutter#utility#setbufvar(a:bufnr, 'tick', getbufvar(a:bufnr, 'changedtick'))
 endfunction
-
-
