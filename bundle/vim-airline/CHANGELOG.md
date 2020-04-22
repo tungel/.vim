@@ -2,7 +2,21 @@
 
 This is the Changelog for the vim-airline project.
 
-## [0.11] - Unreleased
+## [0.12] - Unreleased
+- New features
+  - Extensions:
+    - [poetv](https://github.com/petobens/poet-v) support
+    - [vim-lsp](https://github.com/prabirshrestha/vim-lsp) support
+    - [zoomwintab](https://github.com/troydm/zoomwintab.vim) support
+- Improvements
+  - git branch can also be displayed using [gina.vim](https://github.com/lambdalisue/gina.vim)
+  - coc extensions can also show additional status messages
+  - [coc-git](https://github.com/neoclide/coc-git) extension integrated into hunks extension
+- Other
+  - Introduce Vim script static analysis using [reviewdog](https://github.com/reviewdog/action-vint)
+  - Added multiple Vim versions to unit tests using Travis CI
+
+## [0.11] - 2019-11-10
 - New features
   - Extensions:
     - [Coc](https://github.com/neoclide/coc.nvim) support
@@ -10,6 +24,7 @@ This is the Changelog for the vim-airline project.
     - [gina](https://github.com/lambdalisue/gina.vim) support
     - [vim-bookmark](https://github.com/MattesGroeger/vim-bookmarks) support
     - [vista.vim](https://github.com/liuchengxu/vista.vim) support
+    - [tabws](https://github.com/s1341/vim-tabws) support for the tabline
 - Improvements
   - The statusline can be configured to be shown on top (in the tabline)
     Set the `g:airline_statusline_ontop` to enable this experimental feature.
@@ -208,8 +223,8 @@ This is the Changelog for the vim-airline project.
   - integration with other plugins: netrw, unite, nerdtree, undotree, gundo, tagbar, minibufexplr, ctrlp
   - support for themes: 8 included
 
-[Unreleased]: https://github.com/vim-airline/vim-airline/compare/v0.10...HEAD
-[0.11]: https://github.com/vim-airline/vim-airline/compare/v0.10...HEAD
+[0.12]: https://github.com/vim-airline/vim-airline/compare/v0.11...HEAD
+[0.11]: https://github.com/vim-airline/vim-airline/compare/v0.10...v0.11
 [0.10]: https://github.com/vim-airline/vim-airline/compare/v0.9...v0.10
 [0.9]: https://github.com/vim-airline/vim-airline/compare/v0.8...v0.9
 [0.8]: https://github.com/vim-airline/vim-airline/compare/v0.7...v0.8
