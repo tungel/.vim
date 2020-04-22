@@ -51,7 +51,7 @@ function! s:cword() abort
   let isk = &l:iskeyword
   try
     setlocal iskeyword+=',#,%,&
-    return substitute(expand('<cword>'), "^''*", '', '')
+    return substitute(expand('<cword>'), "^#*''*", '', '')
   finally
     let &l:iskeyword = isk
   endtry
@@ -1785,6 +1785,8 @@ function! s:Require(bang, echo, ns) abort
     return ''
   catch /^Clojure:.*/
     return ''
+  catch /^Fireplace:.*/
+    return 'echoerr ' . string(v:exception)
   endtry
 endfunction
 
