@@ -167,6 +167,14 @@ values):
     endif
   endfunction
 <
+* if you want to update your highlights without effecting the airline theme,
+  you can do so using the AirlineAfterTheme autocmd. >
+  function! s:update_highlights()
+    hi CursorLine ctermbg=none guibg=none
+    hi VertSplit ctermbg=none guibg=none
+  endfunction
+  autocmd User AirlineAfterTheme call s:update_highlights()
+<
 * By default, airline will use unicode symbols if your encoding matches
   utf-8. If you want the powerline symbols set this variable: >
   let g:airline_powerline_fonts = 1
@@ -487,6 +495,12 @@ If a file is edited, that is not yet in the repository, the
 notexists symbol will be displayed after the branch name. If the repository
 is not clean, the dirty symbol will be displayed after the branch name.
 
+* notexists symbol means you are editing a file, that has not been commited yet
+  default: '?'
+
+* the dirty symbol basically means your working directory is dirty
+  default: '!'
+
 Note: the branch extension will be disabled for windows smaller than 80
 characters.
 
@@ -691,7 +705,15 @@ you can use.
 -------------------------------------                      *airline-denite*
 Denite <https://github.com/Shougo/denite.nvim>
 
-No configuration available.
+* enable/disable denite integration >
+  let g:airline#extensions#denite#enabled = 1
+
+-------------------------------------                      *airline-dirvish*
+vim-dirvish <https://github.com/justinmk/vim-dirvish>
+
+* enable/disable vim-dirvish integration >
+  let g:airline#extensions#dirvish#enabled = 1
+<  default: 1
 
 -------------------------------------                        *airline-eclim*
 eclim <https://eclim.org>
@@ -752,6 +774,11 @@ querying how many changes you got. It will return something like '+4 ~2 -1'.
 <
 * set hunk count symbols. >
   let g:airline#extensions#hunks#hunk_symbols = ['+', '~', '-']
+
+* enable coc-git extension.
+  If not set to 1, vim-airline will not consider to use coc-git for the hunks
+  extension. Make sure to have the coc-git extension enabled. >
+  let g:airline#extensions#hunks#coc_git = 1
 <
 -------------------------------------                     *airline-keymap*
 vim-keymap
@@ -1246,7 +1273,8 @@ No configuration available.
 -------------------------------------                     *airline-unite*
 Unite <https://github.com/Shougo/unite.vim>
 
-No configuration available.
+* enable/disable unite integration >
+  let g:airline#extensions#unite#enabled = 1
 
 -------------------------------------                     *airline-vimagit*
 vimagit <https://github.com/jreybert/vimagit>
