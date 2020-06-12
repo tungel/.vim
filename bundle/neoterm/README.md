@@ -1,7 +1,8 @@
 # neoterm
 
-[![Vint](https://github.com/kassio/neoterm/workflows/Vint/badge.svg?branch=master)](https://github.com/kassio/neoterm/actions?query=workflow%3AVint)
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![lint](https://github.com/kassio/neoterm/workflows/lint/badge.svg?branch=master)](https://github.com/kassio/neoterm/actions?query=workflow%3Alint)
+[![tests](https://github.com/kassio/neoterm/workflows/tests/badge.svg)](https://github.com/kassio/neoterm/actions?query=workflow%3Atests)
+[![license](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
  ```
  __   _ _______  _____  _______ _______  ______ _______
@@ -26,7 +27,7 @@ exist. REPL commands open a terminal and the proper REPL if not already opened.
 You can install this plugin using any vim plugin manager by using the path on
 GitHub for this repository:
 
-```vim
+```viml
 [Plugin|Plug|...] 'kassio/neoterm'
 ```
 
@@ -45,7 +46,7 @@ git clone https://github.com/kassio/neoterm.git
 
 Then, modify your `~/.vimrc` file to add this plugin to your runtime path:
 
-```vim
+```viml
 set nocompatible
 filetype off
 
@@ -58,7 +59,7 @@ You can add the following line to generate documentation tags automatically,
 if you don't have something similar already, so you can use the `:help` command
 to consult neoterm's online documentation:
 
-```vim
+```viml
 silent! helptags ALL
 ```
 
