@@ -238,7 +238,6 @@ function! s:set_snippet_dict(snippet_dict, snippets, dup_check, snippets_file) a
     if exists('*json_encode')
       let alias_snippet.user_data = json_encode({
            \   'snippet': alias_snippet.snip,
-           \   'snippet_trigger': alias,
            \ })
     endif
 
@@ -274,7 +273,6 @@ function! neosnippet#parser#_initialize_snippet(dict, path, line, pattern, name)
   if exists('*json_encode')
     let snippet.user_data = json_encode({
           \   'snippet': a:dict.word,
-          \   'snippet_trigger': a:dict.name,
           \ })
   endif
 
@@ -318,15 +316,11 @@ function! neosnippet#parser#_get_completed_snippet(completed_item, cur_text, nex
     call add(abbrs, item.word)
   endif
 
-  if type(get(item, 'user_data', 0)) ==# v:t_string && item.user_data !=# ''
-    let user_data = {}
-    silent! let user_data = json_decode(item.user_data)
-    if type(user_data) ==# v:t_dict && has_key(user_data, 'lspitem')
-      " Use lspitem userdata
-      let lspitem = user_data.lspitem
-      if has_key(lspitem, 'label')
-        call add(abbrs, lspitem.label)
-      endif
+  let user_data = neosnippet#helpers#get_user_data(v:completed_item)
+  if !empty(user_data)
+    let lspitem = neosnippet#helpers#get_lspitem(user_data)
+    if has_key(lspitem, 'label')
+      call add(abbrs, lspitem.label)
     endif
   endif
 
