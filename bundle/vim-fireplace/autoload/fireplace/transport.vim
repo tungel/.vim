@@ -328,24 +328,38 @@ function! fireplace#transport#interrupt(id) abort
   endfor
 endfunction
 
-function! fireplace#transport#wait(id, ...) abort
+function! fireplace#transport#stdin(session_or_id, data) abort
+  let str = type(a:data) == v:t_string ? a:data : nr2char(a:data)
+  let id = a:session_or_id
   for [url, dict] in items(s:urls)
-    let closed = 0
+    if has_key(dict.transport, 'job') && has_key(dict.transport.sessions, id)
+      call s:json_send(dict.transport.job, {'op': 'stdin', 'id': fireplace#transport#id(), 'session': id, 'stdin': str})
+      return v:true
+    elseif has_key(dict.transport, 'job') && has_key(dict.transport.requests, id)
+      call s:json_send(dict.transport.job, {'op': 'stdin', 'id': fireplace#transport#id(), 'session': dict.transport.requests[id].session, 'stdin': str})
+      return v:true
+    endif
+  endfor
+  return v:false
+endfunction
+
+function! fireplace#transport#wait(id, ...) abort
+  let max = a:0 ? a:1 : -1
+  let ms = 0
+  for [url, dict] in items(s:urls)
     while has_key(dict.transport, 'job') && has_key(dict.transport.requests, a:id)
-      let peek = getchar(1)
-      if !closed && peek != 0 && !(has('win32') && peek == 128)
-        let c = getchar()
-        let c = type(c) == type(0) ? nr2char(c) : c
-        if c ==# "\<C-D>"
-          let closed = 1
-        else
-          call s:json_send(dict.transport.job, {'op': 'stdin', 'id': fireplace#transport#id(), 'session': dict.transport.requests[a:id].session, 'stdin': c})
-          echon c
-        endif
+      if ms == max
+        return v:false
       endif
-      sleep 1m
+      let ms += 1
+      if exists('*jobwait')
+        call jobwait([dict.transport.job], 1)
+      else
+        sleep 1m
+      endif
     endwhile
   endfor
+  return v:true
 endfunction
 
 let s:transport = {

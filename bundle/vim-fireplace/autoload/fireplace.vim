@@ -686,18 +686,25 @@ endfunction
 
 function! s:spawn_wait(id, ...) abort
   let message = get(s:spawns, a:id, {})
+  let finished = v:true
   if type(get(message, 'job', '')) == v:t_number
-    while jobwait([message.job], 0) == -1
-      sleep 1m
-    endwhile
+    let finished = jobwait([message.job], a:0 ? a:1 : -1)[0] == -1 ? v:false : v:true
   elseif type(get(message, 'job', '')) != v:t_string
+    let ms = 0
+    let max = a:0 ? a:1 : -1
     while job_status(message.job) ==# 'run'
+      if ms == max
+        let finished = v:false
+        break
+      endif
+      let ms += 1
       sleep 1m
     endwhile
   endif
   if has_key(s:spawns, a:id)
     throw 'Fireplace: race condition waiting on spawning eval?'
   endif
+  return finished
 endfunction
 
 function! s:spawn_complete(id, name, callback) abort
@@ -1075,19 +1082,23 @@ endfunction
 
 function! fireplace#wait(msg_or_id_or_list, ...) abort
   if type(a:msg_or_id_or_list) != v:t_list
-    return call('fireplace#wait', [[a:msg_or_id_or_list]])[0]
+    return call('fireplace#wait', [[a:msg_or_id_or_list]] + a:000)[0]
   endif
   try
+    let results = []
     for item in a:msg_or_id_or_list
       let id = type(item) ==# v:t_dict ? get(item, 'id', '') : item
-      call call('s:spawn_wait', [id] + a:000)
-      call call('fireplace#transport#wait', [id] + a:000)
+      call add(results, (call('s:spawn_wait', [id] + a:000) &&
+            \ call('fireplace#transport#wait', [id] + a:000)) ? v:true : v:false)
     endfor
-    return a:msg_or_id_or_list
+    let finished = 1
+    return results
   finally
-    for item in a:msg_or_id_or_list
-      call fireplace#interrupt(item)
-    endfor
+    if !a:0 && !exists('finished')
+      for item in a:msg_or_id_or_list
+        call fireplace#interrupt(item)
+      endfor
+    endif
   endtry
 endfunction
 
@@ -1188,7 +1199,7 @@ endfunction
 
 function! s:qfhistory() abort
   let list = []
-  for entry in reverse(s:history)
+  for entry in reverse(copy(s:history))
     call extend(list, [s:qfentry(entry)])
   endfor
   return list
@@ -1212,10 +1223,26 @@ function! s:stacktrace() abort
   return split(join(get(response, 'value', []), "\n"), "\n")
 endfunction
 
-function! s:echon(state, str) abort
+function! s:echon(state, str, ...) abort
   let str = get(a:state, 'echo_buffer', '') . a:str
   let a:state.echo_buffer = matchstr(str, "\n$")
-  echon len(a:state.echo_buffer) ? str[0:-2] : str
+  if get(a:state, 'echo', v:true)
+    if a:0 > 1
+      exe 'echohl' a:2
+    endif
+    echon len(a:state.echo_buffer) ? str[0:-2] : str
+    echohl NONE
+  endif
+  if has_key(a:state.history, 'tempfile')
+    let lines = split(a:str, "\n", 1)
+    if a:0
+      call map(lines, 'a:1 . v:val')
+      if get(lines, -1) is# a:1
+        let lines[-1] = ''
+      endif
+    endif
+    call writefile(lines, a:state.history.tempfile, 'ab')
+  endif
 endfunction
 
 function! s:eval_callback(state, delegates, message) abort
@@ -1227,15 +1254,18 @@ function! s:eval_callback(state, delegates, message) abort
     let a:state.ns = a:message.ns
   endif
   if has_key(a:message, 'out')
-    echohl Question
-    call s:echon(a:state, a:message.out)
-    echohl NONE
+    call s:echon(a:state, a:message.out, ';=', 'Question')
   endif
   if has_key(a:message, 'err')
-    echohl WarningMsg
-    call s:echon(a:state, a:message.err)
-    echohl NONE
+    call s:echon(a:state, a:message.err, ';!', 'WarningMsg')
   endif
+  if has_key(a:message, 'value')
+    call s:echon(a:state, a:message.value)
+    if has_key(a:message, 'ns')
+      call s:echon(a:state, "\n")
+    endif
+  endif
+
   for Delegate in a:delegates
     try
       call call(Delegate, [a:message])
@@ -1258,6 +1288,9 @@ function! s:eval_callback(state, delegates, message) abort
     if len(s:history) > &history
       call remove(s:history, &history, -1)
     endif
+    if get(a:state, 'bg')
+      Last!
+    endif
     if a:state.history.buffer == bufnr('')
       try
         silent doautocmd User FireplaceEvalPost
@@ -1269,7 +1302,7 @@ endfunction
 
 function! fireplace#eval(...) abort
   let opts = {}
-  let state = {}
+  let state = {'echo': v:false}
   let callbacks = []
   for l:Arg in a:000
     if type(Arg) == v:t_string
@@ -1280,6 +1313,8 @@ function! fireplace#eval(...) abort
       call extend(opts, Arg)
     elseif type(Arg) == v:t_func
       call add(callbacks, Arg)
+    elseif type(Arg) == v:t_bool
+      let state.echo = Arg
     elseif type(Arg) == v:t_number
       call s:add_pprint_opts(opts, Arg)
     endif
@@ -1300,7 +1335,7 @@ function! fireplace#eval(...) abort
 
   let client = platform.Client()
   let state.code = code
-  let state.history = {'buffer': bufnr(''), 'ext': ext, 'code': code, 'ns': fireplace#ns(), 'messages': []}
+  let state.history = {'buffer': bufnr(''), 'tempfile': tempname() . '.' . ext, 'ext': ext, 'code': code, 'ns': fireplace#ns(), 'messages': []}
   if !has_key(opts, 'session')
     let state.client = client
   endif
@@ -1310,7 +1345,22 @@ function! fireplace#eval(...) abort
     return msg
   endif
 
-  call fireplace#wait(msg)
+  while !fireplace#wait(msg.id, 1)
+    let peek = getchar(1)
+    if state.echo && peek != 0 && !(has('win32') && peek == 128)
+      let c = getchar()
+      let c = type(c) == type(0) ? nr2char(c) : c
+      if c ==# "\<C-D>"
+        let state.echo = 1
+        let state.bg = 1
+        echo "\rBackgrounded"
+        return []
+      else
+        call fireplace#transport#stdin(msg.id, c)
+        echon c
+      endif
+    endif
+  endwhile
 
   if get(state, 'ex', '') !=# ''
     let err = 'Clojure: '.response.ex
@@ -1332,19 +1382,9 @@ function! s:DisplayWidth() abort
   endif
 endfunction
 
-function! s:echo_value_callback(state, message) abort
-  if has_key(a:message, 'value')
-    call s:echon(a:state, a:message.value)
-    if has_key(a:message, 'ns')
-      call s:echon(a:state, "\n")
-    endif
-  endif
-endfunction
-
 function! fireplace#echo_session_eval(...) abort
   try
-    let msg = call('fireplace#eval', [s:DisplayWidth(), function('s:echo_value_callback', [{}])] + a:000)
-    call fireplace#wait(msg)
+    call call('fireplace#eval', [s:DisplayWidth(), v:true] + a:000)
   catch
     echohl ErrorMSG
     echomsg v:exception
