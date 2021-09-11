@@ -129,5 +129,8 @@ git subtree pull --prefix bundle/jellybeans.vim https://github.com/nanotech/jell
 
 git status
 git subtree pull --prefix bundle/Apprentice https://github.com/romainl/Apprentice.git master --squash
+
+git subtree pull --prefix bundle/vim-dadbod https://github.com/tpope/vim-dadbod master --squash
+git subtree pull --prefix bundle/vim-dadbod-ui https://github.com/kristijanhusak/vim-dadbod-ui master --squash
 # end color scheme }}}
 
