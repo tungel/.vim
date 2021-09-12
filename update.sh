@@ -133,5 +133,6 @@ git subtree pull --prefix bundle/Apprentice https://github.com/romainl/Apprentic
 git subtree pull --prefix bundle/vim-dadbod https://github.com/tpope/vim-dadbod master --squash
 git subtree pull --prefix bundle/vim-dadbod-ui https://github.com/kristijanhusak/vim-dadbod-ui master --squash
 git subtree pull --prefix bundle/vim-dadbod-completion https://github.com/kristijanhusak/vim-dadbod-completion master --squash
+git subtree pull --prefix bundle/denite.nvim https://github.com/Shougo/denite.nvim master --squash
 # end color scheme }}}
 
