@@ -1,4 +1,4 @@
 .flagged
 **/doc/tags
 /init.vim
-
+**/__pycache__
